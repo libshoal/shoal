@@ -7,4 +7,7 @@ void shl__init(void)
     printf("done\n");
 }
 
+void* copy_graphs(gm_graph *G, int num_att, int *sizes, void *arrays) {
+}
+
 #endif
