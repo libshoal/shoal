@@ -12,10 +12,10 @@ void* shl__copy_array(void *src, size_t size, bool is_used, const char* array_na
     void *tmp = malloc(size);
     assert(tmp!=NULL);
     if (is_used) {
-        printf("copying array [%s] content .. \n", array_name);
+        printf("[x] copying array [%s] content .. \n", array_name);
         memcpy(tmp, src, size);
     } else {
-        printf("NOT copying array [%s] content .. \n", array_name);
+        printf("[ ] copying array [%s] content .. \n", array_name);
     }
     return tmp;
 }
