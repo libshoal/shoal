@@ -3,11 +3,15 @@
 
 #include <numa.h>
 #include <assert.h>
+#include <papi.h>
 
 static void shl__init(void)
 {
     printf("SHOAL (v %s) initialization .. ", VERSION);
     printf("done\n");
+
+    printf("PAPI error %d: %s\n", retval, PAPI_strerror(retval));
+    exit(1);
 }
 
 static inline int shl__get_rep_id(void) {
