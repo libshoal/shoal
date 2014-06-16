@@ -5,13 +5,56 @@
 #include <assert.h>
 #include <papi.h>
 
+static int EventSet;
+
+static void handle_error(int retval)
+{
+    printf("PAPI error %d: %s\n", retval, PAPI_strerror(retval));
+    exit(1);
+}
+
+static void shl__end(void)
+{
+    // Stop PAPI events
+    long long values[1];
+    if (PAPI_stop(EventSet, values) != PAPI_OK) handle_error(1);
+    printf("Stopping PAPI .. \n");
+    printf("%lld\n",values[0]);
+    printf("END PAPI\n");
+}
+
 static void shl__init(void)
 {
     printf("SHOAL (v %s) initialization .. ", VERSION);
     printf("done\n");
 
-    printf("PAPI error %d: %s\n", retval, PAPI_strerror(retval));
-    exit(1);
+    printf("Initializing PAPI .. ");
+
+    // Initialize PAPI and make sure version matches
+    int retval = PAPI_library_init(PAPI_VER_CURRENT);
+    if (retval != PAPI_VER_CURRENT && retval > 0) { fprintf(stderr,"PAPI library version mismatch!\n"); exit(1); }
+
+    // More checks that PAPI is running?
+    if (retval < 0) handle_error(retval);
+    retval = PAPI_is_initialized();
+    if (retval != PAPI_LOW_LEVEL_INITED) handle_error(retval);
+
+    if (PAPI_thread_init(pthread_self) != PAPI_OK)
+        exit(1);
+
+    printf("DONE\n");
+
+    printf("Starting PAPI .. ");
+
+    // Add events to be monitored
+    EventSet = PAPI_NULL;
+    if (PAPI_create_eventset(&EventSet) != PAPI_OK) handle_error(1);
+    if (PAPI_add_event(EventSet, PAPI_TOT_INS) != PAPI_OK) handle_error(1);
+
+    // Start monitoring
+    if (PAPI_start(EventSet) != PAPI_OK)
+        handle_error(1);
+    printf("DONE\n");
 }
 
 static inline int shl__get_rep_id(void) {
