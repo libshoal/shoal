@@ -1,6 +1,8 @@
 #ifndef __SHL_H
 #define __SHL_H
 
+#include <numa.h>
+
 void shl__init(void)
 {
     printf("SHOAL (v %s) initialization .. ", VERSION);
@@ -9,7 +11,7 @@ void shl__init(void)
 
 static int shl__get_num_replicas(void)
 {
-    return 2;
+    return numa_max_node()+1;
 }
 
 void** shl__copy_array(void *src, size_t size, bool is_used,
