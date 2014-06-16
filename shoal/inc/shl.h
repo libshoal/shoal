@@ -2,11 +2,17 @@
 #define __SHL_H
 
 #include <numa.h>
+#include <assert.h>
 
-void shl__init(void)
+static void shl__init(void)
 {
     printf("SHOAL (v %s) initialization .. ", VERSION);
     printf("done\n");
+}
+
+static inline int shl__get_rep_id(void) {
+    return omp_get_thread_num() % (numa_max_node()+1);
+    //    return 0;
 }
 
 static int shl__get_num_replicas(void)
@@ -14,8 +20,8 @@ static int shl__get_num_replicas(void)
     return numa_max_node()+1;
 }
 
-void** shl__copy_array(void *src, size_t size, bool is_used,
-                       bool is_ro, const char* array_name)
+static void** shl__copy_array(void *src, size_t size, bool is_used,
+                              bool is_ro, const char* array_name)
 {
     int num_replicas = is_ro ? shl__get_num_replicas() : 1;
 
@@ -35,8 +41,8 @@ void** shl__copy_array(void *src, size_t size, bool is_used,
     return tmp;
 }
 
-void shl__copy_back_array(void **src, void *dest, size_t size, bool is_copied,
-                          bool is_ro, bool is_dynamic, const char* array_name)
+static void shl__copy_back_array(void **src, void *dest, size_t size, bool is_copied,
+                                 bool is_ro, bool is_dynamic, const char* array_name)
 {
     bool copy_back = true;
     int num_replicas = is_ro ? shl__get_num_replicas() : 1;
