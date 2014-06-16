@@ -7,6 +7,21 @@
 
 static int EventSet;
 
+#define KILO 1000
+#define MEGA (KILO*1000)
+#define GIGA (MEGA*1000)
+static void print_number(long long number)
+{
+    if (number>GIGA)
+        printf("%.2f G", number/((double) GIGA));
+    else if (number>MEGA)
+        printf("%.2f M", number/((double) MEGA));
+    else if (number>KILO)
+        printf("%.2f K", number/((double) KILO));
+    else
+        printf("%lld", number);
+}
+
 static void handle_error(int retval)
 {
     printf("PAPI error %d: %s\n", retval, PAPI_strerror(retval));
@@ -19,7 +34,7 @@ static void shl__end(void)
     long long values[1];
     if (PAPI_stop(EventSet, values) != PAPI_OK) handle_error(1);
     printf("Stopping PAPI .. \n");
-    printf("%lld\n",values[0]);
+    print_number(values[0]); printf("\n");
     printf("END PAPI\n");
 }
 
