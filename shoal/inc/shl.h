@@ -11,7 +11,7 @@ static void shl__init(void)
 }
 
 static inline int shl__get_rep_id(void) {
-    return omp_get_thread_num() % (numa_max_node()+1);
+    return (omp_get_thread_num()) % (numa_max_node()+1);
     //    return 0;
 }
 
@@ -30,13 +30,16 @@ static void** shl__copy_array(void *src, size_t size, bool is_used,
 
     void **tmp = (void**) (malloc(num_replicas*sizeof(void*)));
 
-    for (int i=0; i<num_replicas; i++)
-        tmp[i] = malloc(size);
+    for (int i=0; i<num_replicas; i++) {
+        //tmp[i] = malloc(size);
+        tmp[i] = numa_alloc_onnode(size, i);
+    }
 
     assert(tmp!=NULL);
     if (is_used) {
-        for (int i=0; i<num_replicas; i++)
+        for (int i=0; i<num_replicas; i++) {
             memcpy(tmp[i], src, size);
+        }
     }
     return tmp;
 }
