@@ -7,6 +7,10 @@
 
 static int EventSet;
 
+//#define NUMA
+#define REPLICATION
+#define INDIRECTION
+
 #define KILO 1000
 #define MEGA (KILO*1000)
 #define GIGA (MEGA*1000)
@@ -45,6 +49,17 @@ static void shl__init(void)
 {
     printf("SHOAL (v %s) initialization .. ", VERSION);
     printf("done\n");
+
+#ifdef INDIRECTION
+    printf("[x] Indirection\n");
+#else
+    printf("[ ] Indirection\n");
+#endif
+#ifdef REPLICATION
+    printf("[x] Replication\n");
+#else
+    printf("[ ] Replication\n");
+#endif
 
 #ifdef PAPI
     printf("Initializing PAPI .. ");
@@ -101,14 +116,29 @@ static void** shl__copy_array(void *src, size_t size, bool is_used,
     void **tmp = (void**) (malloc(num_replicas*sizeof(void*)));
 
     for (int i=0; i<num_replicas; i++) {
-        //tmp[i] = malloc(size);
+#ifdef NUMA
+        printf("NUMA alloc\n");
         tmp[i] = numa_alloc_onnode(size, i);
+#else
+#ifdef ARRAY
+        printf("array alloc\n");
+        tmp[i] = new double[size/8];
+#else
+        printf("regular alloc\n");
+        tmp[i] = malloc(size);
+        printf("address: %p other at %p\n", tmp[i], src);
+#endif
+#endif
+        assert(tmp[i]!=NULL);
     }
 
+    assert(sizeof(char)==1);
     assert(tmp!=NULL);
     if (is_used) {
         for (int i=0; i<num_replicas; i++) {
-            memcpy(tmp[i], src, size);
+            #pragma omp parallel for
+            for (int j=0; j<size; j++)
+                *((char*)(tmp[i])+j) = *((char*)src+j);
         }
     }
     return tmp;
