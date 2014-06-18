@@ -7,13 +7,24 @@
 
 static int EventSet;
 
-//#define NUMA
-#define REPLICATION
-#define INDIRECTION
-
 #define KILO 1000
 #define MEGA (KILO*1000)
 #define GIGA (MEGA*1000)
+
+// --------------------------------------------------
+// Configuration
+// --------------------------------------------------
+#define NUMA
+#define REPLICATION
+#define INDIRECTION
+#define LOOKUP
+
+// --------------------------------------------------
+// in misc.c
+// --------------------------------------------------
+void shl__start_timer(void);
+double shl__end_timer(void);
+double shl__get_timer(void);
 
 static void print_number(long long number)
 {
@@ -43,12 +54,23 @@ static void shl__end(void)
     print_number(values[0]); printf("\n");
     printf("END PAPI\n");
 #endif
+    printf("Time for copy: %.6f\n", shl__get_timer());
 }
 
 static void shl__init(void)
 {
     printf("SHOAL (v %s) initialization .. ", VERSION);
     printf("done\n");
+
+    assert(numa_available()>=0);
+
+    // Prevent numa_alloc_onnode fall back to allocating memory elsewhere
+    numa_set_strict(true);
+
+    /* for (int i=0; i<=numa_max_node(); i++) { */
+
+    /*     numa_node_size( */
+    /* } */
 
 #ifdef INDIRECTION
     printf("[x] Indirection\n");
@@ -59,6 +81,21 @@ static void shl__init(void)
     printf("[x] Replication\n");
 #else
     printf("[ ] Replication\n");
+#endif
+#ifdef LOOKUP
+    printf("[x] Lookup\n");
+#else
+    printf("[ ] Lookup\n");
+#endif
+
+#ifdef NUMA
+    printf("alloc: libnuma\n");
+#else
+#ifdef ARRAY
+    printf("alloc: C++ array\n");
+#else
+    printf("alloc: malloc\n");
+#endif
 #endif
 
 #ifdef PAPI
@@ -92,9 +129,16 @@ static void shl__init(void)
 #endif
 }
 
-static inline int shl__get_rep_id(void) {
-    //   return (omp_get_thread_num()) % (numa_max_node()+1);
+static inline int shl__get_rep_id(void)
+{
+#ifdef LOOKUP
+    int d = omp_get_thread_num();
+    int m = numa_max_node();
+    assert (m<omp_get_num_threads());
+    return (d) % (m+1);
+#else
     return 0;
+#endif
 }
 
 static int shl__get_num_replicas(void)
@@ -117,16 +161,12 @@ static void** shl__copy_array(void *src, size_t size, bool is_used,
 
     for (int i=0; i<num_replicas; i++) {
 #ifdef NUMA
-        printf("NUMA alloc\n");
         tmp[i] = numa_alloc_onnode(size, i);
 #else
 #ifdef ARRAY
-        printf("array alloc\n");
         tmp[i] = new double[size/8];
 #else
-        printf("regular alloc\n");
         tmp[i] = malloc(size);
-        printf("address: %p other at %p\n", tmp[i], src);
 #endif
 #endif
         assert(tmp[i]!=NULL);
@@ -209,6 +249,5 @@ static void shl__copy_back_array_single(void *src, void *dest, size_t size, bool
             memcpy(dest, src, size);
     }
 }
-
 
 #endif
