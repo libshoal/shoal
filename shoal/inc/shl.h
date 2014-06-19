@@ -14,10 +14,24 @@ static int EventSet;
 // --------------------------------------------------
 // Configuration
 // --------------------------------------------------
-#define NUMA
-#define REPLICATION
+
+// Use indirection: rather than accessing arrays directly, there is
+// one additional lookup
 #define INDIRECTION
-#define LOOKUP
+
+// Copies data using shl__copy_array, but does not replicate
+//#define COPY
+
+// Whether or not to use replication (needs: indirection OR copy)
+#define REPLICATION
+
+// Use NUMA aware memory allocation for replication
+#define NUMA
+
+//#define LOOKUP
+
+// Add some additional debug checks! This will harm performance a LOT.
+//#define DEBUG
 
 // --------------------------------------------------
 // in misc.c
@@ -25,6 +39,22 @@ static int EventSet;
 void shl__start_timer(void);
 double shl__end_timer(void);
 double shl__get_timer(void);
+int numa_cpu_to_node(int);
+
+// --------------------------------------------------
+// Colors!
+// --------------------------------------------------
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_YELLOW  "\x1b[33m"
+#define ANSI_COLOR_BLUE    "\x1b[34m"
+#define ANSI_COLOR_MAGENTA "\x1b[35m"
+#define ANSI_COLOR_CYAN    "\x1b[36m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
+
+#ifdef DEBUG
+static uint64_t num_lookup = 0;
+#endif
 
 static void print_number(long long number)
 {
@@ -55,6 +85,9 @@ static void shl__end(void)
     printf("END PAPI\n");
 #endif
     printf("Time for copy: %.6f\n", shl__get_timer());
+#ifdef DEBUG
+    printf("Number of lookups: %ld\n", num_lookup);
+#endif
 }
 
 static void shl__init(void)
@@ -62,7 +95,7 @@ static void shl__init(void)
     printf("SHOAL (v %s) initialization .. ", VERSION);
     printf("done\n");
 
-    assert(numa_available()>=0);
+    assert (numa_available()>=0);
 
     // Prevent numa_alloc_onnode fall back to allocating memory elsewhere
     numa_set_strict(true);
@@ -72,6 +105,15 @@ static void shl__init(void)
     /*     numa_node_size( */
     /* } */
 
+#ifdef DEBUG
+    printf(ANSI_COLOR_RED "WARNING:" ANSI_COLOR_RESET " debug enabled\n");
+#endif
+
+#ifdef COPY
+    printf("[x] Copy\n");
+#else
+    printf("[ ] Copy\n");
+#endif
 #ifdef INDIRECTION
     printf("[x] Indirection\n");
 #else
@@ -131,14 +173,30 @@ static void shl__init(void)
 
 static inline int shl__get_rep_id(void)
 {
-#ifdef LOOKUP
+#ifdef DEBUG
+    __sync_fetch_and_add(&num_lookup, 1);
+#endif
     int d = omp_get_thread_num();
     int m = numa_max_node();
+#if DEBUG
     assert (m<omp_get_num_threads());
-    return (d) % (m+1);
-#else
-    return 0;
 #endif
+    return (d) % (m+1);
+/* #if 0 */
+/* #ifdef LOOKUP */
+/*     // Get the OpenMP thread number */
+/*     int d = omp_get_thread_num(); */
+
+/*     // It seems that mapping of OpenMP threads to cores is linear with */
+/*     // GOMP_CPU_AFFINITY, i.e. thread <n> will be mapped to the <n>th */
+/*     // core given in GOMP_CPU_AFFINITY [1] */
+/*     // */
+/*     // [1] https://gcc.gnu.org/onlinedocs/libgomp.pdf */
+/*     return numa_cpu_to_node(d); */
+/* #else */
+/*     return 0; */
+/* #endif */
+/* #endif */
 }
 
 static int shl__get_num_replicas(void)
@@ -149,28 +207,41 @@ static int shl__get_num_replicas(void)
 static void** shl__copy_array(void *src, size_t size, bool is_used,
                               bool is_ro, const char* array_name)
 {
-    int num_replicas = is_ro ? shl__get_num_replicas() : 1;
+    bool replicate = is_ro;
+    int num_replicas = replicate ? shl__get_num_replicas() : 1;
 #ifndef REPLICATION
     num_replicas = 1;
 #endif
 
-    printf("array: [%-30s] copy [%c] -- replication [%c] (%d)\n", array_name,
+    //    printf(ANSI_COLOR_RED "Warning: " ANSI_COLOR_RESET "malloc for rep1\n");
+    printf("array: [%-30s] copy [%c] -- replication [%c] (%d) -- ", array_name,
            is_used ? 'X' : ' ', is_ro ? 'X' : ' ', num_replicas);
 
     void **tmp = (void**) (malloc(num_replicas*sizeof(void*)));
 
     for (int i=0; i<num_replicas; i++) {
 #ifdef NUMA
-        tmp[i] = numa_alloc_onnode(size, i);
+        if (replicate /* && i!=1 */) {
+            tmp[i] = numa_alloc_onnode(size, i);
+            printf("numa_alloc_onnode(%d) ", i);
+        } else {
+            // If data is not replicated, still copy, but don't specify node
+            // Our allocation function will spread the data in the machine
+            tmp[i] = malloc(size);
+            printf("malloc ");
+        }
 #else
 #ifdef ARRAY
         tmp[i] = new double[size/8];
+        printf("new ");
 #else
         tmp[i] = malloc(size);
+        printf("malloc ");
 #endif
 #endif
         assert(tmp[i]!=NULL);
     }
+    printf("\n");
 
     assert(sizeof(char)==1);
     assert(tmp!=NULL);
