@@ -6,6 +6,9 @@
 #include <papi.h>
 #include "gm.h"
 
+#include <cstdio>
+#include <omp.h>
+
 static int EventSet;
 
 #define KILO 1000
@@ -42,7 +45,7 @@ static int EventSet;
 #define PAPI
 
 // Enable support for hugepages
-#define ENABLE_HUGEPAGE
+//#define ENABLE_HUGEPAGE
 
 // --------------------------------------------------
 // in misc.c
@@ -74,9 +77,7 @@ extern int replica_lookup[];
 // --------------------------------------------------
 // Includes depending on configuration
 // --------------------------------------------------
-#ifdef ENABLE_HUGEPAGE
 #include <sys/mman.h>
-#endif
 
 #ifdef DEBUG
 static uint64_t num_lookup = 0;
@@ -307,8 +308,12 @@ static void** shl__copy_array(void *src, size_t size, bool is_used,
             int alloc_size = size;
             while (alloc_size % PAGESIZE != 0)
                 alloc_size++;
+            int flags = MAP_ANONYMOUS | MAP_PRIVATE;
+#ifdef ENABLE_HUGEPAGE
+            flags |= MAP_HUGETLB;
+#endif
             tmp[i] = mmap(NULL, alloc_size, PROT_READ | PROT_WRITE,
-                          MAP_ANONYMOUS | MAP_PRIVATE | MAP_HUGETLB, -1, 0);
+                          flags, -1, 0);
             if (tmp[i]==MAP_FAILED) {
                 perror("mmap");
                 exit(1);
