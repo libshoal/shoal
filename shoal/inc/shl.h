@@ -4,12 +4,16 @@
 #include <numa.h>
 #include <assert.h>
 #include <papi.h>
+#include "gm.h"
 
 static int EventSet;
 
 #define KILO 1000
 #define MEGA (KILO*1000)
 #define GIGA (MEGA*1000)
+#define MAXCORES 100
+
+#define PAGESIZE (2*1024*1024)
 
 // --------------------------------------------------
 // Configuration
@@ -28,10 +32,17 @@ static int EventSet;
 // Use NUMA aware memory allocation for replication
 #define NUMA
 
+// This does not seem to be currently used
 //#define LOOKUP
 
 // Add some additional debug checks! This will harm performance a LOT.
 //#define DEBUG
+
+// Enable PAPI support
+#define PAPI
+
+// Enable support for hugepages
+#define ENABLE_HUGEPAGE
 
 // --------------------------------------------------
 // in misc.c
@@ -40,6 +51,14 @@ void shl__start_timer(void);
 double shl__end_timer(void);
 double shl__get_timer(void);
 int numa_cpu_to_node(int);
+
+// --------------------------------------------------
+// OS specific stuff
+// --------------------------------------------------
+void shl__bind_processor(int proc);
+int shl__get_proc_for_node(int node);
+
+extern int replica_lookup[];
 
 // --------------------------------------------------
 // Colors!
@@ -51,6 +70,13 @@ int numa_cpu_to_node(int);
 #define ANSI_COLOR_MAGENTA "\x1b[35m"
 #define ANSI_COLOR_CYAN    "\x1b[36m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
+
+// --------------------------------------------------
+// Includes depending on configuration
+// --------------------------------------------------
+#ifdef ENABLE_HUGEPAGE
+#include <sys/mman.h>
+#endif
 
 #ifdef DEBUG
 static uint64_t num_lookup = 0;
@@ -76,6 +102,14 @@ static void handle_error(int retval)
 
 static void shl__end(void)
 {
+    printf("Time for copy: %.6f\n", shl__get_timer());
+#ifdef DEBUG
+    printf("Number of lookups: %ld\n", num_lookup);
+#endif
+}
+
+static void papi_stop(void)
+{
 #ifdef PAPI
     // Stop PAPI events
     long long values[1];
@@ -83,10 +117,6 @@ static void shl__end(void)
     printf("Stopping PAPI .. \n");
     print_number(values[0]); printf("\n");
     printf("END PAPI\n");
-#endif
-    printf("Time for copy: %.6f\n", shl__get_timer());
-#ifdef DEBUG
-    printf("Number of lookups: %ld\n", num_lookup);
 #endif
 }
 
@@ -96,6 +126,15 @@ static void shl__init(void)
     printf("done\n");
 
     assert (numa_available()>=0);
+
+    for (int i=0; i<MAXCORES; i++)
+        replica_lookup[i] = -1;
+
+    for (int i=0; i<gm_rt_get_num_threads(); i++) {
+
+        replica_lookup[i] = numa_cpu_to_node(i);
+        printf("replication: CPU %d is on node %d\n", i, replica_lookup[i]);
+    }
 
     // Prevent numa_alloc_onnode fall back to allocating memory elsewhere
     numa_set_strict(true);
@@ -129,6 +168,11 @@ static void shl__init(void)
 #else
     printf("[ ] Lookup\n");
 #endif
+#ifdef ENABLE_HUGEPAGE
+    printf("[x] Hugepage\n");
+#else
+    printf("[ ] Hugepage\n");
+#endif
 
 #ifdef NUMA
     printf("alloc: libnuma\n");
@@ -139,7 +183,9 @@ static void shl__init(void)
     printf("alloc: malloc\n");
 #endif
 #endif
+}
 
+static void papi_start(void) {
 #ifdef PAPI
     printf("Initializing PAPI .. ");
 
@@ -162,7 +208,7 @@ static void shl__init(void)
     // Add events to be monitored
     EventSet = PAPI_NULL;
     if (PAPI_create_eventset(&EventSet) != PAPI_OK) handle_error(1);
-    if (PAPI_add_event(EventSet, PAPI_TOT_INS) != PAPI_OK) handle_error(1);
+    if (PAPI_add_event(EventSet, PAPI_TLB_DM) != PAPI_OK) handle_error(1);
 
     // Start monitoring
     if (PAPI_start(EventSet) != PAPI_OK)
@@ -171,32 +217,24 @@ static void shl__init(void)
 #endif
 }
 
+static bool dbg_done = false;
 static inline int shl__get_rep_id(void)
 {
-#ifdef DEBUG
-    __sync_fetch_and_add(&num_lookup, 1);
-#endif
-    int d = omp_get_thread_num();
-    int m = numa_max_node();
-#if DEBUG
-    assert (m<omp_get_num_threads());
-#endif
-    return (d) % (m+1);
-/* #if 0 */
-/* #ifdef LOOKUP */
-/*     // Get the OpenMP thread number */
+/* #ifdef DEBUG */
+/*     __sync_fetch_and_add(&num_lookup, 1); */
+/* #endif */
 /*     int d = omp_get_thread_num(); */
-
-/*     // It seems that mapping of OpenMP threads to cores is linear with */
-/*     // GOMP_CPU_AFFINITY, i.e. thread <n> will be mapped to the <n>th */
-/*     // core given in GOMP_CPU_AFFINITY [1] */
-/*     // */
-/*     // [1] https://gcc.gnu.org/onlinedocs/libgomp.pdf */
-/*     return numa_cpu_to_node(d); */
-/* #else */
-/*     return 0; */
+/*     int m = numa_max_node(); */
+/* #if DEBUG */
+/*     assert (m<omp_get_num_threads()); */
 /* #endif */
-/* #endif */
+/*     return (d) % (m+1); */
+#ifdef DEBUG
+    assert(omp_get_num_threads()<MAXCORES);
+    __sync_fetch_and_add(&num_lookup, 1);
+    assert(replica_lookup[omp_get_thread_num()]>=0);
+#endif
+    return replica_lookup[omp_get_thread_num()];
 }
 
 static int shl__get_num_replicas(void)
@@ -217,18 +255,66 @@ static void** shl__copy_array(void *src, size_t size, bool is_used,
     printf("array: [%-30s] copy [%c] -- replication [%c] (%d) -- ", array_name,
            is_used ? 'X' : ' ', is_ro ? 'X' : ' ', num_replicas);
 
+    bool omp_copy = true;
     void **tmp = (void**) (malloc(num_replicas*sizeof(void*)));
 
     for (int i=0; i<num_replicas; i++) {
 #ifdef NUMA
-        if (replicate /* && i!=1 */) {
+        if (replicate && num_replicas>1) {
+#ifdef ENABLE_HUGEPAGE
+            // Make size be alligned multiple of page size
+            int alloc_size = size;
+            while (alloc_size % PAGESIZE != 0)
+                alloc_size++;
+
+            printf("mmap(size=0x%x)\n", alloc_size);
+            tmp[i] = mmap(NULL, alloc_size, PROT_READ | PROT_WRITE,
+                          MAP_ANONYMOUS | MAP_PRIVATE | MAP_HUGETLB, -1, 0);
+            if (tmp[i]==MAP_FAILED) {
+                perror("mmap");
+                exit(1);
+            }
+
+            //            omp_copy = false;
+
+            cpu_set_t cpu_mask_org;
+            int err = sched_getaffinity(0, sizeof(cpu_set_t), &cpu_mask_org);
+            if (err) {
+                perror("sched_getaffinity");
+                exit(1);
+            }
+
+            // bind processor
+            shl__bind_processor(shl__get_proc_for_node(i));
+
+            // copy
+            for (int j=0; j<size; j+=PAGESIZE)
+                *((char*)(tmp[i])+j) = *((char*)src+j);
+
+            // move processor back to original mask
+            err = sched_setaffinity(0, sizeof(cpu_set_t), &cpu_mask_org);
+            if (err) {
+                perror("sched_setaffinity");
+                exit(1);
+            }
+#else
             tmp[i] = numa_alloc_onnode(size, i);
             printf("numa_alloc_onnode(%d) ", i);
+#endif
         } else {
             // If data is not replicated, still copy, but don't specify node
             // Our allocation function will spread the data in the machine
-            tmp[i] = malloc(size);
-            printf("malloc ");
+            int alloc_size = size;
+            while (alloc_size % PAGESIZE != 0)
+                alloc_size++;
+            tmp[i] = mmap(NULL, alloc_size, PROT_READ | PROT_WRITE,
+                          MAP_ANONYMOUS | MAP_PRIVATE | MAP_HUGETLB, -1, 0);
+            if (tmp[i]==MAP_FAILED) {
+                perror("mmap");
+                exit(1);
+            }
+
+
         }
 #else
 #ifdef ARRAY
@@ -245,7 +331,7 @@ static void** shl__copy_array(void *src, size_t size, bool is_used,
 
     assert(sizeof(char)==1);
     assert(tmp!=NULL);
-    if (is_used) {
+    if (is_used && omp_copy) {
         for (int i=0; i<num_replicas; i++) {
             #pragma omp parallel for
             for (int j=0; j<size; j++)
