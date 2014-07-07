@@ -23,18 +23,22 @@ function get_command() {
 }
 
 TMP=`mktemp`
-FTOTAL=`mktemp`
-FCOMP=`mktemp`
+FTOTAL=`mktemp -t total-XXXXXX`
+FCOMP=`mktemp -t comp-XXXXXX`
+FINIT=`mktemp -t init-XXXXXX`
 echo "Files are: $FTOTAL $FCOMP"
 
 (
     . ~/.bashrc
     echo "x y e" > $FTOTAL
     echo "x y e" > $FCOMP
-    for i in {6..0}
+    echo "x y e" > $FINIT
+    for i in {6..3}
     do
+	# Add number of threads used as x-value
 	echo -n $((2**$i)) >> $FTOTAL
 	echo -n $((2**$i)) >> $FCOMP
+	echo -n $((2**$i)) >> $FINIT
 
 	get_command $((2**$i)) $1 $2
 	echo "Executing command [${next_command}]" 1>&2
@@ -44,7 +48,8 @@ echo "Files are: $FTOTAL $FCOMP"
 	if [[ $2 == "ours" ]]
 	then
 	    cat $TMP | awk '/^total/ { print $2 }' | skstat.py >> $FTOTAL
-	    cat $TMP | awk '/^comp/ { print $2 }' | skstat.py >> $FCOMP
+	    cat $TMP | awk '/^comp/ { print $2 }'  | skstat.py >> $FCOMP
+	    cat $TMP | awk '/^copy/ { print $2 }'  | skstat.py >> $FINIT
 	fi
 
 	if [[ $2 == "theirs" ]]
@@ -55,4 +60,4 @@ echo "Files are: $FTOTAL $FCOMP"
 )
 rm $TMP
 
-echo "Files are: $FTOTAL $FCOMP"
+echo "Files are: $FTOTAL $FCOMP $FINIT"
