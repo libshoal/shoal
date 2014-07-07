@@ -13,7 +13,8 @@ function usage() {
 
 [[ -n "$2" ]] || usage
 
-MACHINE=sgs-r815-03
+#MACHINE=sgs-r815-03
+MACHINE=sgs-r820-01
 
 # params
 # 1) <num_threads> 2) workload 3) implementation
