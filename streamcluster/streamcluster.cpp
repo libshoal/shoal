@@ -1694,8 +1694,6 @@ struct pkmedian_arg_t
 void* localSearchSub(void* arg_) {
 
   pkmedian_arg_t* arg= (pkmedian_arg_t*)arg_;
-  printf("in localSearchStub in thread: %d\n", arg->pid);
-
   pkmedian(arg->points,arg->kmin,arg->kmax,arg->kfinal,arg->pid,arg->barrier);
 
   return NULL;
@@ -1719,7 +1717,6 @@ void localSearch( Points* points, long kmin, long kmax, long* kfinal ) {
     pkmedian_arg_t* arg = new pkmedian_arg_t[nproc];
 
 #ifdef ENABLE_THREADS
-    printf("init barriers from localSearch\n");
     pthread_barrier_init(&barrier,NULL,nproc);
 #endif
     for( int i = 0; i < nproc; i++ ) {
