@@ -32,6 +32,13 @@ int shl__get_proc_for_node(int node)
     return -1;
 }
 
+extern coreid_t *affinity_conf;
+void shl__bind_processor_aff(int id)
+{
+    //    printf("Binding [%d] to [%d]\n", id, affinity_conf[id]);
+    aff_set_oncpu(affinity_conf[id]);
+}
+
 void shl__bind_processor(int id)
 {
     aff_set_oncpu(id);

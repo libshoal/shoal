@@ -4,10 +4,12 @@
 #include <numa.h>
 #include <assert.h>
 #include <papi.h>
-#include "gm.h"
 
 #include <cstdio>
 #include <omp.h>
+#include <pthread.h>
+#include <sched.h>
+#include <stdint.h>
 
 static int EventSet;
 
@@ -16,7 +18,11 @@ static int EventSet;
 #define GIGA (MEGA*1000)
 #define MAXCORES 100
 
-#define PAGESIZE (2*1024*1024)
+// --------------------------------------------------
+// Hardcoded page sizes
+// --------------------------------------------------
+#define PAGESIZE_HUGE (2*1024*1024)
+#define PAGESIZE (4*1024)
 
 // --------------------------------------------------
 // Configuration
@@ -45,23 +51,44 @@ static int EventSet;
 #define PAPI
 
 // Enable support for hugepages
-//#define ENABLE_HUGEPAGE
+#define ENABLE_HUGEPAGE
+
+// --------------------------------------------------
+// Typedefs
+// --------------------------------------------------
+typedef uint32_t coreid_t;
 
 // --------------------------------------------------
 // in misc.c
 // --------------------------------------------------
-void shl__start_timer(void);
 double shl__end_timer(void);
 double shl__get_timer(void);
+void shl__start_timer(void);
+void shl__init(size_t);
 int numa_cpu_to_node(int);
+coreid_t *parse_affinity(bool);
+void shl__init_thread(void);
 
 // --------------------------------------------------
 // OS specific stuff
 // --------------------------------------------------
 void shl__bind_processor(int proc);
+void shl__bind_processor_aff(int proc);
 int shl__get_proc_for_node(int node);
 
 extern int replica_lookup[];
+
+// --------------------------------------------------
+// Timer
+// --------------------------------------------------
+class Timer {
+ public:
+    void start();
+    double stop();
+    double timer_secs = 0.0;
+ private:
+    struct timeval TV1, TV2;
+};
 
 // --------------------------------------------------
 // Colors!
@@ -78,6 +105,7 @@ extern int replica_lookup[];
 // Includes depending on configuration
 // --------------------------------------------------
 #include <sys/mman.h>
+#include <stdint.h>
 
 #ifdef DEBUG
 static uint64_t num_lookup = 0;
@@ -109,85 +137,19 @@ static void shl__end(void)
 #endif
 }
 
+#ifdef PAPI
 static void papi_stop(void)
 {
-#ifdef PAPI
     // Stop PAPI events
     long long values[1];
     if (PAPI_stop(EventSet, values) != PAPI_OK) handle_error(1);
-    printf("Stopping PAPI .. \n");
+    printf("Stopping PAPI .. ");
     print_number(values[0]); printf("\n");
     printf("END PAPI\n");
-#endif
 }
 
-static void shl__init(void)
+static void papi_init(void)
 {
-    printf("SHOAL (v %s) initialization .. ", VERSION);
-    printf("done\n");
-
-    assert (numa_available()>=0);
-
-    for (int i=0; i<MAXCORES; i++)
-        replica_lookup[i] = -1;
-
-    for (int i=0; i<gm_rt_get_num_threads(); i++) {
-
-        replica_lookup[i] = numa_cpu_to_node(i);
-        printf("replication: CPU %d is on node %d\n", i, replica_lookup[i]);
-    }
-
-    // Prevent numa_alloc_onnode fall back to allocating memory elsewhere
-    numa_set_strict(true);
-
-    /* for (int i=0; i<=numa_max_node(); i++) { */
-
-    /*     numa_node_size( */
-    /* } */
-
-#ifdef DEBUG
-    printf(ANSI_COLOR_RED "WARNING:" ANSI_COLOR_RESET " debug enabled\n");
-#endif
-
-#ifdef COPY
-    printf("[x] Copy\n");
-#else
-    printf("[ ] Copy\n");
-#endif
-#ifdef INDIRECTION
-    printf("[x] Indirection\n");
-#else
-    printf("[ ] Indirection\n");
-#endif
-#ifdef REPLICATION
-    printf("[x] Replication\n");
-#else
-    printf("[ ] Replication\n");
-#endif
-#ifdef LOOKUP
-    printf("[x] Lookup\n");
-#else
-    printf("[ ] Lookup\n");
-#endif
-#ifdef ENABLE_HUGEPAGE
-    printf("[x] Hugepage\n");
-#else
-    printf("[ ] Hugepage\n");
-#endif
-
-#ifdef NUMA
-    printf("alloc: libnuma\n");
-#else
-#ifdef ARRAY
-    printf("alloc: C++ array\n");
-#else
-    printf("alloc: malloc\n");
-#endif
-#endif
-}
-
-static void papi_start(void) {
-#ifdef PAPI
     printf("Initializing PAPI .. ");
 
     // Initialize PAPI and make sure version matches
@@ -203,20 +165,25 @@ static void papi_start(void) {
         exit(1);
 
     printf("DONE\n");
+}
 
+static void papi_start(void)
+{
     printf("Starting PAPI .. ");
 
     // Add events to be monitored
     EventSet = PAPI_NULL;
     if (PAPI_create_eventset(&EventSet) != PAPI_OK) handle_error(1);
-    if (PAPI_add_event(EventSet, PAPI_TLB_DM) != PAPI_OK) handle_error(1);
+    if (PAPI_add_event(EventSet, PAPI_L2_DCM) != PAPI_OK) handle_error(1);
+
+    // PAPI_TLB_DM
 
     // Start monitoring
     if (PAPI_start(EventSet) != PAPI_OK)
         handle_error(1);
     printf("DONE\n");
-#endif
 }
+#endif
 
 static bool dbg_done = false;
 static inline int shl__get_rep_id(void)
@@ -357,8 +324,8 @@ static void shl__copy_back_array(void **src, void *dest, size_t size, bool is_co
 #endif
 
     // read-only: don't have to copy back, data is still the same
-    if (is_ro)
-        copy_back = false;
+    //  if (is_ro)
+    //  copy_back = false;
 
     // dynamic: array was created dynamically in GM algorithm function,
     // no need to copy back
@@ -372,7 +339,7 @@ static void shl__copy_back_array(void **src, void *dest, size_t size, bool is_co
     if (copy_back) {
         // replicated data is currently read-only (consistency issues)
         // so everything we have to copy back is not replicated
-        assert (num_replicas == 1);
+        //  assert (num_replicas == 1);
 
         for (int i=0; i<num_replicas; i++)
             memcpy(dest, src[0], size);
@@ -410,6 +377,104 @@ static void shl__copy_back_array_single(void *src, void *dest, size_t size, bool
         for (int i=0; i<num_replicas; i++)
             memcpy(dest, src, size);
     }
+}
+
+#define SHL_MALLOC_NONE (0)
+#define SHL_MALLOC_HUGEPAGE (0x1<<0)
+static void* shl__malloc(size_t size, int opts, int *pagesize)
+{
+    void *res;
+    bool use_hugepage = opts & SHL_MALLOC_HUGEPAGE;
+
+    // Round up to next multiple of page size
+    *pagesize = use_hugepage ? PAGESIZE_HUGE : PAGESIZE;
+    int alloc_size = size;
+    while (alloc_size % *pagesize != 0)
+        alloc_size++;
+
+    // Set options for mmap
+    int options = MAP_ANONYMOUS | MAP_PRIVATE;
+    if (use_hugepage)
+        options |= MAP_HUGETLB;
+
+    printf("alloc: %zu, huge=%d\n", alloc_size, use_hugepage);
+
+    // Allocate
+    res = mmap(NULL, alloc_size, PROT_READ | PROT_WRITE, options, -1, 0);
+    if (res==MAP_FAILED) {
+        perror("mmap");
+        exit(1);
+    }
+
+    return res;
+}
+
+static void** shl__malloc_replicated(size_t size,
+                                     int* num_replicas,
+                                     int options)
+{
+    *num_replicas = shl__get_num_replicas();
+    int pagesize;
+
+    void **tmp = (void**) (malloc(*num_replicas*sizeof(void*)));
+
+    for (int i=0; i<*num_replicas; i++) {
+
+        // Allocate memory
+        // --------------------------------------------------
+
+        // Allocate
+        tmp[i] = shl__malloc(size, options, &pagesize);
+
+        // Allocate on proper node; leverage Linux's first touch strategy
+        // --------------------------------------------------
+
+        cpu_set_t cpu_mask_org;
+        int err = sched_getaffinity(0, sizeof(cpu_set_t), &cpu_mask_org);
+        if (err) {
+            perror("sched_getaffinity");
+            exit(1);
+        }
+
+        // bind processor
+        shl__bind_processor(shl__get_proc_for_node(i));
+
+        // write once on every page
+        for (int j=0; j<size; j+=(4096))
+            *((char*)(tmp[i])+j) = 0;
+
+        // move processor back to original mask
+        err = sched_setaffinity(0, sizeof(cpu_set_t), &cpu_mask_org);
+        if (err) {
+            perror("sched_setaffinity");
+            exit(1);
+        }
+    }
+    return tmp;
+}
+
+static void shl__repl_sync(void* src, void **dest, size_t num_dest, size_t size)
+{
+    omp_set_dynamic(0);     // Explicitly disable dynamic teams
+    omp_set_num_threads(32); // Use 4 threads for all consecutive parallel regions
+
+    for (int i=0; i<num_dest; i++) {
+
+        #pragma omp parallel for
+        for (int j=0; j<size; j++) {
+
+            ((char*) dest[i])[j] = ((char*) src)[j];
+        }
+    }
+
+    omp_set_num_threads(0);
+}
+
+static void shl__init_thread(int thread_id)
+{
+#ifdef PAPI
+    PAPI_register_thread();
+#endif
 }
 
 #endif
