@@ -76,6 +76,59 @@ void shl__bind_processor(int proc);
 void shl__bind_processor_aff(int proc);
 int shl__get_proc_for_node(int node);
 
+// --------------------------------------------------
+// Auto-tuning interface
+//
+// Non of these functions are implemented. These are just meant as
+// ideas for a future potential auto-tuning interface.
+// --------------------------------------------------
+
+/**
+ * \brief Find sensible thread placement.
+ *
+ * Right now, a simple heuristic to decide how many threads to use is:
+ * - 1) barriers -> one thread per physical core
+ * - 2) no barriers -> one thread per HW context
+ *
+ * The thread placement would then be 1) to bind the threads such that
+ * one thread is running on every physical core (i.e. not to have
+ * threads on two HW contexts mapped to the same physical core) and 2)
+ * one thread per HW context.
+ *
+ * But obviously, this is more complicated. Ultimately, we probably
+ * want to specify an upper limit for the number of threads (maybe
+ * also cores) to use (default: unlimited). Maybe also a bitmask of
+ * CPUs to run on.
+ *
+ * The system then needs to figure out how many threads to spawn, and
+ * where to place them. E.g. we know from newRTS that it is _not_
+ * always good to spread out to several nodes. Somethings it is better
+ * to use up all H/W threads on a node before going to the next one,
+ * even if some of the threads will be hyperthreads.
+ */
+void shl__auto_tune_bind(int *num_cores,
+                         coreid_t *bind,
+                         bool uses_barriers);
+
+/**
+ *\ brief Allocate array
+ *
+ * Several choices here:
+ *
+ * - replication: Three policies:
+ * 1) Replica if read-only.
+ * 2) Replica if w/r ratio below a certain threshold.
+ *  2.1) Write to all replicas
+ *  2.2) Write locally; maintain write-set; sync call when updates need to
+ *       be propagated.
+ *
+ * - huge pages: Use if working set < available RAM && alloc_real/size < 1.xx
+ *   ? how to determine available RAM?
+ *   ? how to know the size of the working set?
+ *
+ */
+//shl_array shl__malloc(size_t size, bool is_ro);
+
 extern int replica_lookup[];
 
 // --------------------------------------------------
@@ -88,6 +141,51 @@ class Timer {
     double timer_secs = 0.0;
  private:
     struct timeval TV1, TV2;
+};
+
+// --------------------------------------------------
+// Program configuration
+// --------------------------------------------------
+class Configuration {
+
+ public:
+    Configuration(void) {
+
+        // Configuration based on environemnt
+        use_hugepage = get_env_int("SHL_HUGEPAGE", 1);
+        use_replication = get_env_int("SHL_REPLICATION", 1);
+
+        // NUMA information
+        num_nodes = numa_max_node();
+        node_mem_avail = new long[num_nodes];
+        mem_avail = 0;
+
+        for (int i=0; i<=numa_max_node(); i++) {
+
+            numa_node_size(i, &(node_mem_avail[i]));
+            mem_avil += node_mem_avail[i];
+        }
+    }
+
+    ~Configuration(void) {
+
+        delete node_mem_size;
+    }
+
+    // Should large pages be used
+    bool use_hugepage;
+
+    // Should replication be used
+    bool use_replication;
+
+    // Number of NUMA nodes
+    int num_nodes;
+
+    // How much memory is available on the machine
+    long mem_avil;
+
+    // How much memory is available on each node
+    long node_mem_avail[];
 };
 
 // --------------------------------------------------

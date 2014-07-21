@@ -70,6 +70,44 @@ numa_cpu_to_node(int cpu)
 }
 
 /**
+ * \brief Read from environment variable as string
+ */
+char* get_env_str(const char *envname, const char *defaultvalue)
+{
+    char *env;
+    env = getenv (envname);
+
+    if (env==NULL) {
+
+        return defaultvalue;
+    }
+
+    return env;
+}
+
+/**
+ * \brief Read from environment variable as string
+ */
+int get_env_int(const char *envname, int defaultvalue)
+{
+    char *env;
+    env = getenv (envname);
+
+    if (env==NULL) {
+
+        return defaultvalue;
+    }
+
+    return atoi(env);
+}
+
+Configuration conf;
+conf get_conf(void)
+{
+    return &conf;
+}
+
+/**
  * \brief Parse CPU affinity string in environment
  *
  * This is borrowed from libgomp in gcc.
