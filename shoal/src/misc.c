@@ -3,6 +3,8 @@
 #include <errno.h>
 
 #include <cstdlib>
+
+#include "shl_internal.h"
 #include "shl.h"
 
 Timer shl__default_timer;
@@ -79,7 +81,7 @@ char* get_env_str(const char *envname, const char *defaultvalue)
 
     if (env==NULL) {
 
-        return defaultvalue;
+        return (char*) defaultvalue;
     }
 
     return env;
@@ -102,7 +104,7 @@ int get_env_int(const char *envname, int defaultvalue)
 }
 
 Configuration conf;
-conf get_conf(void)
+Configuration* get_conf(void)
 {
     return &conf;
 }
@@ -202,4 +204,16 @@ coreid_t* parse_affinity (bool ignore)
 
     assert (!"Invalid value for enviroment variable GOMP_CPU_AFFINITY");
     return NULL;
+}
+
+void print_number(long long number)
+{
+    if (number>=GIGA)
+        printf("%.2f G", number/((double) GIGA));
+    else if (number>=MEGA)
+        printf("%.2f M", number/((double) MEGA));
+    else if (number>=KILO)
+        printf("%.2f K", number/((double) KILO));
+    else
+        printf("%lld", number);
 }

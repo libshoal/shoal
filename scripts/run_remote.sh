@@ -13,8 +13,8 @@ function usage() {
 
 [[ -n "$2" ]] || usage
 
-#MACHINE=sgs-r815-03
-MACHINE=sgs-r820-01
+MACHINE=sgs-r815-03
+#MACHINE=sgs-r820-01
 
 # params
 # 1) <num_threads> 2) workload 3) implementation
@@ -27,7 +27,8 @@ TMP=`mktemp`
 FTOTAL=`mktemp -t total-XXXXXX`
 FCOMP=`mktemp -t comp-XXXXXX`
 FINIT=`mktemp -t init-XXXXXX`
-echo "Files are: $FTOTAL $FCOMP"
+echo "Exexcuting on machine [$MACHINE]"
+echo "Files are: $FTOTAL $FCOMP $FINIT"
 
 (
     . ~/.bashrc

@@ -4,6 +4,7 @@
 #include <sched.h>
 #include <numa.h>
 
+#include "shl_internal.h"
 #include "shl.h"
 
 void
@@ -36,7 +37,9 @@ extern coreid_t *affinity_conf;
 void shl__bind_processor_aff(int id)
 {
     //    printf("Binding [%d] to [%d]\n", id, affinity_conf[id]);
-    aff_set_oncpu(affinity_conf[id]);
+    if (affinity_conf!=NULL) {
+        aff_set_oncpu(affinity_conf[id]);
+    }
 }
 
 void shl__bind_processor(int id)
