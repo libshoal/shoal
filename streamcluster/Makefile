@@ -6,7 +6,7 @@ TARGET=streamcluster
 OBJS=streamcluster.o
 
 CXXFLAGS := $(CXXFLAGS) -DENABLE_THREADS -pthread
-OBJS += parsec_barrier.o
+OBJS += parsec_barrier.o crc.o
 
 #CXXFLAGS +=-g -O0 -pg
 CXXFLAGS += -O3

@@ -50,8 +50,6 @@ static const spin_counter_t SPIN_COUNTER_MAX=350*100;
 int parsec_barrier_init(parsec_barrier_t *barrier, const parsec_barrierattr_t *attr, unsigned count) {
   int rv;
 
-  printf("parsec_barrier_init called\n");
-
 #if defined(DEBUG) && defined(ENABLE_AUTOMATIC_DROPIN)
   //Print a notification once if automatic drop-in is enabled
   static int flag = 0;

@@ -16,9 +16,19 @@
 #include <sys/resource.h>
 #include <limits.h>
 
+#define SK_WRITE_INPUT
+#define SK_CRC_INPUT
+
 #ifdef ENABLE_THREADS
 #include <pthread.h>
 #include "parsec_barrier.hpp"
+
+#endif
+
+#ifdef SK_CRC_INPUT
+extern "C" {
+#include "crc.h"
+}
 #endif
 
 #ifdef TBB_VERSION
@@ -1761,8 +1771,22 @@ public:
 //synthetic stream
 class SimStream : public PStream {
 public:
+
+#ifdef SK_CRC_INPUT
+    crc_t crc;
+    FILE *fp;
+    const char* inputf;
+#endif
     SimStream(long n_ ) {
         n = n_;
+#ifdef SK_WRITE_INPUT
+        inputf = "/tmp/sc_input_native";
+        printf("Opening input file to write random coord [%s]\n", inputf);
+        fp = fopen(inputf, "wb");
+#endif
+#ifdef SK_CRC_INPUT
+        crc = crc_init();
+#endif
     }
     size_t read( float* dest, int dim, int num ) {
         size_t count = 0;
@@ -1773,6 +1797,12 @@ public:
             n--;
             count++;
         }
+#ifdef SK_WRITE_INPUT
+        std::fwrite(dest, sizeof(float)*dim, num, fp);
+#endif
+#ifdef SK_CRC_INPUT
+        crc = crc_update(crc, (unsigned char*) dest, sizeof(float)*dim*num);
+#endif
         return count;
     }
     int ferror() {
@@ -1782,6 +1812,11 @@ public:
         return n <= 0;
     }
     ~SimStream() {
+#ifdef SK_WRITE_INPUT
+        crc = crc_finalize(crc);
+        printf("0x%lx\n", (unsigned long)crc);
+        fclose(fp);
+#endif
     }
 private:
     long n;
@@ -1789,7 +1824,10 @@ private:
 
 class FileStream : public PStream {
 public:
+    crc_t crc;
+
     FileStream(char* filename) {
+        crc = crc_init();
         fp = fopen( filename, "rb");
         if( fp == NULL ) {
             fprintf(stderr,"error opening file %s\n.",filename);
@@ -1797,7 +1835,9 @@ public:
         }
     }
     size_t read( float* dest, int dim, int num ) {
-        return std::fread(dest, sizeof(float)*dim, num, fp);
+        size_t res = std::fread(dest, sizeof(float)*dim, num, fp);
+        crc = crc_update(crc, (unsigned char*) dest, sizeof(float)*dim*num);
+        return res;
     }
     int ferror() {
         return std::ferror(fp);
@@ -1807,6 +1847,8 @@ public:
     }
     ~FileStream() {
         fprintf(stderr,"closing file stream\n");
+        crc = crc_finalize(crc);
+        printf("0x%lx\n", (unsigned long)crc);
         fclose(fp);
     }
 private:
