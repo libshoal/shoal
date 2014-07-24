@@ -76,7 +76,7 @@ void papi_start(void)
 #endif
 
 static bool dbg_done = false;
-inline int shl__get_rep_id(void)
+int shl__get_rep_id(void)
 {
 /* #ifdef DEBUG */
 /*     __sync_fetch_and_add(&num_lookup, 1); */
