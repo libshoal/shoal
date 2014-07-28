@@ -119,15 +119,26 @@ void** shl__copy_array(void *src, size_t size, bool is_used,
     for (int i=0; i<num_replicas; i++) {
 #ifdef NUMA
         if (replicate && num_replicas>1) {
-#ifdef ENABLE_HUGEPAGE
+#if 1
+
+            // --------------------------------------------------
+            // Allocate memory using mmap
+
             // Make size be alligned multiple of page size
             int alloc_size = size;
             while (alloc_size % PAGESIZE != 0)
                 alloc_size++;
 
+            int flags = MAP_ANONYMOUS | MAP_PRIVATE;
+
+#ifdef ENABLE_HUGEPAGE
+            // hugepage support on Linux
+            flags |= MAP_HUGETLB;
+#endif
+
             printf("mmap(size=0x%x)\n", alloc_size);
             tmp[i] = mmap(NULL, alloc_size, PROT_READ | PROT_WRITE,
-                          MAP_ANONYMOUS | MAP_PRIVATE | MAP_HUGETLB, -1, 0);
+                          flags, -1, 0);
             if (tmp[i]==MAP_FAILED) {
                 perror("mmap");
                 exit(1);
@@ -146,8 +157,9 @@ void** shl__copy_array(void *src, size_t size, bool is_used,
             shl__bind_processor(shl__get_proc_for_node(i));
 
             // copy
-            for (int j=0; j<size; j+=PAGESIZE)
+            for (int j=0; j<size; j+=PAGESIZE) {
                 *((char*)(tmp[i])+j) = *((char*)src+j);
+            }
 
             // move processor back to original mask
             err = sched_setaffinity(0, sizeof(cpu_set_t), &cpu_mask_org);
@@ -155,7 +167,7 @@ void** shl__copy_array(void *src, size_t size, bool is_used,
                 perror("sched_setaffinity");
                 exit(1);
             }
-#else
+#else // !1
             tmp[i] = numa_alloc_onnode(size, i);
             printf("numa_alloc_onnode(%d) ", i);
 #endif

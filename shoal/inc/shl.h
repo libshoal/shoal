@@ -52,7 +52,7 @@ static int EventSet;
 #define PAPI
 
 // Enable support for hugepages
-#define ENABLE_HUGEPAGE
+//#define ENABLE_HUGEPAGE
 
 // --------------------------------------------------
 // Typedefs
