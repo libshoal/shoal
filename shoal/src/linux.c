@@ -36,7 +36,7 @@ int shl__get_proc_for_node(int node)
 extern coreid_t *affinity_conf;
 void shl__bind_processor_aff(int id)
 {
-    //    printf("Binding [%d] to [%d]\n", id, affinity_conf[id]);
+    printf("Binding [%d] to [%d]\n", id, affinity_conf[id]);
     if (affinity_conf!=NULL) {
         aff_set_oncpu(affinity_conf[id]);
     }

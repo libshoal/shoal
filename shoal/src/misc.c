@@ -124,7 +124,7 @@ coreid_t* parse_affinity (bool ignore)
 
     printf("parsing affinity\n");
 
-    coreid_t *res;
+    coreid_t *res = NULL;
 
     env = getenv ("SHL_CPU_AFFINITY");
     if (env == NULL)

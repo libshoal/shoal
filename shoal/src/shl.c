@@ -1,6 +1,8 @@
 #include "shl.h"
 #include "shl_internal.h"
 
+static int EventSet;
+
 Configuration::Configuration(void) {
 
     // Configuration based on environemnt
@@ -75,18 +77,8 @@ void papi_start(void)
 }
 #endif
 
-static bool dbg_done = false;
 int shl__get_rep_id(void)
 {
-/* #ifdef DEBUG */
-/*     __sync_fetch_and_add(&num_lookup, 1); */
-/* #endif */
-/*     int d = omp_get_thread_num(); */
-/*     int m = numa_max_node(); */
-/* #if DEBUG */
-/*     assert (m<omp_get_num_threads()); */
-/* #endif */
-/*     return (d) % (m+1); */
 #ifdef DEBUG
     assert(omp_get_num_threads()<MAXCORES);
     __sync_fetch_and_add(&num_lookup, 1);
@@ -110,8 +102,8 @@ void** shl__copy_array(void *src, size_t size, bool is_used,
 #endif
 
     //    printf(ANSI_COLOR_RED "Warning: " ANSI_COLOR_RESET "malloc for rep1\n");
-    printf("array: [%-30s] copy [%c] -- replication [%c] (%d) -- ", array_name,
-           is_used ? 'X' : ' ', is_ro ? 'X' : ' ', num_replicas);
+    printf("array: [%-30s] copy [%c] -- hugepage [%c] -- replication [%c] (%d) -- ", array_name,
+           is_used ? 'X' : ' ', get_conf()->use_hugepage ? 'X' : ' ', is_ro ? 'X' : ' ', num_replicas);
 
     bool omp_copy = true;
     void **tmp = (void**) (malloc(num_replicas*sizeof(void*)));
@@ -119,13 +111,11 @@ void** shl__copy_array(void *src, size_t size, bool is_used,
     for (int i=0; i<num_replicas; i++) {
 #ifdef NUMA
         if (replicate && num_replicas>1) {
-#if 1
-
             // --------------------------------------------------
             // Allocate memory using mmap
 
             // Make size be alligned multiple of page size
-            int alloc_size = size;
+            size_t alloc_size = size;
             while (alloc_size % PAGESIZE != 0)
                 alloc_size++;
 
@@ -133,10 +123,12 @@ void** shl__copy_array(void *src, size_t size, bool is_used,
 
 #ifdef ENABLE_HUGEPAGE
             // hugepage support on Linux
-            flags |= MAP_HUGETLB;
+            if (get_conf()->use_hugepage) {
+                flags |= MAP_HUGETLB;
+            }
 #endif
 
-            printf("mmap(size=0x%x)\n", alloc_size);
+            printf("mmap(size=0x%zx)\n", alloc_size);
             tmp[i] = mmap(NULL, alloc_size, PROT_READ | PROT_WRITE,
                           flags, -1, 0);
             if (tmp[i]==MAP_FAILED) {
@@ -157,7 +149,7 @@ void** shl__copy_array(void *src, size_t size, bool is_used,
             shl__bind_processor(shl__get_proc_for_node(i));
 
             // copy
-            for (int j=0; j<size; j+=PAGESIZE) {
+            for (size_t j=0; j<size; j+=PAGESIZE) {
                 *((char*)(tmp[i])+j) = *((char*)src+j);
             }
 
@@ -167,19 +159,18 @@ void** shl__copy_array(void *src, size_t size, bool is_used,
                 perror("sched_setaffinity");
                 exit(1);
             }
-#else // !1
-            tmp[i] = numa_alloc_onnode(size, i);
-            printf("numa_alloc_onnode(%d) ", i);
-#endif
         } else {
             // If data is not replicated, still copy, but don't specify node
             // Our allocation function will spread the data in the machine
-            int alloc_size = size;
+            size_t alloc_size = size;
             while (alloc_size % PAGESIZE != 0)
                 alloc_size++;
             int flags = MAP_ANONYMOUS | MAP_PRIVATE;
 #ifdef ENABLE_HUGEPAGE
-            flags |= MAP_HUGETLB;
+            // hugepage support on Linux
+            if (get_conf()->use_hugepage) {
+                flags |= MAP_HUGETLB;
+            }
 #endif
             tmp[i] = mmap(NULL, alloc_size, PROT_READ | PROT_WRITE,
                           flags, -1, 0);
@@ -208,7 +199,7 @@ void** shl__copy_array(void *src, size_t size, bool is_used,
     if (is_used && omp_copy) {
         for (int i=0; i<num_replicas; i++) {
             #pragma omp parallel for
-            for (int j=0; j<size; j++)
+            for (size_t j=0; j<size; j++)
                 *((char*)(tmp[i])+j) = *((char*)src+j);
         }
     }
@@ -340,7 +331,7 @@ void** shl__malloc_replicated(size_t size,
         shl__bind_processor(shl__get_proc_for_node(i));
 
         // write once on every page
-        for (int j=0; j<size; j+=(4096))
+        for (size_t j=0; j<size; j+=(4096))
             *((char*)(tmp[i])+j) = 0;
 
         // move processor back to original mask
@@ -358,10 +349,10 @@ void shl__repl_sync(void* src, void **dest, size_t num_dest, size_t size)
     omp_set_dynamic(0);     // Explicitly disable dynamic teams
     omp_set_num_threads(32); // Use 4 threads for all consecutive parallel regions
 
-    for (int i=0; i<num_dest; i++) {
+    for (size_t i=0; i<num_dest; i++) {
 
         #pragma omp parallel for
-        for (int j=0; j<size; j++) {
+        for (size_t j=0; j<size; j++) {
 
             ((char*) dest[i])[j] = ((char*) src)[j];
         }
@@ -406,10 +397,10 @@ void shl__init(size_t num_threads)
         replica_lookup[i] = -1;
 
     if (conf->use_replication) {
-        for (int i=0; i<num_threads; i++) {
+        for (size_t i=0; i<num_threads; i++) {
 
             replica_lookup[i] = numa_cpu_to_node(affinity_conf[i]);
-            printf("replication: CPU %d is on node %d\n", i, replica_lookup[i]);
+            printf("replication: CPU %zu is on node %d\n", i, replica_lookup[i]);
         }
     }
 

@@ -11,8 +11,6 @@
 
 #include <sys/time.h>
 
-static int EventSet;
-
 #define BASE_UNIT 1024
 #define KILO BASE_UNIT
 #define MEGA (KILO*BASE_UNIT)

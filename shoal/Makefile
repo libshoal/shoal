@@ -30,7 +30,7 @@ INC += -I$(BASE)contrib/numactl-2.0.9 \
 LIBS += -L$(BASE)contrib/numactl-2.0.9 -lnuma \
 	-L$(BASE)contrib/papi-5.3.0/src -lpapi \
 	-L$(BASE)contrib/papi-5.3.0/src/libpfm4/lib -lpfm
-CXXFLAGS += -DVERSION=\"$(GIT_VERSION)\" -fPIC -fopenmp -std=c++11
+CXXFLAGS += -DVERSION=\"$(GIT_VERSION)\" -fPIC -fopenmp -std=c++11 -Wall
 
 all: $(DEPS)
 	$(CXX) $(CXXFLAGS) $(INC) -shared $(OBJS) $(LIBS) -o $(TARGET)

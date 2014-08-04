@@ -60,10 +60,21 @@ shift
 echo "Executing program [${INPUT}] with [$NUM] threads"
 echo "Loading workload from [${WORKLOAD}]"
 
+if [[ $NUM -gt 32 ]]
+then
+    COREMAX=$(($NUM-1))
+    AFF="0-64"
+else
+    COREMAX=$(($NUM*2-1))
+    AFF="0-${COREMAX}:2"
+fi
+
+export SHL_HUGEPAGE=0
+
 if [[ $DEBUG -eq 0 ]]; then
 	. $BASE/env.sh
 	set -x
-	GOMP_CPU_AFFINITY="0-${NUM}" SHL_CPU_AFFINITY="0-${NUM}" \
+	GOMP_CPU_AFFINITY="$AFF" SHL_CPU_AFFINITY="$AFF" \
 		stdbuf -o0 -e0 -i0 ${INPUT} ${WORKLOAD} ${NUM} $@ | $BASE/scripts/extract_result.py -workload ${WORKLOAD}
 
 	if [[ $? -ne 0 ]]; then
@@ -72,6 +83,6 @@ if [[ $DEBUG -eq 0 ]]; then
 else
 	. $BASE/env.sh
 	set -x
-	GOMP_CPU_AFFINITY="0-${NUM}" SHL_CPU_AFFINITY="0-${NUM}" \
+	GOMP_CPU_AFFINITY="$AFF" SHL_CPU_AFFINITY="$AFF" \
 		gdb --args ${INPUT} ${WORKLOAD} ${NUM} $@
 fi
