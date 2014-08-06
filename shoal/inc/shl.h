@@ -27,11 +27,8 @@
 // Configuration
 // --------------------------------------------------
 
-// Use indirection: rather than accessing arrays directly, there is
-// one additional lookup
-#define INDIRECTION
-
 // Copies data using shl__copy_array, but does not replicate
+// SK: we can probably remove this
 //#define COPY
 
 // Whether or not to use replication (needs: indirection OR copy)

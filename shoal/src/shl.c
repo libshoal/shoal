@@ -300,9 +300,9 @@ void* shl__malloc(size_t size, int opts, int *pagesize)
     return res;
 }
 
-void** shl__malloc_replicated(size_t size,
-                              int* num_replicas,
-                              int options)
+void** shl_malloc_replicated(size_t size,
+                             int* num_replicas,
+                             int options)
 {
     *num_replicas = shl__get_num_replicas();
     int pagesize;

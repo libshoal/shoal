@@ -19,17 +19,25 @@ class shl_array {
 protected:
     size_t size;
     bool use_hugepage;
+    bool read_only;
     T* array = NULL;
 
 public:
     shl_array(size_t s)
     {
-        printf("Array: size="); print_number(s); printf("\n");
-
         size = s;
-        use_hugepage = true; // XXX make argument
+        use_hugepage = get_conf()->use_hugepage;
+        read_only = false;
 
-        array = (T*) malloc(s*sizeof(T));
+    }
+
+    void alloc(void)
+    {
+        printf("Array: size="); print_number(size); printf(" -- ");
+        print_options();
+        printf("\n");
+
+        array = (T*) malloc(size*sizeof(T));
         assert (array!=NULL);
     }
 
@@ -40,7 +48,7 @@ public:
         }
     }
 
-    T* get_array(void)
+    virtual T* get_array(void)
     {
         return array;
     }
@@ -55,29 +63,40 @@ public:
         return options;
     }
 
-
     /**
-     *\ brief Allocate array
+     * \brief Copy data from existing array
      *
-     * Several choices here:
-     *
-     * - replication: Three policies:
-     * 1) Replica if read-only.
-     * 2) Replica if w/r ratio below a certain threshold.
-     *  2.1) Write to all replicas
-     *  2.2) Write locally; maintain write-set; sync call when updates need to
-     *       be propagated.
-     *
-     * - huge pages: Use if working set < available RAM && alloc_real/size < 1.xx
-     *   ? how to determine available RAM?
-     *   ? how to know the size of the working set?
-     *
+     * Warning: The sice of array src is not checked. Assumption:
+     * sizeof(src) == this->size
      */
-    static shl_array<T>* shl__malloc(size_t size, bool is_ro) {
+    virtual void copy_from(T* src)
+    {
+        for (unsigned int i=0; i<size; i++) {
 
-        return new shl_array<T>(size);
+            array[i] = src[i];
+        }
     }
 
+    /**
+     * \brief Copy data to existing array
+     *
+     * Warning: The sice of array src is not checked. Assumption:
+     * sizeof(src) == this->size
+     */
+    virtual void copy_back(T* src)
+    {
+        for (unsigned int i=0; i<size; i++) {
+
+            src[i] = array[i];
+        }
+    }
+
+
+protected:
+    virtual void print_options(void)
+    {
+        printf("hugepage=[%c] ", use_hugepage ? 'X' : ' ');
+    }
 };
 
 /**
@@ -118,28 +137,50 @@ class shl_array_replicated : public shl_array<T>
 {
     T* master_copy;
     T** array;
-    size_t num_replicas;
+    int num_replicas;
     int (*lookup)(void);
 
+public:
     /**
      * \brief Initialize replicated array
      */
     shl_array_replicated(size_t s,
-                         size_t num_repl,
-                         int(*f_lookup)(void),
-                         T* master)
+                         int (*f_lookup)(void))
         : shl_array<T>(s)
     {
+        shl_array<T>::read_only = true;
         lookup = f_lookup;
-        num_replicas = num_repl;
-        master_copy = master;
-        array = shl_malloc_replicated(s, num_repl, shl_array<T>::get_options());
+        master_copy = NULL;
+    }
+
+    void alloc(void)
+    {
+        array = (T**) shl_malloc_replicated(shl_array<T>::size, &num_replicas,
+                                            shl_array<T>::get_options());
+    }
+
+    virtual void copy_from(T* src)
+    {
+        for (unsigned int j=0; j<num_replicas; j++) {
+            for (unsigned int i=0; i< shl_array<T>::size; i++) {
+
+                array[j][i] = src[i];
+            }
+        }
+
+        master_copy = src;
+    }
+
+    virtual void copy_back(T* src)
+    {
+        // nop -- currently only replicating read-only data
+        assert (shl_array<T>::read_only);
     }
 
     /**
      * \brief Return pointer to beginning of replica
      */
-    T* shl_get(void)
+    virtual T* shl_get(void)
     {
         return array[lookup()];
     }
@@ -158,6 +199,47 @@ class shl_array_replicated : public shl_array<T>
     {
         shl__repl_sync(master_copy, array, num_replicas, shl_array<T>::size*sizeof(T));
     }
+
+protected:
+    virtual void print_options(void)
+    {
+        shl_array<T>::print_options();
+        printf("replication=[X] ");
+    }
 };
+
+// --------------------------------------------------
+// Allocation
+// --------------------------------------------------
+
+/**
+ *\ brief Allocate array
+ *
+ * Several choices here:
+ *
+ * - replication: Three policies:
+ * 1) Replica if read-only.
+ * 2) Replica if w/r ratio below a certain threshold.
+ *  2.1) Write to all replicas
+ *  2.2) Write locally; maintain write-set; sync call when updates need to
+ *       be propagated.
+ *
+ * - huge pages: Use if working set < available RAM && alloc_real/size < 1.xx
+ *   ? how to determine available RAM?
+ *   ? how to know the size of the working set?
+ *
+ */
+template <class T>
+shl_array<T>* shl__malloc(size_t size, bool is_ro) {
+
+    // Replicate if array is read-only
+    bool replicate = is_ro && get_conf()->use_replication;
+
+    if (replicate) {
+        return new shl_array_replicated<T>(size, shl__get_rep_id);
+    } else {
+        return new shl_array<T>(size);
+    }
+}
 
 #endif /* __SHL_ARRAY */

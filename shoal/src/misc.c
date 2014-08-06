@@ -209,11 +209,11 @@ coreid_t* parse_affinity (bool ignore)
 void print_number(long long number)
 {
     if (number>=GIGA)
-        printf("%.2f G", number/((double) GIGA));
+        printf("%5.2f G", number/((double) GIGA));
     else if (number>=MEGA)
-        printf("%.2f M", number/((double) MEGA));
+        printf("%5.2f M", number/((double) MEGA));
     else if (number>=KILO)
-        printf("%.2f K", number/((double) KILO));
+        printf("%5.2f K", number/((double) KILO));
     else
         printf("%lld", number);
 }
