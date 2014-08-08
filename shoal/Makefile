@@ -15,8 +15,11 @@ DEPS += $(wildcard $(BASE)/inc/*)
 
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
 
-#BUILDTYPE := debug
-BUILDTYPE := release
+# Switch buildtype: supported are "debug" and "release"
+# Do this only if not yet defined (e.g. from parent Makefile)
+ifndef BUILDTYPE
+	BUILDTYPE := release
+endif
 
 ifeq ($(BUILDTYPE),debug)
 	CXXFLAGS +=-g -O0 -pg -DSHL_DEBUG
