@@ -27,10 +27,6 @@
 // Configuration
 // --------------------------------------------------
 
-// Copies data using shl__copy_array, but does not replicate
-// SK: we can probably remove this
-//#define COPY
-
 // Whether or not to use replication (needs: indirection OR copy)
 #define REPLICATION
 
@@ -44,7 +40,7 @@
 //#define DEBUG
 
 // Enable PAPI support
-#define PAPI
+//#define PAPI
 
 // Enable support for hugepages
 //#define ENABLE_HUGEPAGE
@@ -86,7 +82,7 @@ int shl__get_rep_id(void);
 void** shl__copy_array(void*, size_t, bool, bool, const char*);
 void shl__copy_array(void**, void*, size_t, bool, bool, bool, const char*);
 void shl__copy_back_array_single(void*, void*, size_t, bool, bool, bool, const char*);
-void* shl_malloc(size_t, int, int*);
+void* shl__malloc(size_t, int, int*);
 void** shl_malloc_replicated(size_t, int*, int);
 void shl__repl_sync(void*, void**, size_t, size_t);
 void shl__init_thread(int);

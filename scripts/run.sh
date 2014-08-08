@@ -65,11 +65,21 @@ then
     COREMAX=$(($NUM-1))
     AFF="0-64"
 else
-    COREMAX=$(($NUM*2-1))
-    AFF="0-${COREMAX}:2"
+	if [[ $(hostname) == "sgs-r815-03" ]]; then
+		COREMAX=$(($NUM*2-1))
+		AFF="0-${COREMAX}:2"
+	else
+		COREMAX=$(($NUM-1))
+		AFF="0-${COREMAX}"
+	fi
 fi
 
+# --------------------------------------------------
+# CONFIGURATION
+# --------------------------------------------------
 export SHL_HUGEPAGE=0
+export SHL_REPLICATION=0
+# --------------------------------------------------
 
 if [[ $DEBUG -eq 0 ]]; then
 	. $BASE/env.sh

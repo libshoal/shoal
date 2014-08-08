@@ -80,10 +80,11 @@ void papi_start(void)
 int shl__get_rep_id(void)
 {
 #ifdef DEBUG
-    assert(omp_get_num_threads()<MAXCORES);
     __sync_fetch_and_add(&num_lookup, 1);
-    assert(replica_lookup[omp_get_thread_num()]>=0);
 #endif
+    assert(omp_get_num_threads()<MAXCORES);
+    assert(replica_lookup[omp_get_thread_num()]>=0);
+
     return replica_lookup[omp_get_thread_num()];
 }
 
@@ -272,15 +273,19 @@ void shl__copy_back_array_single(void *src, void *dest, size_t size, bool is_cop
     }
 }
 
+/**
+ * \brief ALlocate memory with the given flags.
+ *
+ */
 void* shl__malloc(size_t size, int opts, int *pagesize)
 {
     void *res;
     bool use_hugepage = opts & SHL_MALLOC_HUGEPAGE;
 
-    // Round up to next multiple of page size
+    // Round up to next multiple of page size (in case of hugepage)
     *pagesize = use_hugepage ? PAGESIZE_HUGE : PAGESIZE;
     size_t alloc_size = size;
-    while (alloc_size % *pagesize != 0)
+    while (use_hugepage && (alloc_size % *pagesize != 0))
         alloc_size++;
 
     // Set options for mmap
@@ -288,7 +293,7 @@ void* shl__malloc(size_t size, int opts, int *pagesize)
     if (use_hugepage)
         options |= MAP_HUGETLB;
 
-    printf("alloc: %zu, huge=%d\n", alloc_size, use_hugepage);
+    printf("shl__alloc: %zu, huge=%d\n", alloc_size, use_hugepage);
 
     // Allocate
     res = mmap(NULL, alloc_size, PROT_READ | PROT_WRITE, options, -1, 0);
@@ -300,6 +305,11 @@ void* shl__malloc(size_t size, int opts, int *pagesize)
     return res;
 }
 
+/**
+ *
+ * \param num_replicas Set to the number of replicas that have been
+ * used or 0 in case of error.
+ */
 void** shl_malloc_replicated(size_t size,
                              int* num_replicas,
                              int options)
@@ -331,7 +341,7 @@ void** shl_malloc_replicated(size_t size,
         shl__bind_processor(shl__get_proc_for_node(i));
 
         // write once on every page
-        for (size_t j=0; j<size; j+=(4096))
+        for (size_t j=0; j<size; j+=PAGESIZE)
             *((char*)(tmp[i])+j) = 0;
 
         // move processor back to original mask
