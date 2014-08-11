@@ -41,9 +41,8 @@ public:
 
     virtual void alloc(void)
     {
-
-        // if (!is_used)
-        //     return;
+        if (!do_alloc())
+            return;
 
         print();
         assert (!alloc_done);
@@ -52,6 +51,25 @@ public:
         array = (T*) shl__malloc(size*sizeof(T), get_options(), &pagesize);
 
         alloc_done = true;
+    }
+
+    virtual bool do_alloc(void)
+    {
+        return is_used;
+    }
+
+    virtual bool do_copy_in(void)
+    {
+        return is_used && !is_dynamic;
+    }
+
+    /*
+     * Read only data does NOT have to be copied back. Also,
+     * dynamically allocated stuff and arrays that are not used
+     */
+    virtual bool do_copy_back(void)
+    {
+        return is_used && !read_only && !is_dynamic;
     }
 
     void print(void)
@@ -71,7 +89,6 @@ public:
 
     virtual T* get_array(void)
     {
-        assert (alloc_done);
         return array;
     }
 
@@ -93,13 +110,13 @@ public:
      */
     virtual void copy_from(T* src)
     {
+        if (!do_copy_in())
+            return;
+
 #ifdef SHL_DBG_ARRAY
         printf("Copying array %s\n", name);
 #endif
         assert (alloc_done);
-
-        // if (!is_used || is_dynamic)
-        //     return;
 
         assert (array_copy == NULL);
         array_copy = src;
@@ -117,12 +134,10 @@ public:
      */
     virtual void copy_back(T* a)
     {
-        assert (alloc_done);
+        if (!do_copy_back())
+            return;
 
-        // Read only data does NOT have to be copied back. Also,
-        // dynamically allocated stuff and arrays that are not used
-        // if (read_only || !is_used || is_dynamic)
-        //     return;
+        assert (alloc_done);
 
         printf("shl_array[%s]: Copying back\n", shl_array<T>::name);
         assert (array_copy == a);
@@ -219,8 +234,8 @@ public:
 
     virtual void alloc(void)
     {
-        // if (!shl_array<T>::is_used)
-        //     return;
+        if (!shl_array<T>::do_alloc())
+            return;
 
         assert (!shl_array<T>::alloc_done);
 
@@ -239,8 +254,8 @@ public:
 
     virtual void copy_from(T* src)
     {
-        // if (!shl_array<T>::is_used || shl_array<T>::is_dynamic)
-        //     return;
+        if (!shl_array<T>::do_copy_in())
+            return;
 
         assert (shl_array<T>::alloc_done);
         assert (shl_array<T>::array_copy==NULL);
@@ -271,8 +286,11 @@ public:
 #ifdef SHL_DBG_ARRAY
         printf("Getting pointer for array [%s]\n", shl_array<T>::name);
 #endif
-        assert( shl_array<T>::alloc_done);
-        return rep_array[lookup()];
+        if (shl_array<T>::alloc_done) {
+            return rep_array[lookup()];
+        } else {
+            return NULL;
+        }
     }
 
     ~shl_array_replicated(void)
@@ -334,7 +352,8 @@ shl_array<T>* shl__malloc(size_t size,
                           const char *name,
                           bool is_ro,
                           bool is_dynamic,
-                          bool is_used) {
+                          bool is_used,
+                          bool is_graph) {
 
     // Replicate if array is read-only
     bool replicate = is_ro && get_conf()->use_replication;
