@@ -166,6 +166,9 @@ class Configuration {
     // Should replication be used
     bool use_replication;
 
+    // Should distribution be used
+    bool use_distribution;
+
     // Number of NUMA nodes
     int num_nodes;
 
@@ -192,9 +195,9 @@ Configuration* get_conf(void);
 // --------------------------------------------------
 // Defines for memory allocation
 // --------------------------------------------------
-#define SHL_MALLOC_NONE (0)
-#define SHL_MALLOC_HUGEPAGE (0x1<<0)
-
+#define SHL_MALLOC_NONE        (0)
+#define SHL_MALLOC_HUGEPAGE    (0x1<<0)
+#define SHL_MALLOC_DISTRIBUTED (0x1<<1)
 
 // --------------------------------------------------
 // Includes depending on configuration

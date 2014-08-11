@@ -8,6 +8,7 @@ Configuration::Configuration(void) {
     // Configuration based on environemnt
     use_hugepage = get_env_int("SHL_HUGEPAGE", 1);
     use_replication = get_env_int("SHL_REPLICATION", 1);
+    use_distribution = get_env_int("SHL_DISTRIBUTION", 1);
 
     // NUMA information
     num_nodes = numa_max_node();
@@ -276,11 +277,22 @@ void shl__copy_back_array_single(void *src, void *dest, size_t size, bool is_cop
 /**
  * \brief ALlocate memory with the given flags.
  *
+ * The array will NOT be initialized (but might be, to force the Linux
+ * Kernel to map the memory as requested)
+ *
+ * Supported options as a bitmask in opts are:
+ *
+ * - SHL_MALLOC_HUGEPAGE:
+ *   enable hugepage support
+ *
+ * - SHL_MALLOC_DISTRIBUTED:
+ *    distribute memory approximately equally on nodes that have threads
  */
 void* shl__malloc(size_t size, int opts, int *pagesize)
 {
     void *res;
     bool use_hugepage = opts & SHL_MALLOC_HUGEPAGE;
+    bool distribute = opts & SHL_MALLOC_DISTRIBUTED;
 
     // Round up to next multiple of page size (in case of hugepage)
     *pagesize = use_hugepage ? PAGESIZE_HUGE : PAGESIZE;
@@ -293,7 +305,8 @@ void* shl__malloc(size_t size, int opts, int *pagesize)
     if (use_hugepage)
         options |= MAP_HUGETLB;
 
-    printf("shl__alloc: %zu, huge=%d\n", alloc_size, use_hugepage);
+    printf("shl__alloc: %zu, huge=%d, distribute=%d",
+           alloc_size, use_hugepage, distribute);
 
     // Allocate
     res = mmap(NULL, alloc_size, PROT_READ | PROT_WRITE, options, -1, 0);
@@ -301,6 +314,19 @@ void* shl__malloc(size_t size, int opts, int *pagesize)
         perror("mmap");
         exit(1);
     }
+
+    // Distribute memory
+    // --------------------------------------------------
+    if (distribute) {
+
+#pragma omp parallel for
+        for (int i=0; i<alloc_size;i ++) {
+
+            ((char *) res)[i] = 0;
+        }
+    }
+
+    printf("\n");
 
     return res;
 }
@@ -430,5 +456,6 @@ void shl__init(size_t num_threads)
 #endif
 
     printf("[%c] Replication\n", conf->use_replication ? 'x' : ' ');
+    printf("[%c] Distribution\n", conf->use_distribution ? 'x' : ' ');
     printf("[%c] Hugepage\n", conf->use_hugepage ? 'x' : ' ');
 }

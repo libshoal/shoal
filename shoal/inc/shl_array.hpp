@@ -26,6 +26,9 @@ protected:
     T* array = NULL;
     T* array_copy = NULL;
 
+    bool is_used;
+    bool is_dynamic;
+
 public:
     shl_array(size_t s, const char *name)
     {
@@ -33,15 +36,22 @@ public:
         shl_array<T>::name = name;
         use_hugepage = get_conf()->use_hugepage;
         read_only = false;
-
+        alloc_done = false;
     }
 
     virtual void alloc(void)
     {
+
+        // if (!is_used)
+        //     return;
+
         print();
+        assert (!alloc_done);
 
         int pagesize;
         array = (T*) shl__malloc(size*sizeof(T), get_options(), &pagesize);
+
+        alloc_done = true;
     }
 
     void print(void)
@@ -61,10 +71,11 @@ public:
 
     virtual T* get_array(void)
     {
+        assert (alloc_done);
         return array;
     }
 
-    int get_options(void)
+    virtual int get_options(void)
     {
         int options = SHL_MALLOC_NONE;
 
@@ -82,6 +93,14 @@ public:
      */
     virtual void copy_from(T* src)
     {
+#ifdef SHL_DBG_ARRAY
+        printf("Copying array %s\n", name);
+#endif
+        assert (alloc_done);
+
+        // if (!is_used || is_dynamic)
+        //     return;
+
         assert (array_copy == NULL);
         array_copy = src;
         for (unsigned int i=0; i<size; i++) {
@@ -98,6 +117,13 @@ public:
      */
     virtual void copy_back(T* a)
     {
+        assert (alloc_done);
+
+        // Read only data does NOT have to be copied back. Also,
+        // dynamically allocated stuff and arrays that are not used
+        // if (read_only || !is_used || is_dynamic)
+        //     return;
+
         printf("shl_array[%s]: Copying back\n", shl_array<T>::name);
         assert (array_copy == a);
         assert (array_copy != NULL);
@@ -113,15 +139,58 @@ public:
         }
     }
 
+    void set_used(bool is_used)
+    {
+
+        shl_array<T>::is_used = is_used;
+    }
+
+    void set_dynamic(bool is_dynamic)
+    {
+
+        shl_array<T>::is_dynamic = is_dynamic;
+    }
+
 
 protected:
     virtual void print_options(void)
     {
-        printf("Array[%20s]: size=%10zu-", name, size); print_number(size);
+        printf("Array[%20s]: elements=%10zu-", name, size); print_number(size);
+        printf(" size=%10zu-", size*sizeof(T)); print_number(size*sizeof(T));
         printf(" -- ");
         printf("hugepage=[%c] ", use_hugepage ? 'X' : ' ');
     }
 };
+
+
+/**
+ * \brief Array implementing replication
+ *
+ */
+template <class T>
+class shl_array_distributed : public shl_array<T>
+{
+public:
+    /**
+     * \brief Initialize distributed array
+     */
+    shl_array_distributed(size_t s, const char *name)
+        : shl_array<T>(s, name) {};
+
+    virtual int get_options(void)
+    {
+        return shl_array<T>::get_options() | SHL_MALLOC_DISTRIBUTED;
+    }
+
+protected:
+    virtual void print_options(void)
+    {
+        shl_array<T>::print_options();
+        printf("distribution=[X]");
+    }
+
+};
+
 
 /**
  * \brief Array implementing replication
@@ -150,20 +219,32 @@ public:
 
     virtual void alloc(void)
     {
+        // if (!shl_array<T>::is_used)
+        //     return;
+
+        assert (!shl_array<T>::alloc_done);
+
         shl_array<T>::print();
 
         rep_array = (T**) shl_malloc_replicated(shl_array<T>::size*sizeof(T),
                                                 &num_replicas,
                                                 shl_array<T>::get_options());
-        printf("Using %d replicas\n", num_replicas);
+
         assert (num_replicas>0);
         for (int i=0; i<num_replicas; i++)
             assert (rep_array[i]!=NULL);
+
+        shl_array<T>::alloc_done = true;
     }
 
     virtual void copy_from(T* src)
     {
+        // if (!shl_array<T>::is_used || shl_array<T>::is_dynamic)
+        //     return;
+
+        assert (shl_array<T>::alloc_done);
         assert (shl_array<T>::array_copy==NULL);
+
         shl_array<T>::array_copy = src;
         printf("shl_array_replicated[%s]: Copying to %d replicas\n",
                shl_array<T>::name, num_replicas);
@@ -190,6 +271,7 @@ public:
 #ifdef SHL_DBG_ARRAY
         printf("Getting pointer for array [%s]\n", shl_array<T>::name);
 #endif
+        assert( shl_array<T>::alloc_done);
         return rep_array[lookup()];
     }
 
@@ -205,6 +287,7 @@ public:
 
     void synchronize(void)
     {
+        assert (shl_array<T>::alloc_done);
         shl__repl_sync(master_copy, rep_array, num_replicas, shl_array<T>::size*sizeof(T));
     }
 
@@ -223,6 +306,15 @@ protected:
 /**
  *\ brief Allocate array
  *
+ * \param size Number of elements of type T in array
+ * \param name Name of the array (for debugging purposes)
+ * \param is_ro Indicate if array is read-only
+ * \param is_dynamic Indicate that array is dynamically allocated (i.e.
+ *    does not require copy in and copy out)
+ * \param is_used Some arrays are allocated, but never used (such as
+ *    parts of the graph in Green Marl). We want to avoid copying these,
+ *    so we pass this information on.
+ *
  * Several choices here:
  *
  * - replication: Three policies:
@@ -238,16 +330,43 @@ protected:
  *
  */
 template <class T>
-shl_array<T>* shl__malloc(size_t size, const char *name, bool is_ro) {
+shl_array<T>* shl__malloc(size_t size,
+                          const char *name,
+                          bool is_ro,
+                          bool is_dynamic,
+                          bool is_used) {
 
     // Replicate if array is read-only
     bool replicate = is_ro && get_conf()->use_replication;
 
+    // Distribute if there is more than one node
+    bool distribute = !replicate &&
+        shl__get_num_replicas()>1 &&
+        get_conf()->use_distribution;
+
+    shl_array<T> *res = NULL;
+
     if (replicate) {
-        return new shl_array_replicated<T>(size, name, shl__get_rep_id);
+#ifdef SHL_DBG_ARRAY
+        printf("Allocating replicated array\n");
+#endif
+        res = new shl_array_replicated<T>(size, name, shl__get_rep_id);
+    } else if (distribute) {
+#ifdef SHL_DBG_ARRAY
+        printf("Allocating distributed array\n");
+#endif
+        res =  new shl_array_distributed<T>(size, name);
     } else {
-        return new shl_array<T>(size, name);
+#ifdef SHL_DBG_ARRAY
+        printf("Allocating regular array\n");
+#endif
+        res = new shl_array<T>(size, name);
     }
+
+    res->set_dynamic (is_dynamic);
+    res->set_used (is_used);
+
+    return res;
 }
 
 #endif /* __SHL_ARRAY */

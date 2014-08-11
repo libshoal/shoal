@@ -65,7 +65,7 @@ echo "Files are: $FTOTAL $FCOMP $FINIT"
 
 	get_command $((2**$i)) $1 $2
 	echo "Executing command [${next_command}]" 1>&2
-	exec_avg ssh $MACHINE "${next_command}" &> $TMP
+	NUM=2 exec_avg ssh $MACHINE "${next_command}" &> $TMP
 	echo "Output was:" 1>&2
 	cat $TMP 1>&2
 	if [[ $2 == "ours" ]]
@@ -97,4 +97,3 @@ if [[ $2 == "theirs" ]]
 then
     echo "cp $FTOTAL ${RESULT_DIR}/${BASEPREFIX}_org"
 fi
-

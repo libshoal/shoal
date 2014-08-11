@@ -77,10 +77,12 @@ fi
 # --------------------------------------------------
 # CONFIGURATION
 # --------------------------------------------------
-export SHL_HUGEPAGE=0
-export SHL_REPLICATION=0
+export SHL_HUGEPAGE=1
+export SHL_REPLICATION=1
+export SHL_DISTRIBUTION=1
 # --------------------------------------------------
 
+res=0
 if [[ $DEBUG -eq 0 ]]; then
 	. $BASE/env.sh
 	set -x
