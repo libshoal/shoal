@@ -4,12 +4,15 @@
 #include <assert.h>
 
 #include <cstdio>
-#include <omp.h>
-#include <pthread.h>
-#include <sched.h>
 #include <stdint.h>
 
-#include <sys/time.h>
+#ifdef BARRELFISH
+#include "barrelfish.h"
+#endif
+
+#ifdef LINUX
+#include "linux.h"
+#endif
 
 #define BASE_UNIT 1024
 #define KILO BASE_UNIT
@@ -57,7 +60,6 @@ double shl__end_timer(void);
 double shl__get_timer(void);
 void shl__start_timer(void);
 void shl__init(size_t);
-int numa_cpu_to_node(int);
 coreid_t *parse_affinity(bool);
 void shl__init_thread(void);
 char* get_env_str(const char*, const char*);
@@ -70,6 +72,10 @@ void print_number(long long);
 void shl__bind_processor(int proc);
 void shl__bind_processor_aff(int proc);
 int shl__get_proc_for_node(int node);
+int shl__max_node(void);
+int numa_cpu_to_node(int);
+void** shl_malloc_replicated(size_t, int*, int);
+void* shl__malloc(size_t, int, int*);
 
 // --------------------------------------------------
 // SHOAL
@@ -79,24 +85,10 @@ void papi_stop(void);
 void papi_init(void);
 void papi_start(void);
 int shl__get_rep_id(void);
-void** shl__copy_array(void*, size_t, bool, bool, const char*);
-void shl__copy_array(void**, void*, size_t, bool, bool, bool, const char*);
-void shl__copy_back_array_single(void*, void*, size_t, bool, bool, bool, const char*);
-void* shl__malloc(size_t, int, int*);
-void** shl_malloc_replicated(size_t, int*, int);
 void shl__repl_sync(void*, void**, size_t, size_t);
 void shl__init_thread(int);
 void handle_error(int);
 int shl__get_num_replicas(void);
-// array helpers
-// --------------------------------------------------
-void** shl__copy_array(void *src, size_t size, bool is_used,
-                       bool is_ro, const char* array_name);
-void shl__copy_back_array(void **src, void *dest, size_t size, bool is_copied,
-                          bool is_ro, bool is_dynamic, const char* array_name);
-void shl__copy_back_array_single(void *src, void *dest, size_t size, bool is_copied,
-                                 bool is_ro, bool is_dynamic, const char* array_name);
-
 
 // --------------------------------------------------
 // Auto-tuning interface

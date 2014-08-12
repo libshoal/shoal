@@ -1,9 +1,6 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include <sched.h>
-#include <numa.h>
-
 #include "shl_internal.h"
 #include "shl.h"
 
@@ -26,6 +23,11 @@ void shl__bind_processor_aff(int id)
 }
 
 void shl__bind_processor(int id)
+{
+    assert (!"Not yet implemented");
+}
+
+void numa_cpu_to_node(int id)
 {
     assert (!"Not yet implemented");
 }
