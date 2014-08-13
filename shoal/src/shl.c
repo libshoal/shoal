@@ -431,14 +431,22 @@ void handle_error(int retval)
 // translate: virtual COREID -> physical COREID
 coreid_t *affinity_conf = NULL;
 
-void shl__init(size_t num_threads)
+void shl__init(size_t num_threads, bool partitioned_support)
 {
-    printf("SHOAL (v %s) initialization .. ", VERSION);
+    printf("SHOAL (v %s) initialization .. partition support=%d\n",
+           VERSION, partitioned_support);
 
     Configuration *conf = get_conf();
     assert (numa_available()>=0);
 
     affinity_conf = parse_affinity (false);
+
+    assert (!get_conf()->use_partition || partitioned_support || !"Compile with -DSHL_STATIC");
+    if (!get_conf()->use_partition && partitioned_support) {
+        printf(ANSI_COLOR_YELLOW "WARNING: " ANSI_COLOR_RESET
+               "partitioning disabled, but program is compiled with "
+               "partition support\n");
+    }
 
     if (affinity_conf==NULL) {
         printf(ANSI_COLOR_RED "WARNING:" ANSI_COLOR_RESET " no affinity set! "

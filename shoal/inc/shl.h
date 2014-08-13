@@ -56,7 +56,6 @@ typedef uint32_t coreid_t;
 double shl__end_timer(void);
 double shl__get_timer(void);
 void shl__start_timer(void);
-void shl__init(size_t);
 int numa_cpu_to_node(int);
 coreid_t *parse_affinity(bool);
 void shl__init_thread(void);
@@ -88,6 +87,7 @@ void shl__repl_sync(void*, void**, size_t, size_t);
 void shl__init_thread(int);
 void handle_error(int);
 int shl__get_num_replicas(void);
+void shl__init(size_t,bool);
 // array helpers
 // --------------------------------------------------
 void** shl__copy_array(void *src, size_t size, bool is_used,
