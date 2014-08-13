@@ -1,7 +1,9 @@
 #include "shl.h"
 #include "shl_internal.h"
 
+#ifdef PAPI
 static int EventSet;
+#endif
 
 Configuration::Configuration(void) {
 
@@ -9,6 +11,7 @@ Configuration::Configuration(void) {
     use_hugepage = get_env_int("SHL_HUGEPAGE", 1);
     use_replication = get_env_int("SHL_REPLICATION", 1);
     use_distribution = get_env_int("SHL_DISTRIBUTION", 1);
+    use_partition = get_env_int("SHL_PARTITION", 1);
 
     // NUMA information
     num_nodes = numa_max_node();
@@ -293,6 +296,7 @@ void* shl__malloc(size_t size, int opts, int *pagesize)
     void *res;
     bool use_hugepage = opts & SHL_MALLOC_HUGEPAGE;
     bool distribute = opts & SHL_MALLOC_DISTRIBUTED;
+    bool partition = opts & SHL_MALLOC_PARTITION;
 
     // Round up to next multiple of page size (in case of hugepage)
     *pagesize = use_hugepage ? PAGESIZE_HUGE : PAGESIZE;
@@ -320,7 +324,21 @@ void* shl__malloc(size_t size, int opts, int *pagesize)
     if (distribute) {
 
 #pragma omp parallel for
-        for (int i=0; i<alloc_size;i ++) {
+        for (unsigned int i=0; i<alloc_size;i ++) {
+
+            ((char *) res)[i] = 0;
+        }
+    }
+
+
+    // Partition memory
+    // --------------------------------------------------
+    if (partition) {
+
+        // XXX This assumes that the GM programs are also using
+        // static, 1024
+#pragma omp parallel for schedule(static, 1024)
+        for (unsigned int i=0; i<alloc_size;i++) {
 
             ((char *) res)[i] = 0;
         }
@@ -457,5 +475,6 @@ void shl__init(size_t num_threads)
 
     printf("[%c] Replication\n", conf->use_replication ? 'x' : ' ');
     printf("[%c] Distribution\n", conf->use_distribution ? 'x' : ' ');
+    printf("[%c] Partition\n", conf->use_partition ? 'x' : ' ');
     printf("[%c] Hugepage\n", conf->use_hugepage ? 'x' : ' ');
 }

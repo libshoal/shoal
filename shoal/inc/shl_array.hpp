@@ -179,7 +179,7 @@ protected:
 
 
 /**
- * \brief Array implementing replication
+ * \brief Array implementing a distributed array
  *
  */
 template <class T>
@@ -202,6 +202,35 @@ protected:
     {
         shl_array<T>::print_options();
         printf("distribution=[X]");
+    }
+
+};
+
+
+/**
+ * \brief Array implementing a partitioned array
+ *
+ */
+template <class T>
+class shl_array_partitioned : public shl_array<T>
+{
+public:
+    /**
+     * \brief Initialize partitioned array
+     */
+    shl_array_partitioned(size_t s, const char *name)
+        : shl_array<T>(s, name) {};
+
+    virtual int get_options(void)
+    {
+        return shl_array<T>::get_options() | SHL_MALLOC_PARTITION;
+    }
+
+protected:
+    virtual void print_options(void)
+    {
+        shl_array<T>::print_options();
+        printf("partition=[X]");
     }
 
 };
@@ -353,19 +382,32 @@ shl_array<T>* shl__malloc(size_t size,
                           bool is_ro,
                           bool is_dynamic,
                           bool is_used,
-                          bool is_graph) {
+                          bool is_graph,
+                          bool is_indexed) {
 
-    // Replicate if array is read-only
-    bool replicate = is_ro && get_conf()->use_replication;
+    // Policy for memory allocation
+    // --------------------------------------------------
 
-    // Distribute if there is more than one node
-    bool distribute = !replicate &&
+    // 1) Always partition indexed arrays
+    bool partition = is_indexed && get_conf()->use_partition;
+
+    // 2) Replicate if array is read-only and can't be partitioned
+    bool replicate = !partition && // none of the others
+        is_ro && get_conf()->use_replication;
+
+    // 3) Distribute if nothing else works and there is more than one node
+    bool distribute = !replicate && !partition && // none of the others
         shl__get_num_replicas()>1 &&
         get_conf()->use_distribution;
 
     shl_array<T> *res = NULL;
 
-    if (replicate) {
+    if (partition) {
+#ifdef SHL_DBG_ARRAY
+        printf("Allocating partitioned array\n");
+#endif
+        res = new shl_array_partitioned<T>(size, name);
+    } else if (replicate) {
 #ifdef SHL_DBG_ARRAY
         printf("Allocating replicated array\n");
 #endif
@@ -382,6 +424,8 @@ shl_array<T>* shl__malloc(size_t size,
         res = new shl_array<T>(size, name);
     }
 
+    // These are used internally in array to decide if copy-in and
+    // copy-out of source arrays are required
     res->set_dynamic (is_dynamic);
     res->set_used (is_used);
 

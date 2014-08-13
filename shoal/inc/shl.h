@@ -169,6 +169,9 @@ class Configuration {
     // Should distribution be used
     bool use_distribution;
 
+    // Should partitioning be used
+    bool use_partition;
+
     // Number of NUMA nodes
     int num_nodes;
 
@@ -198,6 +201,7 @@ Configuration* get_conf(void);
 #define SHL_MALLOC_NONE        (0)
 #define SHL_MALLOC_HUGEPAGE    (0x1<<0)
 #define SHL_MALLOC_DISTRIBUTED (0x1<<1)
+#define SHL_MALLOC_PARTITION   (0x1<<2)
 
 // --------------------------------------------------
 // Includes depending on configuration
