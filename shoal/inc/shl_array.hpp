@@ -30,10 +30,10 @@ protected:
     bool is_dynamic;
 
 public:
-    shl_array(size_t s, const char *name)
+    shl_array(size_t s, const char *_name)
     {
         size = s;
-        shl_array<T>::name = name;
+        shl_array<T>::name = _name;
         use_hugepage = get_conf()->use_hugepage;
         read_only = false;
         alloc_done = false;
@@ -154,16 +154,16 @@ public:
         }
     }
 
-    void set_used(bool is_used)
+    void set_used(bool used)
     {
 
-        shl_array<T>::is_used = is_used;
+        shl_array<T>::is_used = used;
     }
 
-    void set_dynamic(bool is_dynamic)
+    void set_dynamic(bool dynamic)
     {
 
-        shl_array<T>::is_dynamic = is_dynamic;
+        shl_array<T>::is_dynamic = dynamic;
     }
 
 
@@ -189,8 +189,8 @@ public:
     /**
      * \brief Initialize distributed array
      */
-    shl_array_distributed(size_t s, const char *name)
-        : shl_array<T>(s, name) {};
+    shl_array_distributed(size_t s, const char *_name)
+        : shl_array<T>(s, _name) {};
 
     virtual int get_options(void)
     {
@@ -223,9 +223,9 @@ public:
     /**
      * \brief Initialize replicated array
      */
-    shl_array_replicated(size_t s, const char *name,
+    shl_array_replicated(size_t s, const char *_name,
                          int (*f_lookup)(void))
-        : shl_array<T>(s, name)
+        : shl_array<T>(s, _name)
     {
         shl_array<T>::read_only = true;
         lookup = f_lookup;

@@ -5,7 +5,7 @@
 
 #include <cstdio>
 #include <stdint.h>
-
+#include <sys/time.h>
 #ifdef BARRELFISH
 #include "barrelfish.h"
 #endif
@@ -25,6 +25,8 @@
 // --------------------------------------------------
 #define PAGESIZE_HUGE (2*1024*1024)
 #define PAGESIZE (4*1024)
+
+#define VERSION "1.0"
 
 // --------------------------------------------------
 // Configuration
@@ -51,7 +53,11 @@
 // --------------------------------------------------
 // Typedefs
 // --------------------------------------------------
+#ifdef BARRELFISH
+typedef uint8_t coreid_t; /// XXX: barrelfish has uint8_t as core id
+#else
 typedef uint32_t coreid_t;
+#endif
 
 // --------------------------------------------------
 // in misc.c

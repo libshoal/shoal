@@ -1,5 +1,8 @@
 #include "shl.h"
 #include "shl_internal.h"
+extern "C" {
+#include <omp.h>
+}
 
 #ifdef PAPI
 static int EventSet;

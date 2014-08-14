@@ -3,7 +3,6 @@
 
 #include <pthread.h>
 #include <sched.h>
-#include <sys/time.h>
 #include <numa.h>
 #include <omp.h>
 
