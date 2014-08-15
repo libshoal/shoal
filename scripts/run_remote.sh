@@ -7,7 +7,7 @@ function error() {
 
 function usage() {
 
-    echo "Usage: $0 <program> <implementation> <workload> <prefix>"
+    echo "Usage: $0 <program> <implementation> <workload> <prefix> <options>"
     exit 1
 }
 
@@ -38,10 +38,10 @@ BASEPREFIX="${MACHINE}_${SHORT}"
 PREFIX="${BASEPREFIX}_$4"
 
 # params
-# 1) <num_threads> 2) workload 3) implementation
+# 1) <num_threads> 2) workload 3) implementation 4) options
 function get_command() {
     next_command=". projects/gm/env.sh;\
-	projects/gm/scripts/run.sh $2 $1 $3 $WORKLOAD"
+	projects/gm/scripts/run.sh $4 $2 $1 $3 $WORKLOAD"
 }
 
 TMP=`mktemp`
@@ -50,6 +50,8 @@ FCOMP=`mktemp -t comp-XXXXXX`
 FINIT=`mktemp -t init-XXXXXX`
 echo "Exexcuting on machine [$MACHINE]"
 echo "Files are: $FTOTAL $FCOMP $FINIT"
+
+OPTS=$5
 
 (
     . ~/.bashrc
@@ -63,7 +65,7 @@ echo "Files are: $FTOTAL $FCOMP $FINIT"
 	echo -n $((2**$i)) >> $FCOMP
 	echo -n $((2**$i)) >> $FINIT
 
-	get_command $((2**$i)) $1 $2
+	get_command $((2**$i)) $1 $2 "$OPTS"
 	echo "Executing command [${next_command}]" 1>&2
 	NUM=2 exec_avg ssh $MACHINE "${next_command}" &> $TMP
 	echo "Output was:" 1>&2
