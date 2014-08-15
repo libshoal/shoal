@@ -1,3 +1,12 @@
+/*
+ * Copyright (c) 2014 ETH Zurich.
+ * All rights reserved.
+ *
+ * This file is distributed under the terms in the attached LICENSE file.
+ * If you do not find this file, copies can be found by writing to:
+ * ETH Zurich D-INFK, Universitaetsstrasse 6, CH-8092 Zurich. Attn: Systems Group.
+ */
+
 #ifndef __SHL_ARRAY
 #define __SHL_ARRAY
 
@@ -5,6 +14,7 @@
 #include <iostream>
 
 #include "shl.h"
+#include "shl_configuration.hpp"
 
 // --------------------------------------------------
 // Implementations
@@ -25,6 +35,8 @@ protected:
     const char *name;
     T* array = NULL;
     T* array_copy = NULL;
+
+    void *mem;
 
     bool is_used;
     bool is_dynamic;
@@ -48,7 +60,7 @@ public:
         assert (!alloc_done);
 
         int pagesize;
-        array = (T*) shl__malloc(size*sizeof(T), get_options(), &pagesize);
+        array = (T*) shl__malloc(size*sizeof(T), get_options(), &pagesize, &mem);
 
         alloc_done = true;
     }
@@ -219,6 +231,8 @@ class shl_array_replicated : public shl_array<T>
     int num_replicas;
     int (*lookup)(void);
 
+    void **mem_array;
+
 public:
     /**
      * \brief Initialize replicated array
@@ -244,6 +258,9 @@ public:
         rep_array = (T**) shl_malloc_replicated(shl_array<T>::size*sizeof(T),
                                                 &num_replicas,
                                                 shl_array<T>::get_options());
+
+        mem_array = ((void **)rep_array) + num_replicas;
+
 
         assert (num_replicas>0);
         for (int i=0; i<num_replicas; i++)

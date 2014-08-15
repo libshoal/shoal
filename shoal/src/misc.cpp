@@ -1,11 +1,14 @@
 #include <sys/time.h>
 #include <ctype.h>
 #include <errno.h>
+#include <stdio.h>
 
 #include <cstdlib>
 
 #include "shl_internal.h"
 #include "shl.h"
+#include "shl_timer.hpp"
+#include "shl_configuration.hpp"
 
 Timer shl__default_timer;
 

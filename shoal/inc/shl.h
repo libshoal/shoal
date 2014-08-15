@@ -1,9 +1,21 @@
+/*
+ * Copyright (c) 2014 ETH Zurich.
+ * All rights reserved.
+ *
+ * This file is distributed under the terms in the attached LICENSE file.
+ * If you do not find this file, copies can be found by writing to:
+ * ETH Zurich D-INFK, Universitaetsstrasse 6, CH-8092 Zurich. Attn: Systems Group.
+ */
+
 #ifndef __SHL_H
 #define __SHL_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <assert.h>
 
-#include <cstdio>
 #include <stdint.h>
 #include <sys/time.h>
 #ifdef BARRELFISH
@@ -67,7 +79,6 @@ double shl__get_timer(void);
 void shl__start_timer(void);
 void shl__init(size_t);
 coreid_t *parse_affinity(bool);
-void shl__init_thread(void);
 char* get_env_str(const char*, const char*);
 int get_env_int(const char*, int);
 void print_number(long long);
@@ -81,7 +92,7 @@ int shl__get_proc_for_node(int node);
 int shl__max_node(void);
 int numa_cpu_to_node(int);
 void** shl_malloc_replicated(size_t, int*, int);
-void* shl__malloc(size_t, int, int*);
+void* shl__malloc(size_t, int, int*, void **);
 
 // --------------------------------------------------
 // SHOAL
@@ -132,51 +143,9 @@ void shl__auto_tune_bind(int *num_cores,
 
 extern int replica_lookup[];
 
-// --------------------------------------------------
-// Timer
-// --------------------------------------------------
-class Timer {
- public:
-    void start();
-    double stop();
-    double timer_secs = 0.0;
- private:
-    struct timeval TV1, TV2;
-};
-
-// --------------------------------------------------
-// Program configuration
-// --------------------------------------------------
-class Configuration {
-
- public:
-    Configuration(void);
 
 
-    ~Configuration(void) {
 
-        delete node_mem_avail;
-    }
-
-    // Should large pages be used
-    bool use_hugepage;
-
-    // Should replication be used
-    bool use_replication;
-
-    // Should distribution be used
-    bool use_distribution;
-
-    // Number of NUMA nodes
-    int num_nodes;
-
-    // How much memory is available on the machine
-    long mem_avail;
-
-    // How much memory is available on each node
-    long* node_mem_avail;
-};
-Configuration* get_conf(void);
 
 // --------------------------------------------------
 // Colors!
@@ -196,6 +165,7 @@ Configuration* get_conf(void);
 #define SHL_MALLOC_NONE        (0)
 #define SHL_MALLOC_HUGEPAGE    (0x1<<0)
 #define SHL_MALLOC_DISTRIBUTED (0x1<<1)
+#define SHL_MALLOC_REPLICATED  (0x1<<2)
 
 // --------------------------------------------------
 // Includes depending on configuration
@@ -205,6 +175,10 @@ Configuration* get_conf(void);
 
 #ifdef DEBUG
 static uint64_t num_lookup = 0;
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif

@@ -1,27 +1,41 @@
-#include "shl.h"
-#include "shl_internal.h"
+/*
+ * Copyright (c) 2014 ETH Zurich.
+ * All rights reserved.
+ *
+ * This file is distributed under the terms in the attached LICENSE file.
+ * If you do not find this file, copies can be found by writing to:
+ * ETH Zurich D-INFK, Universitaetsstrasse 6, CH-8092 Zurich. Attn: Systems Group.
+ */
+#include <stdio.h>
+
 extern "C" {
 #include <omp.h>
 }
+#include "shl_internal.h"
+#include "shl_timer.hpp"
+#include "shl_configuration.hpp"
 
 #ifdef PAPI
 static int EventSet;
 #endif
 
 Configuration::Configuration(void) {
-
+#ifdef BARRELFISH
+    use_hugepage = SHL_HUGEPAGE;
+    use_replication = SHL_REPLICATION;
+    use_distribution = SHL_DISTRIBUTION;
+#else
     // Configuration based on environemnt
     use_hugepage = get_env_int("SHL_HUGEPAGE", 1);
     use_replication = get_env_int("SHL_REPLICATION", 1);
     use_distribution = get_env_int("SHL_DISTRIBUTION", 1);
-
+#endif
     // NUMA information
     num_nodes = numa_max_node();
     node_mem_avail = new long[num_nodes];
     mem_avail = 0;
 
     for (int i=0; i<=numa_max_node(); i++) {
-
         numa_node_size(i, &(node_mem_avail[i]));
         mem_avail += node_mem_avail[i];
     }
@@ -101,6 +115,9 @@ int shl__get_num_replicas(void)
 
 void shl__repl_sync(void* src, void **dest, size_t num_dest, size_t size)
 {
+#ifdef BARRELFISH
+    assert(!"NYI");
+#else
     omp_set_dynamic(0);     // Explicitly disable dynamic teams
     omp_set_num_threads(32); // Use 4 threads for all consecutive parallel regions
 
@@ -108,12 +125,12 @@ void shl__repl_sync(void* src, void **dest, size_t num_dest, size_t size)
 
         #pragma omp parallel for
         for (size_t j=0; j<size; j++) {
-
             ((char*) dest[i])[j] = ((char*) src)[j];
         }
     }
 
     omp_set_num_threads(0);
+#endif
 }
 
 void shl__init_thread(int thread_id)
@@ -141,6 +158,12 @@ void shl__init(size_t num_threads)
     Configuration *conf = get_conf();
     assert (numa_available()>=0);
 
+#ifdef BARRELFISH
+    if (shl__barrelfish_init(num_threads)) {
+        printf(ANSI_COLOR_RED "ERROR: Could not initialize Barrelfish backend\n"
+               ANSI_COLOR_RESET);
+    }
+#else
     affinity_conf = parse_affinity (false);
 
     if (affinity_conf==NULL) {
@@ -155,11 +178,13 @@ void shl__init(size_t num_threads)
 
     if (conf->use_replication) {
         for (size_t i=0; i<num_threads; i++) {
-
             replica_lookup[i] = numa_cpu_to_node(affinity_conf[i]);
             printf("replication: CPU %zu is on node %d\n", i, replica_lookup[i]);
         }
     }
+#endif
+
+
 
     // Prevent numa_alloc_onnode fall back to allocating memory elsewhere
     numa_set_strict (true);

@@ -90,7 +90,7 @@ void** shl_malloc_replicated(size_t size,
     *num_replicas = shl__get_num_replicas();
     int pagesize;
 
-    void **tmp = (void**) (malloc(*num_replicas*sizeof(void*)));
+    void **tmp = (void**) (calloc((*num_replicas)*2, sizeof(void*)));
 
     for (int i=0; i<*num_replicas; i++) {
 
@@ -142,7 +142,7 @@ void** shl_malloc_replicated(size_t size,
  * - SHL_MALLOC_DISTRIBUTED:
  *    distribute memory approximately equally on nodes that have threads
  */
-void* shl__malloc(size_t size, int opts, int *pagesize)
+void* shl__malloc(size_t size, int opts, int *pagesize, void **unused)
 {
     void *res;
     bool use_hugepage = opts & SHL_MALLOC_HUGEPAGE;
