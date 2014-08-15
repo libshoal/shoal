@@ -40,8 +40,7 @@
       "-fpermissive" 
     ],
     addIncludes = [
-        "apps/output_cpp/gm_graph/inc",
-        "/lib/bomp" 
+        "apps/output_cpp/gm_graph/inc"
     ],
     addLibraries = libDeps [ 
         "bomp"
@@ -54,12 +53,12 @@
   
   build library { 
     target = "shl",
-    --cxxFiles = concat [ find cxxInDir dir | dir <- ["src"] ],
-    --cFiles = concat [ find cInDir dir | dir  <- ["src"] ],
+    cFiles = [
+        "shoal/src/barrelfish.c"
+    ],
     cxxFiles = [
-        "shoal/src/barrelfish.c",
-        "shoal/src/misc.c",
-        "shoal/src/shl.c"
+        "shoal/src/misc.cpp",
+        "shoal/src/shl.cpp"
     ],
     addCFlags = [ 
       "-fopenmp" 
@@ -68,42 +67,14 @@
       "-fopenmp"
     ],
     addIncludes = [
-        "shoal/inc",
-        "/lib/bomp" 
+        "shoal/inc"
     ],
     addLibraries = libDeps [ 
-        "xomp"
+        "bomp"
     ],
     architectures = [ 
       "x86_64", 
       "k1om" 
     ]
-  },
-  
-  build application { 
-    target = "gm_pr_test",
-    architectures = [ 
-       "x86_64",
-       "k1om"
-    ],
-    cxxFiles = [ 
-        "/tools/green-marl/apps/output_cpp/src/pagerank_main.cc",
-        "/tools/green-marl/apps/output_cpp/generated/pagerank.cc"                    
-    ],
-    addLibraries = libDeps [  
-        "gmgraph",
-        "shl"
-    ],
-    addCxxFlags = [
-         "-fopenmp",
-         "-fpermissive" 
-    ],
-    addIncludes = [
-        "/lib/bomp",
-        "/tools/green-marl/apps/output_cpp/generated",
-        "/tools/green-marl/apps/output_cpp/gm_graph/inc",
-        "/tools/green-marl/apps/output_cpp/src",
-        "/tools/green-marl/shoal/inc"
-    ]
-  }   
+  } 
 ]
