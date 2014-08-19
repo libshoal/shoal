@@ -132,9 +132,21 @@ if [[ $DEBUG -eq 0 ]]; then
 	GOMP_CPU_AFFINITY="$AFF" SHL_CPU_AFFINITY="$AFF" \
 		stdbuf -o0 -e0 -i0 ${INPUT} ${WORKLOAD} ${NUM} $@ | $BASE/scripts/extract_result.py -workload ${WORKLOAD}
 
+	GM_RC=${PIPESTATUS[0]}
+
 	if [[ $? -ne 0 ]]; then
-		error "Execution was unsuccessful"
+	    error "Execution was unsuccessful"
+	else
+
+		# Since we use a Pipe, we need to check the return code of the first program as well
+		if [[ $GM_RC -ne 0 ]]; then
+			error "GM program failed"
+		fi
+
+	    echo "Execution was successful"
+	    exit 0
 	fi
+
 else
 	. $BASE/env.sh
 	set -x
