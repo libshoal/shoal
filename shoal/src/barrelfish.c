@@ -22,6 +22,10 @@ static lvaddr_t malloc_next = MALLOC_VADDR_START;
  */
 int shl__barrelfish_init(size_t num_threads)
 {
+#if SHL_USE_SHARED
+    bomp_bomp_init(num_threads);
+    return 0;
+#else
     errval_t err;
 
     printf("Starting as XOMP Master\n");
@@ -32,6 +36,7 @@ int shl__barrelfish_init(size_t num_threads)
     args.args.uniform.nphi = 0;
     args.args.uniform.argc = argcount;
     args.args.uniform.argv = argvals;
+    args.args.uniform.worker_loc = XOMP_WORKER_LOC_LOCAL;
 
     err = bomp_xomp_init(&args);
     if (err_is_fail(err)) {
@@ -39,7 +44,7 @@ int shl__barrelfish_init(size_t num_threads)
     }
 
     omp_set_num_threads(num_threads);
-
+#endif
     return 0;
 }
 
@@ -140,6 +145,8 @@ void* shl__malloc(size_t size,
 {
     errval_t err;
 
+    printf("alloc start");
+
     struct mem_info *mi = calloc(1, sizeof(*mi));
     if (mi == NULL) {
         return NULL;
@@ -174,6 +181,9 @@ void* shl__malloc(size_t size,
         *ret_mi = (void *) mi;
     }
 
+#if !SHL_USE_SHARED
+    xomp_master_add_memory(mi->frame, mi->vaddr, XOMP_FRAME_TYPE_SHARED_RW);
+#endif
     return (void *) mi->vaddr;
 
     err_map: cap_destroy(mi->frame);
