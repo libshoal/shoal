@@ -56,6 +56,18 @@ hd_res = {
         7:  1,
         8:  1,
         9:  1
+    },
+    'twitter_rv.bin': {
+        0:  0,
+        1:  1,
+        2:  1,
+        3:  1,
+        4:  1,
+        5:  1,
+        6:  1,
+        7:  1,
+        8:  1,
+        9:  1
     }
 }
 
@@ -117,6 +129,8 @@ def verify_triangle_counting(line):
 def verify_hop_dist(line):
     global verified
     if not args.workload:
+        return True
+    if not workload in hd_res:
         return True
     l = re.match('^dist\[([0-9]*)\] = ([0-9]*)', line)
     if l:
