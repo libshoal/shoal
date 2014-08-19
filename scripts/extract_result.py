@@ -33,22 +33,37 @@ verified = False
 # Correct output for hop_dist
 # --------------------------------------------------
 hd_res = {
-    0:  0,
-    1:  15,
-    2:  17,
-    3:  18,
-    4:  16,
-    5:  17,
-    6:  16,
-    7:  14,
-    8:  15,
-    9:  16
+    '?': {
+        0:  0,
+        1:  15,
+        2:  17,
+        3:  18,
+        4:  16,
+        5:  17,
+        6:  16,
+        7:  14,
+        8:  15,
+        9:  16
+    },
+    'soc-LiveJournal1.bin': {
+        0:  0,
+        1:  1,
+        2:  1,
+        3:  1,
+        4:  1,
+        5:  1,
+        6:  1,
+        7:  1,
+        8:  1,
+        9:  1
     }
+}
 
 # Correct output for triangle_counting
 # --------------------------------------------------
 tc_res = {
-    'soc-LiveJournal1.bin': 132775101
+    'soc-LiveJournal1.bin': 132775101,
+    'tiny.bin': 179
 }
 
 # Correct output for pagernak
@@ -100,12 +115,14 @@ def verify_triangle_counting(line):
         return True
 
 def verify_hop_dist(line):
+    global verified
+    if not args.workload:
+        return True
     l = re.match('^dist\[([0-9]*)\] = ([0-9]*)', line)
     if l:
-        res = hd_res.get(int(l.group(1)), None)
+        res = hd_res[workload].get(int(l.group(1)), None)
         if not res == int(l.group(2)):
             print 'Result for', int(l.group(1)), 'is', int(l.group(2)), 'expecting', res
-        global verified
         verified = True
         return res == int(l.group(2))
     else:
