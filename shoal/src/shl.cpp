@@ -11,9 +11,14 @@
 extern "C" {
 #include <omp.h>
 }
+#include "shl.h"
 #include "shl_internal.h"
 #include "shl_timer.hpp"
 #include "shl_configuration.hpp"
+
+#ifndef BARRELFISH
+#include "numa.h"
+#endif
 
 #ifdef PAPI
 static int EventSet;
