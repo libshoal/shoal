@@ -2,11 +2,13 @@
 #define SHL__BARRELFISH_H
 
 #define SHL_USE_SHARED 0
+#define SHL_STATIC
+
 
 #define SHL_HUGEPAGE 1
 #define SHL_REPLICATION 0
 #define SHL_DISTRIBUTION 1
-#define SHL_PARTITION 1
+#define SHL_PARTITION 0
 
 int numa_max_node(void);
 long numa_node_size(int, long*);

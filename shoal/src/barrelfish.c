@@ -192,3 +192,23 @@ void* shl__malloc(size_t size,
 
     return 0;
 }
+
+void** shl__copy_array(void *src, size_t size, bool is_used,
+                       bool is_ro, const char* array_name)
+{
+    assert(!"NYI");
+}
+
+
+void shl__copy_back_array(void **src, void *dest, size_t size, bool is_copied,
+                          bool is_ro, bool is_dynamic, const char* array_name)
+{
+    assert(!"NYI");
+}
+
+void shl__copy_back_array_single(void *src, void *dest, size_t size, bool is_copied,
+                                 bool is_ro, bool is_dynamic, const char* array_name)
+{
+    assert(!"NYI");
+}
+

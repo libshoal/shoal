@@ -164,6 +164,13 @@ void shl__init(size_t num_threads, bool partitioned_support)
     Configuration *conf = get_conf();
     assert (numa_available()>=0);
 
+    assert (!get_conf()->use_partition || partitioned_support || !"Compile with -DSHL_STATIC");
+    if (!get_conf()->use_partition && partitioned_support) {
+        printf(ANSI_COLOR_YELLOW "WARNING: " ANSI_COLOR_RESET
+               "partitioning disabled, but program is compiled with "
+               "partition support\n");
+    }
+
 #ifdef BARRELFISH
     if (shl__barrelfish_init(num_threads)) {
         printf(ANSI_COLOR_RED "ERROR: Could not initialize Barrelfish backend\n"
@@ -171,13 +178,6 @@ void shl__init(size_t num_threads, bool partitioned_support)
     }
 #else
     affinity_conf = parse_affinity (false);
-
-    assert (!get_conf()->use_partition || partitioned_support || !"Compile with -DSHL_STATIC");
-    if (!get_conf()->use_partition && partitioned_support) {
-        printf(ANSI_COLOR_YELLOW "WARNING: " ANSI_COLOR_RESET
-               "partitioning disabled, but program is compiled with "
-               "partition support\n");
-    }
 
     if (affinity_conf==NULL) {
         printf(ANSI_COLOR_RED "WARNING:" ANSI_COLOR_RESET " no affinity set! "
@@ -191,15 +191,12 @@ void shl__init(size_t num_threads, bool partitioned_support)
 
     if (conf->use_replication) {
         for (size_t i=0; i<num_threads; i++) {
-
             replica_lookup[i] = numa_cpu_to_node(affinity_conf[i]);
             printf("replication: CPU %zu is on node %d\n", i, replica_lookup[i]);
         }
     }
 
 #endif
-
-
 
     // Prevent numa_alloc_onnode fall back to allocating memory elsewhere
     numa_set_strict (true);
