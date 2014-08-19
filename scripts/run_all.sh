@@ -1,12 +1,26 @@
 #!/bin/bash
 
-set -x
+#set -x
 
-LOG=`mktemp -t log-XXXXXX`
+PROG=pagerank
+OPTS=
+
+txtred='\e[0;31m' # Red
+txtgrn='\e[0;32m' # Green
+txtrst='\e[0m'    # Text Reset
 
 (
-    scripts/run_remote.sh triangle_counting theirs twitter_rv org 2>&1
-    scripts/run_remote.sh hop_dist theirs twitter_rv org 2>&1
-) | tee $LOG
-
-echo "Log is at $LOG"
+	for PROG in "pagerank" "triangle_counting" "hop_dist"; do
+		for OPTS in "" "-d" "-d -r" "-d -r -p" "-d -r -p -h"; do
+			TMP=`mktemp /tmp/tmp-run_all-XXXXXX`
+			scripts/run.sh $OPTS $PROG 32 ours soc-LiveJournal1 &> $TMP
+			RC=$?
+			if [[ $RC -eq 0 ]]; then
+				RCS=$txtgrn"ok  "$txtrst
+			else
+				RCS=$txtred"fail"$txtrst
+			fi
+			echo -e "Return code [$RCS] for [$PROG] with [$OPTS] was [$RC] ... log at [$TMP]"
+		done
+	done
+)
