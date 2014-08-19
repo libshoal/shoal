@@ -39,7 +39,9 @@ extern "C" {
 #define PAGESIZE_HUGE (2*1024*1024)
 #define PAGESIZE (4*1024)
 
+#ifdef BARRELFISH
 #define VERSION "1.0"
+#endif
 
 // --------------------------------------------------
 // Configuration
