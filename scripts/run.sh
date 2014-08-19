@@ -12,9 +12,51 @@ function error() {
 }
 
 function usage() {
-    echo "Usage: $0 {pagerank,hop_dist,triangle_counting} <num_threads> {ours,theirs} {huge,soc-LiveJournal1,twitter_rv,big}"
+    echo "Usage: $0 <options> {pagerank,hop_dist,triangle_counting} <num_threads> {ours,theirs} {huge,soc-LiveJournal1,twitter_rv,big}"
+	echo ""
+	echo <<EOF
+Options are:
+-h Huge page support
+-d Distribute
+-r Replicate
+-p partition
+EOF
     exit 1
 }
+
+# Parse options
+# --------------------------------------------------
+
+SHL_HUGEPAGE=0
+SHL_REPLICATION=0
+SHL_PARTITION=0
+SHL_DISTRIBUTION=0
+
+parse_opts=1
+
+while [[ parse_opts -eq 1 ]]; do
+	case $1 in
+		-h)
+			SHL_HUGEPAGE=1
+			shift
+			;;
+		-d)
+			SHL_DISTRIBUTION=1
+			shift
+			;;
+		-r)
+			SHL_REPLICATION=1
+			shift
+			;;
+		-p)
+			SHL_PARTITION=1
+			shift
+			;;
+		*)
+			parse_opts=0
+	esac
+done
+
 
 #WORKLOAD_BASE=/run/shm/
 BASE=/home/skaestle/projects/gm
@@ -77,9 +119,10 @@ fi
 # --------------------------------------------------
 # CONFIGURATION
 # --------------------------------------------------
-export SHL_HUGEPAGE=1
-export SHL_REPLICATION=1
-export SHL_DISTRIBUTION=1
+export SHL_HUGEPAGE
+export SHL_REPLICATION
+export SHL_DISTRIBUTION
+export SHL_PARTITION
 # --------------------------------------------------
 
 res=0

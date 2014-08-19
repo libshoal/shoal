@@ -77,7 +77,6 @@ typedef uint32_t coreid_t;
 double shl__end_timer(void);
 double shl__get_timer(void);
 void shl__start_timer(void);
-void shl__init(size_t);
 coreid_t *parse_affinity(bool);
 char* get_env_str(const char*, const char*);
 int get_env_int(const char*, int);
@@ -91,8 +90,9 @@ void shl__bind_processor_aff(int proc);
 int shl__get_proc_for_node(int node);
 int shl__max_node(void);
 int numa_cpu_to_node(int);
+void* shl__malloc(size_t size, int opts, int *pagesize, void **ret_mi);
 void** shl_malloc_replicated(size_t, int*, int);
-void* shl__malloc(size_t, int, int*, void **);
+void loc(size_t, int, int*, void **);
 
 // --------------------------------------------------
 // SHOAL
@@ -106,6 +106,16 @@ void shl__repl_sync(void*, void**, size_t, size_t);
 void shl__init_thread(int);
 void handle_error(int);
 int shl__get_num_replicas(void);
+void shl__init(size_t,bool);
+// array helpers
+// --------------------------------------------------
+void** shl__copy_array(void *src, size_t size, bool is_used,
+                       bool is_ro, const char* array_name);
+void shl__copy_back_array(void **src, void *dest, size_t size, bool is_copied,
+                          bool is_ro, bool is_dynamic, const char* array_name);
+void shl__copy_back_array_single(void *src, void *dest, size_t size, bool is_copied,
+                                 bool is_ro, bool is_dynamic, const char* array_name);
+
 
 // --------------------------------------------------
 // Auto-tuning interface
@@ -145,8 +155,6 @@ extern int replica_lookup[];
 
 
 
-
-
 // --------------------------------------------------
 // Colors!
 // --------------------------------------------------
@@ -165,7 +173,7 @@ extern int replica_lookup[];
 #define SHL_MALLOC_NONE        (0)
 #define SHL_MALLOC_HUGEPAGE    (0x1<<0)
 #define SHL_MALLOC_DISTRIBUTED (0x1<<1)
-#define SHL_MALLOC_REPLICATED  (0x1<<2)
+#define SHL_MALLOC_PARTITION   (0x1<<2)
 
 // --------------------------------------------------
 // Includes depending on configuration

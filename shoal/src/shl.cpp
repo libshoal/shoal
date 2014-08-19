@@ -24,11 +24,13 @@ Configuration::Configuration(void) {
     use_hugepage = SHL_HUGEPAGE;
     use_replication = SHL_REPLICATION;
     use_distribution = SHL_DISTRIBUTION;
+    use_partition = SHL_PARTITION;
 #else
     // Configuration based on environemnt
     use_hugepage = get_env_int("SHL_HUGEPAGE", 1);
     use_replication = get_env_int("SHL_REPLICATION", 1);
     use_distribution = get_env_int("SHL_DISTRIBUTION", 1);
+    use_partition = get_env_int("SHL_PARTITION", 1);
 #endif
     // NUMA information
     num_nodes = numa_max_node();
@@ -113,6 +115,8 @@ int shl__get_num_replicas(void)
     return numa_max_node()+1;
 }
 
+
+
 void shl__repl_sync(void* src, void **dest, size_t num_dest, size_t size)
 {
 #ifdef BARRELFISH
@@ -125,6 +129,7 @@ void shl__repl_sync(void* src, void **dest, size_t num_dest, size_t size)
 
         #pragma omp parallel for
         for (size_t j=0; j<size; j++) {
+
             ((char*) dest[i])[j] = ((char*) src)[j];
         }
     }
@@ -148,10 +153,11 @@ void handle_error(int retval)
 }
 #endif
 
+
 // translate: virtual COREID -> physical COREID
 coreid_t *affinity_conf = NULL;
 
-void shl__init(size_t num_threads)
+void shl__init(size_t num_threads, bool partitioned_support)
 {
     printf("SHOAL (v %s) initialization .. ", VERSION);
 
@@ -166,6 +172,13 @@ void shl__init(size_t num_threads)
 #else
     affinity_conf = parse_affinity (false);
 
+    assert (!get_conf()->use_partition || partitioned_support || !"Compile with -DSHL_STATIC");
+    if (!get_conf()->use_partition && partitioned_support) {
+        printf(ANSI_COLOR_YELLOW "WARNING: " ANSI_COLOR_RESET
+               "partitioning disabled, but program is compiled with "
+               "partition support\n");
+    }
+
     if (affinity_conf==NULL) {
         printf(ANSI_COLOR_RED "WARNING:" ANSI_COLOR_RESET " no affinity set! "
                "Disabling replication! "
@@ -178,10 +191,12 @@ void shl__init(size_t num_threads)
 
     if (conf->use_replication) {
         for (size_t i=0; i<num_threads; i++) {
+
             replica_lookup[i] = numa_cpu_to_node(affinity_conf[i]);
             printf("replication: CPU %zu is on node %d\n", i, replica_lookup[i]);
         }
     }
+
 #endif
 
 
@@ -203,5 +218,6 @@ void shl__init(size_t num_threads)
 
     printf("[%c] Replication\n", conf->use_replication ? 'x' : ' ');
     printf("[%c] Distribution\n", conf->use_distribution ? 'x' : ' ');
+    printf("[%c] Partition\n", conf->use_partition ? 'x' : ' ');
     printf("[%c] Hugepage\n", conf->use_hugepage ? 'x' : ' ');
 }

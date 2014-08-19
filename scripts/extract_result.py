@@ -8,6 +8,15 @@ import re
 import fileinput
 import argparse
 
+# http://stackoverflow.com/a/287944/491709
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+
 # Time for copy: 228.052000
 # running time=3207.233000
 
@@ -18,6 +27,8 @@ lines = 0
 
 def print_warning(s):
     print 'Warning:', s
+
+verified = False
 
 # Correct output for hop_dist
 # --------------------------------------------------
@@ -33,6 +44,12 @@ hd_res = {
     8:  15,
     9:  16
     }
+
+# Correct output for triangle_counting
+# --------------------------------------------------
+tc_res = {
+    'soc-LiveJournal1.bin': 132775101
+}
 
 # Correct output for pagernak
 # --------------------------------------------------
@@ -70,12 +87,26 @@ pr_res = {
 }
 workload = None
 
+def verify_triangle_counting(line):
+    global verified
+    if not args.workload:
+        return True
+    l = re.match('^number of triangles: ([0-9]+)', line)
+    if l:
+        res = int(tc_res[workload])
+        verified = True
+        return res == int(l.group(1))
+    else:
+        return True
+
 def verify_hop_dist(line):
     l = re.match('^dist\[([0-9]*)\] = ([0-9]*)', line)
     if l:
         res = hd_res.get(int(l.group(1)), None)
         if not res == int(l.group(2)):
             print 'Result for', int(l.group(1)), 'is', int(l.group(2)), 'expecting', res
+        global verified
+        verified = True
         return res == int(l.group(2))
     else:
         return True
@@ -92,6 +123,8 @@ def verify_pagerank(line):
             return True
         res = pr_res[workload].get(int(l.group(1)), None)
         print 'Result for', int(l.group(1)), 'is', float(l.group(2)), 'expecting', res
+        global verified
+        verified = True
         return res == float(l.group(2))
     else:
         return True
@@ -124,14 +157,23 @@ while 1:
     # --------------------------------------------------
     result = result and \
         verify_hop_dist(line) and \
-        verify_pagerank(line)
+        verify_pagerank(line) and \
+        verify_triangle_counting(line)
 
 if total and copy:
     print 'total:    %10.5f' % total
     print 'copy:     %10.5f' % copy
     print 'comp:     %10.5f' % (total-copy)
 
-print 'lines processed:', lines, '- output is:', result
+
+if not verified:
+    result_out = bcolors.WARNING + "could not verify result" + bcolors.ENDC
+elif result:
+    result_out = bcolors.OKGREEN + "correct" + bcolors.ENDC
+else:
+    result_out = bcolors.FAIL + "incorrect" + bcolors.ENDC
+
+print 'lines processed:', lines, '- result' , result_out
 
 if result:
     exit(0)

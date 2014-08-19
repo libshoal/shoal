@@ -33,6 +33,9 @@ class Configuration {
     // Should distribution be used
     bool use_distribution;
 
+    // Should partitioning be used
+    bool use_partition;
+
     // Number of NUMA nodes
     int num_nodes;
 
