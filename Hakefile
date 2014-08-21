@@ -1,0 +1,81 @@
+--------------------------------------------------------------------------
+-- Copyright (c) 2011, ETH Zurich.
+-- All rights reserved.
+--
+-- This file is distributed under the terms in the attached LICENSE file.
+-- If you do not find this file, copies can be found by writing to:
+-- ETH Zurich D-INFK, Haldeneggsteig 4, CH-8092 Zurich. Attn: Systems Group.
+--
+--------------------------------------------------------------------------
+
+[ build library { 
+    target = "gmgraph",
+    cxxFiles = [
+        "apps/output_cpp/gm_graph/src/gm_bitmap.cc",
+        "apps/output_cpp/gm_graph/src/gm_graph_adj_loader.cc",
+        "apps/output_cpp/gm_graph/src/gm_read_setup.cc",
+        "apps/output_cpp/gm_graph/src/gm_common_neighbor_iter.cc",
+        "apps/output_cpp/gm_graph/src/gm_runtime.cc",
+        "apps/output_cpp/gm_graph/src/gm_default_usermain.cc",
+        "apps/output_cpp/gm_graph/src/gm_graph_binary_loader.cc",
+        "apps/output_cpp/gm_graph/src/gm_useropt.cc",
+        "apps/output_cpp/gm_graph/src/gm_edge_list_graph_reader.cc",
+        "apps/output_cpp/gm_graph/src/gm_graph.cc",
+        "apps/output_cpp/gm_graph/src/gm_util.cc",
+        "apps/output_cpp/gm_graph/src/gm_file_c.cc",
+        "apps/output_cpp/gm_graph/src/gm_lock.cc",             
+        "apps/output_cpp/gm_graph/src/graph_gen.cc",
+        "apps/output_cpp/gm_graph/src/gm_file_handling.cc",           
+        "apps/output_cpp/gm_graph/src/gm_mem_helper.cc",        
+        "apps/output_cpp/gm_graph/src/graph_gen_main.cc",
+        "apps/output_cpp/gm_graph/src/gm_format_converter.cc",        
+        "apps/output_cpp/gm_graph/src/gm_rand.cc",                 
+        "apps/output_cpp/gm_graph/src/shl_graph.cc"
+    ],
+    addCFlags = [ 
+      "-fopenmp" 
+    ],
+    addCxxFlags = [ 
+      "-fopenmp",
+      "-fpermissive" 
+    ],
+    addIncludes = [
+        "apps/output_cpp/gm_graph/inc"
+    ],
+    addLibraries = libDeps [
+        "posixcompat", 
+        "bomp"
+    ],
+    architectures = [ 
+      "x86_64", 
+      "k1om" 
+    ]
+  },
+  
+  build library { 
+    target = "shl",
+    cFiles = [
+        "shoal/src/barrelfish.c"
+    ],
+    cxxFiles = [
+        "shoal/src/misc.cpp",
+        "shoal/src/shl.cpp"
+    ],
+    addCFlags = [ 
+      "-fopenmp" 
+    ],
+    addCxxFlags = [ 
+      "-fopenmp"
+    ],
+    addIncludes = [
+        "shoal/inc"
+    ],
+    addLibraries = libDeps [ 
+        "bomp"
+    ],
+    architectures = [ 
+      "x86_64", 
+      "k1om" 
+    ]
+  } 
+]

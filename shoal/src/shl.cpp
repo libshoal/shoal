@@ -270,6 +270,7 @@ void shl__init(size_t num_threads, bool partitioned_support)
     if (shl__barrelfish_init(num_threads)) {
         printf(ANSI_COLOR_RED "ERROR: Could not initialize Barrelfish backend\n"
                ANSI_COLOR_RESET);
+        exit(EXIT_FAILURE);
     }
 #else
     affinity_conf = parse_affinity (false);

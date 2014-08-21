@@ -100,8 +100,14 @@ int shl__get_proc_for_node(int node);
 int shl__max_node(void);
 long shl__node_size(int node, long *freep);
 int numa_cpu_to_node(int);
+#if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
+void* shl__malloc(size_t size, size_t objsize, int opts, int *pagesize, void **ret_mi, void **ret_data);
+void** shl_malloc_replicated(size_t, int*, int);
+#else
 void* shl__malloc(size_t size, int opts, int *pagesize, void **ret_mi);
 void** shl_malloc_replicated(size_t, int*, int);
+#endif
+
 bool shl__check_hugepage_support(void);
 void loc(size_t, int, int*, void **);
 
@@ -191,6 +197,7 @@ extern int replica_lookup[];
 #define SHL_MALLOC_HUGEPAGE    (0x1<<0)
 #define SHL_MALLOC_DISTRIBUTED (0x1<<1)
 #define SHL_MALLOC_PARTITION   (0x1<<2)
+#define SHL_MALLOC_REPLICATED  (0x1<<3)
 
 // --------------------------------------------------
 // Includes depending on configuration

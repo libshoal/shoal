@@ -61,15 +61,13 @@ protected:
     bool read_only;
     bool alloc_done;
 
+    void *meminfo;
 #ifdef PROFILE
     int64_t num_wr;
     int64_t num_rd;
 #endif
 
-    void *mem;
-
-    bool is_used;
-    bool is_dynamic;
+    bool is_used;bool is_dynamic;
 
 public:
     shl_array(size_t s, const char *_name) : shl_base_array(_name)
@@ -85,16 +83,35 @@ public:
 #endif
     }
 
+    shl_array(size_t s,
+              const char *_name,
+              void *mem,
+              void *data)
+    {
+        size = s;
+        shl_array<T>::name = _name;
+        use_hugepage = get_conf()->use_hugepage;
+        read_only = false;
+        array = (T*)data;
+        meminfo = mem;
+        alloc_done = true;
+    }
+
     virtual void alloc(void)
     {
         if (!do_alloc())
             return;
 
         print();
-        assert (!alloc_done);
+#if defined(BARRELFISH) && SHL_BARRELFISH_USE_SHARED
+        assert(!alloc_done);
+
 
         int pagesize;
-        array = (T*) shl__malloc(size*sizeof(T), get_options(), &pagesize, &mem);
+        array = (T*) shl__malloc(size * sizeof(T), get_options(), &pagesize, &meminfo);
+#else
+        printf("already allocated during init.\n");
+#endif
 
         alloc_done = true;
     }
@@ -180,20 +197,26 @@ public:
      */
     virtual void copy_from(T* src)
     {
-        if (!do_copy_in())
+        if (!do_copy_in()) {
+#if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
+       shl__barrelfish_share_frame((struct mem_info *)meminfo);
+#endif
             return;
+        }
 
 #ifdef SHL_DBG_ARRAY
         printf("Copying array %s\n", shl_base_array::name);
 #endif
-        assert (alloc_done);
+        assert(alloc_done);
 
-        assert (array_copy == NULL);
+        assert(array_copy == NULL);
         array_copy = src;
-        for (unsigned int i=0; i<size; i++) {
-
+        for (unsigned int i = 0; i < size; i++) {
             array[i] = src[i];
         }
+#if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
+       shl__barrelfish_share_frame((struct mem_info *)meminfo);
+#endif
     }
 
     /**
@@ -207,7 +230,7 @@ public:
         if (!do_copy_back())
             return;
 
-        assert (alloc_done);
+        assert(alloc_done);
 
         printf("shl_array[%s]: Copying back\n", shl_base_array::name);
         assert (array_copy == a);
@@ -236,8 +259,7 @@ public:
         shl_array<T>::is_dynamic = dynamic;
     }
 
-
-protected:
+ protected:
     virtual void print_options(void)
     {
         printf("Array[%20s]: elements=%10zu-", shl_base_array::name, size);
@@ -295,27 +317,32 @@ public:
     }
 };
 
-
 /**
  * \brief Array implementing a distributed array
  *
  */
-template <class T>
-class shl_array_distributed : public shl_array<T>
-{
-public:
+template<class T>
+class shl_array_distributed : public shl_array<T> {
+ public:
     /**
      * \brief Initialize distributed array
      */
-    shl_array_distributed(size_t s, const char *_name)
-        : shl_array<T>(s, _name) {};
+    shl_array_distributed(size_t s,
+                          const char *_name) :
+                    shl_array<T>(s, _name) {};
+
+    shl_array_distributed(size_t s,
+                          const char *_name,
+                          void *mem,
+                          void *data) :
+                    shl_array<T>(s, _name, mem, data) {};
 
     virtual int get_options(void)
     {
         return shl_array<T>::get_options() | SHL_MALLOC_DISTRIBUTED;
     }
 
-protected:
+ protected:
     virtual void print_options(void)
     {
         shl_array<T>::print_options();
@@ -324,27 +351,36 @@ protected:
 
 };
 
-
 /**
  * \brief Array implementing a partitioned array
  *
  */
-template <class T>
-class shl_array_partitioned : public shl_array<T>
-{
-public:
+template<class T>
+class shl_array_partitioned : public shl_array<T> {
+ public:
     /**
      * \brief Initialize partitioned array
      */
-    shl_array_partitioned(size_t s, const char *_name)
-        : shl_array<T>(s, _name) {};
+    shl_array_partitioned(size_t s,
+                          const char *_name) :
+                    shl_array<T>(s, _name)
+    {};
+
+    shl_array_partitioned(size_t s,
+                          const char *_name,
+                          void *mem,
+                          void *data) :
+                    shl_array<T>(s, _name, mem, data)
+    { };
+
+
 
     virtual int get_options(void)
     {
         return shl_array<T>::get_options() | SHL_MALLOC_PARTITION;
     }
 
-protected:
+ protected:
     virtual void print_options(void)
     {
         shl_array<T>::print_options();
@@ -353,16 +389,14 @@ protected:
 
 };
 
-
 /**
  * \brief Array implementing replication
  *
  *
  * The number of replicas is given by shl_malloc_replicated.
  */
-template <class T>
-class shl_array_replicated : public shl_array<T>
-{
+template<class T>
+class shl_array_replicated : public shl_array<T> {
     T* master_copy;
 
 public:
@@ -378,9 +412,22 @@ public:
     /**
      * \brief Initialize replicated array
      */
-    shl_array_replicated(size_t s, const char *_name,
-                         int (*f_lookup)(void))
-        : shl_array<T>(s, _name)
+    shl_array_replicated(size_t s,
+                         const char *_name,
+                         int (*f_lookup)(void)) :
+                    shl_array<T>(s, _name)
+    {
+        shl_array<T>::read_only = true;
+        lookup = f_lookup;
+        master_copy = NULL;
+    }
+
+    shl_array_replicated(size_t s,
+                         const char *_name,
+                         int (*f_lookup)(void),
+                         void *mem,
+                         void *data) :
+                    shl_array<T>(s, _name, mem, data)
     {
         shl_array<T>::read_only = true;
         lookup = f_lookup;
@@ -388,28 +435,29 @@ public:
         num_replicas = -1;
     }
 
+
+
     virtual void alloc(void)
     {
         if (!shl_array<T>::do_alloc())
             return;
 
-        assert (!shl_array<T>::alloc_done);
-
         shl_array<T>::print();
 
-        rep_array = (T**) shl_malloc_replicated(shl_array<T>::size*sizeof(T),
+        assert(!shl_array<T>::alloc_done);
+
+        rep_array = (T**) shl_malloc_replicated(shl_array<T>::size * sizeof(T),
                                                 &num_replicas,
                                                 shl_array<T>::get_options());
 
-        // ?
         mem_array = ((void **)rep_array) + num_replicas;
 
-
-        assert (num_replicas>0);
-        for (int i=0; i<num_replicas; i++)
-            assert (rep_array[i]!=NULL);
+        assert(num_replicas > 0);
+        for (int i = 0; i < num_replicas; i++)
+            assert(rep_array[i]!=NULL);
 
         shl_array<T>::alloc_done = true;
+
     }
 
     virtual void copy_from(T* src)
@@ -417,15 +465,15 @@ public:
         if (!shl_array<T>::do_copy_in())
             return;
 
-        assert (shl_array<T>::alloc_done);
-        assert (shl_array<T>::array_copy==NULL);
+        assert(shl_array<T>::alloc_done);
+        assert(shl_array<T>::array_copy==NULL);
 
         shl_array<T>::array_copy = src;
         printf("shl_array_replicated[%s]: Copying to %d replicas\n",
                shl_base_array::name, num_replicas);
 
-        for (int j=0; j<num_replicas; j++) {
-            for (unsigned int i=0; i< shl_array<T>::size; i++) {
+        for (int j = 0; j < num_replicas; j++) {
+            for (unsigned int i = 0; i < shl_array<T>::size; i++) {
 
                 rep_array[j][i] = src[i];
             }
@@ -435,7 +483,7 @@ public:
     virtual void copy_back(T* a)
     {
         // nop -- currently only replicating read-only data
-        assert (shl_array<T>::read_only);
+        assert(shl_array<T>::read_only);
     }
 
     /**
@@ -486,7 +534,7 @@ public:
         shl__repl_sync(master_copy, (void**) rep_array, num_replicas, shl_array<T>::size*sizeof(T));
     }
 
-protected:
+ protected:
     virtual void print_options(void)
     {
         shl_array<T>::print_options();
@@ -581,8 +629,8 @@ shl_array<T>* shl__malloc(size_t size,
                           bool is_used,
                           bool is_graph,
                           bool is_indexed,
-                          bool initialize) {
-
+                          bool initialize)
+{
     // Policy for memory allocation
     // --------------------------------------------------
 
@@ -590,8 +638,8 @@ shl_array<T>* shl__malloc(size_t size,
     bool partition = is_indexed && get_conf()->use_partition;
 
     // 2) Replicate if array is read-only and can't be partitioned
-    bool replicate = !partition && // none of the others
-        is_ro && get_conf()->use_replication;
+    bool replicate = !partition &&  // none of the others
+                    is_ro && get_conf()->use_replication;
 
     // 3) Distribute if nothing else works and there is more than one node
     bool distribute = !replicate && !partition && // none of the others
@@ -604,22 +652,56 @@ shl_array<T>* shl__malloc(size_t size,
 #ifdef SHL_DBG_ARRAY
         printf("Allocating partitioned array\n");
 #endif
+#if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
+        void *data;
+        void *mem;
+        void *array = shl__malloc(size*sizeof(T), sizeof(shl_array_partitioned<T>),
+                                  SHL_MALLOC_HUGEPAGE | SHL_MALLOC_PARTITION, NULL,
+                                  &mem, &data);
+        res = new(array) shl_array_partitioned<T>(size, name, mem, data);
+#else
         res = new shl_array_partitioned<T>(size, name);
+#endif
     } else if (replicate) {
 #ifdef SHL_DBG_ARRAY
         printf("Allocating replicated array\n");
 #endif
+#if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
+        void *data;
+        void *mem;
+        void *array = shl__malloc(size*sizeof(T), sizeof(shl_array<T>),
+                                  SHL_MALLOC_HUGEPAGE | SHL_MALLOC_REPLICATED,
+                                  NULL, &mem, &data);
+        res = new(array) shl_array<T>(size, name, mem, data);
+#else
         res = new shl_array_replicated<T>(size, name, shl__get_rep_id);
+#endif
     } else if (distribute) {
 #ifdef SHL_DBG_ARRAY
         printf("Allocating distributed array\n");
 #endif
-        res =  new shl_array_distributed<T>(size, name);
+#if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
+        void *data;
+        void *mem;
+        void *array = shl__malloc(size*sizeof(T), sizeof(shl_array_distributed<T>),
+                                  SHL_MALLOC_HUGEPAGE | SHL_MALLOC_DISTRIBUTED,
+                                  NULL, &mem, &data);
+        res = new(array) shl_array_distributed<T>(size, name, mem, data);
+#else
+        res = new shl_array_distributed<T>(size, name);
+#endif
     } else {
 #ifdef SHL_DBG_ARRAY
         printf("Allocating regular array\n");
 #endif
+#if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
+        void *data;
+        void *mem;
+        void *array = shl__malloc(size*sizeof(T), sizeof(shl_array<T>), SHL_MALLOC_HUGEPAGE, NULL, &mem, &data);
+        res = new(array) shl_array<T>(size, name, mem, data);
+#else
         res = new shl_array<T>(size, name);
+#endif
     }
 
     // These are used internally in array to decide if copy-in and

@@ -8,13 +8,6 @@
 extern char **argvals;
 extern int argcount;
 
-struct mem_info {
-    struct capref frame;
-    lvaddr_t vaddr;
-    size_t size;
-    uint32_t opts;
-};
-
 static lvaddr_t malloc_next = MALLOC_VADDR_START;
 
 /**
@@ -22,7 +15,7 @@ static lvaddr_t malloc_next = MALLOC_VADDR_START;
  */
 int shl__barrelfish_init(size_t num_threads)
 {
-#if SHL_USE_SHARED
+#if SHL_BARRELFISH_USE_SHARED
     bomp_bomp_init(num_threads);
     return 0;
 #else
@@ -124,6 +117,24 @@ void** shl_malloc_replicated(size_t size,
     return NULL;
 }
 
+int shl__barrelfish_share_frame(struct mem_info *mi)
+{
+#if !SHL_BARRELFISH_USE_SHARED
+    xomp_frame_type_t type = XOMP_FRAME_TYPE_SHARED_RW;
+    if (mi->opts & SHL_MALLOC_PARTITION) {
+        assert("NYI");
+    } else if (mi->opts & SHL_MALLOC_REPLICATED) {
+        type = XOMP_FRAME_TYPE_REPL_RW;
+    } else if (mi->opts & SHL_MALLOC_DISTRIBUTED) {
+        assert("NYI");
+    }
+
+    return xomp_master_add_memory(mi->frame, mi->vaddr, type);
+#endif
+    assert(!"should not be called");
+    return -1;
+}
+
 /**
  * \brief ALlocate memory with the given flags.
  *
@@ -138,14 +149,21 @@ void** shl_malloc_replicated(size_t size,
  * - SHL_MALLOC_DISTRIBUTED:
  *    distribute memory approximately equally on nodes that have threads
  */
+#if !SHL_BARRELFISH_USE_SHARED
+void* shl__malloc(size_t size,
+                  size_t objsize,
+                  int opts,
+                  int *pagesize,
+                  void **ret_mi,
+                  void **ret_data)
+#else
 void* shl__malloc(size_t size,
                   int opts,
                   int *pagesize,
                   void **ret_mi)
+#endif
 {
     errval_t err;
-
-    printf("alloc start");
 
     struct mem_info *mi = calloc(1, sizeof(*mi));
     if (mi == NULL) {
@@ -158,8 +176,15 @@ void* shl__malloc(size_t size,
 
     uint32_t pg_size = (opts & SHL_MALLOC_HUGEPAGE) ? PAGESIZE_HUGE : PAGESIZE;
 
+
+
     // round up to multiple of page size
-    size = (size + pg_size - 1) & ~(pg_size - 1);
+    #if !SHL_BARRELFISH_USE_SHARED
+        size = (size + objsize + pg_size - 1) & ~(pg_size - 1);
+    #else
+        size = (size + pg_size - 1) & ~(pg_size - 1);
+    #endif
+
 
     err = frame_alloc(&mi->frame, size, &size);
     if (err_is_fail(err)) {
@@ -181,8 +206,11 @@ void* shl__malloc(size_t size,
         *ret_mi = (void *) mi;
     }
 
-#if !SHL_USE_SHARED
-    xomp_master_add_memory(mi->frame, mi->vaddr, XOMP_FRAME_TYPE_SHARED_RW);
+#if !SHL_BARRELFISH_USE_SHARED
+    if (ret_data) {
+        *ret_data = (void *)mi->vaddr;
+    }
+    return (void *)(mi->vaddr + ((mi->size + 64 - 1) & ~(64 - 1)));
 #endif
     return (void *) mi->vaddr;
 
@@ -193,21 +221,34 @@ void* shl__malloc(size_t size,
     return 0;
 }
 
-void** shl__copy_array(void *src, size_t size, bool is_used,
-                       bool is_ro, const char* array_name)
+void** shl__copy_array(void *src,
+                       size_t size,
+                       bool is_used,
+                       bool is_ro,
+                       const char* array_name)
+{
+    assert(!"NYI");
+    return 0;
+}
+
+void shl__copy_back_array(void **src,
+                          void *dest,
+                          size_t size,
+                          bool is_copied,
+                          bool is_ro,
+                          bool is_dynamic,
+                          const char* array_name)
 {
     assert(!"NYI");
 }
 
-
-void shl__copy_back_array(void **src, void *dest, size_t size, bool is_copied,
-                          bool is_ro, bool is_dynamic, const char* array_name)
-{
-    assert(!"NYI");
-}
-
-void shl__copy_back_array_single(void *src, void *dest, size_t size, bool is_copied,
-                                 bool is_ro, bool is_dynamic, const char* array_name)
+void shl__copy_back_array_single(void *src,
+                                 void *dest,
+                                 size_t size,
+                                 bool is_copied,
+                                 bool is_ro,
+                                 bool is_dynamic,
+                                 const char* array_name)
 {
     assert(!"NYI");
 }

@@ -1,12 +1,20 @@
 #ifndef SHL__BARRELFISH_H
 #define SHL__BARRELFISH_H
 
-#define SHL_USE_SHARED 0
+#define SHL_BARRELFISH_USE_SHARED 0
 #define SHL_STATIC
 
+#include <barrelfish/caddr.h> // for capref
+
+struct mem_info {
+    struct capref frame;
+    lvaddr_t vaddr;
+    size_t size;
+    uint32_t opts;
+};
 
 #define SHL_HUGEPAGE 1
-#define SHL_REPLICATION 0
+#define SHL_REPLICATION 1
 #define SHL_DISTRIBUTION 1
 #define SHL_PARTITION 0
 
@@ -16,6 +24,7 @@ int numa_available(void);
 void numa_set_strict(int);
 
 int shl__barrelfish_init(size_t num_threads);
+int shl__barrelfish_share_frame(struct mem_info *mi);
 
 #define MALLOC_VADDR_START (1UL << 36)
 
