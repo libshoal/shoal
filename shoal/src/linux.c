@@ -8,6 +8,11 @@
 #include "shl_configuration.hpp"
 #include "shl.h"
 
+void *shl__alloc_struct_shared(size_t size)
+{
+    return malloc(size);
+}
+
 void
 aff_set_oncpu(unsigned int cpu)
 {

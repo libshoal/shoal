@@ -2,7 +2,7 @@
 #define SHL__BARRELFISH_H
 
 #define SHL_BARRELFISH_USE_SHARED 0
-#define SHL_STATIC
+#define SHL_STATIC 1
 
 #include <barrelfish/caddr.h> // for capref
 
@@ -14,7 +14,7 @@ struct mem_info {
 };
 
 #define SHL_HUGEPAGE 1
-#define SHL_REPLICATION 1
+#define SHL_REPLICATION 0
 #define SHL_DISTRIBUTION 1
 #define SHL_PARTITION 0
 

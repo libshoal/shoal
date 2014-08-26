@@ -117,6 +117,39 @@ void** shl_malloc_replicated(size_t size,
     return NULL;
 }
 
+void *shl__alloc_struct_shared(size_t shared_size)
+{
+#if !SHL_BARRELFISH_USE_SHARED
+
+    struct mem_info mi;
+    errval_t err;
+
+    err = frame_alloc(&mi.frame, shared_size, &shared_size);
+    if (err_is_fail(err)) {
+        return NULL;
+    }
+
+    mi.vaddr = malloc_next;
+
+    err = vspace_map_one_frame_fixed(mi.vaddr, shared_size, mi.frame, NULL, NULL);
+    if (err_is_fail(err)) {
+        cap_destroy(mi.frame);
+        return NULL;
+    }
+
+    mi.opts = 0;
+
+    malloc_next += shared_size;
+
+    shl__barrelfish_share_frame(&mi);
+
+    return (void *)mi.vaddr;
+
+#else
+    return malloc(shared_size);
+#endif
+}
+
 int shl__barrelfish_share_frame(struct mem_info *mi)
 {
 #if !SHL_BARRELFISH_USE_SHARED
