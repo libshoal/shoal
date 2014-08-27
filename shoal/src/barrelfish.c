@@ -146,7 +146,7 @@ void *shl__alloc_struct_shared(size_t shared_size)
     return (void *)mi.vaddr;
 
 #else
-    return malloc(shared_size);
+    return calloc(1, shared_size);
 #endif
 }
 
