@@ -22,6 +22,9 @@ class Timer {
     double stop(void);
     double get(void);
     void reset(void);
+    Timer() {
+        timer_secs = 0.0;
+    }
  private:
     struct timeval TV1, TV2;
 };

@@ -25,8 +25,8 @@ int shl__barrelfish_init(size_t num_threads)
     struct xomp_args args;
     args.type = XOMP_ARG_TYPE_UNIFORM;
     args.args.uniform.nthreads = num_threads;
-    args.args.uniform.core_stride = 1;
-    args.args.uniform.nphi = 0;
+    args.core_stride = 2;
+    args.args.uniform.nphi = 2;
     args.args.uniform.argc = argcount;
     args.args.uniform.argv = argvals;
     args.args.uniform.worker_loc = XOMP_WORKER_LOC_LOCAL;

@@ -81,6 +81,8 @@ public:
         num_wr = 0;
         num_rd = 0;
 #endif
+        array = NULL;
+        array_copy = NULL;
     }
 
     shl_array(size_t s,
@@ -93,6 +95,7 @@ public:
         use_hugepage = get_conf()->use_hugepage;
         read_only = false;
         array = (T*)data;
+        array_copy = NULL;
         meminfo = mem;
         alloc_done = true;
     }
