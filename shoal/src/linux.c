@@ -380,3 +380,13 @@ void** shl_malloc_replicated(size_t size,
     }
     return tmp;
 }
+
+long shl__node_size(int node, long  *freep)
+{
+    return numa_node_size(node, freep);
+}
+
+int shl__max_node(void)
+{
+    return numa_max_node();
+}

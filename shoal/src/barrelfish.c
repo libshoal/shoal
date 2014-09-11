@@ -212,3 +212,12 @@ void shl__copy_back_array_single(void *src, void *dest, size_t size, bool is_cop
     assert(!"NYI");
 }
 
+long shl__node_size(int node, long  *freep)
+{
+    assert(!"NYI");
+}
+
+int shl__max_node(void)
+{
+    assert(!"NYI");
+}

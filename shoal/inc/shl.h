@@ -97,6 +97,7 @@ void shl__bind_processor(int proc);
 void shl__bind_processor_aff(int proc);
 int shl__get_proc_for_node(int node);
 int shl__max_node(void);
+long shl__node_size(int node, long *freep);
 int numa_cpu_to_node(int);
 void* shl__malloc(size_t size, int opts, int *pagesize, void **ret_mi);
 void** shl_malloc_replicated(size_t, int*, int);

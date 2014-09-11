@@ -11,7 +11,9 @@
 #define __SHL_ARRAY
 
 #include <cstdlib>
+#include <cstdarg>
 #include <iostream>
+#include <limits>
 
 #include "shl.h"
 #include "shl_timer.hpp"
@@ -547,6 +549,70 @@ shl_array<T>* shl__malloc(size_t size,
     res->set_used (is_used);
 
     return res;
+}
+
+
+template <class T>
+int shl__estimate_size(size_t size,
+                       const char *name,
+                       bool is_ro,
+                       bool is_dynamic,
+                       bool is_used,
+                       bool is_graph,
+                       bool is_indexed)
+{
+    return is_used ? sizeof(T)*size : 0;
+}
+
+
+int shl__estimate_working_set_size(int num, ...)
+{
+    // Determine working set size
+
+    printf("Number of arrays is: %d\n", num);
+
+    va_list a_list;
+    va_start(a_list, num);
+
+    int sum = 0;
+
+    for (int x = 0; x<num; x++) {
+
+        int tmp = va_arg(a_list, int);
+        printf("Size of array %10d in bytes is %10d\n",
+               x, tmp);
+
+        sum += tmp;
+    }
+    va_end (a_list);
+
+    printf("Total working set size: %d bytes - ", sum);
+    print_number(sum);
+    printf("\n");
+
+    // Figure out minimum NUMA node
+    long minsize = std::numeric_limits<long>::max();
+    for (int i=0; i<shl__max_node()+1; i++) {
+
+        long tmp = shl__node_size(i, NULL);
+        minsize = std::min(minsize, tmp);
+        printf("Size of node %2d is %10ld\n", i, tmp);
+    }
+
+    printf("minimum node size is: %ld - ", minsize);
+    print_number(minsize);
+    printf("\n");
+
+    if (minsize>sum) {
+
+        printf("working set fits into each node\n");
+    } else {
+
+        printf(ANSI_COLOR_RED "working set does NOT fit into each node"
+               ANSI_COLOR_RESET "\n");
+    }
+
+    return 0;
 }
 
 #endif /* __SHL_ARRAY */
