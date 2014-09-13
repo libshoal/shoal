@@ -202,7 +202,7 @@ public:
     {
         if (!do_copy_in()) {
 #if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
-       shl__barrelfish_share_frame((struct mem_info *)meminfo);
+            printf("shl_array[%s]: not copying \n", shl_array<T>::name);
 #endif
             return;
         }
@@ -211,6 +211,8 @@ public:
         printf("Copying array %s\n", shl_base_array::name);
 #endif
         assert(alloc_done);
+
+        printf("shl_array[%s]: copy_from\n", shl_array<T>::name);
 
         assert(array_copy == NULL);
         array_copy = src;

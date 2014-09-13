@@ -9,6 +9,11 @@
 #ifndef __SHL_TIMER
 #define __SHL_TIMER
 
+#include <vector>
+#include <string>
+
+using namespace std;
+
 // --------------------------------------------------
 // Timer
 // --------------------------------------------------
@@ -29,4 +34,27 @@ class Timer {
     struct timeval TV1, TV2;
 };
 
+class MultiTimer {
+    public:
+        MultiTimer(int steps) {
+            times = vector<double>();
+            times.reserve(steps);
+            step_times = vector<double>();
+            step_times.reserve(steps);
+            labels = vector<string>();\
+            labels.reserve(steps);
+        }
+        void start();
+        void step(string name);
+        void stop();
+        void print();
+ private:
+    struct timeval tv_start, tv_prev, tv_current;
+    vector<double> times;
+    vector<double> step_times;
+    vector<string> labels;
+
+};
+
 #endif /* __SHL_TIMER */
+

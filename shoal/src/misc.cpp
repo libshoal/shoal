@@ -42,6 +42,39 @@ void Timer::reset(void)
     tv_usec = 0;
     running = false;
     timer_secs = 0.0;
+
+void MultiTimer::start(void)
+{
+    gettimeofday(&tv_start, NULL);
+    gettimeofday(&tv_prev, NULL);
+}
+
+void MultiTimer::stop(void)
+{
+    step("Total");
+}
+
+void MultiTimer::step(string name)
+{
+    gettimeofday(&tv_current, NULL);
+    double timer_secs = (tv_current.tv_sec - tv_start.tv_sec)*1000
+                        + (tv_current.tv_usec - tv_start.tv_usec)*0.001;
+    times.push_back(timer_secs);
+    timer_secs = (tv_current.tv_sec - tv_prev.tv_sec)*1000
+                    + (tv_current.tv_usec - tv_prev.tv_usec)*0.001;
+    step_times.push_back(timer_secs);
+    labels.push_back(name);
+    tv_prev = tv_current;
+}
+
+void MultiTimer::print()
+{
+    printf("-------------------------------\n");
+    printf("%-20s %-12s %-14s \n", "Step", "Time", "Step Time");
+    for (unsigned i = 0; i < times.size(); ++i) {
+        printf("%-20s: %.6f (%.6f)\n", labels.at(i).c_str(), times.at(i), step_times.at(i));
+    }
+    printf("-------------------------------\n");
 }
 
 void shl__start_timer(void)

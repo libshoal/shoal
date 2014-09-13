@@ -13,8 +13,14 @@ struct mem_info {
     uint32_t opts;
 };
 
+///
+#define SHL_RAM_MIN_BASE (64UL * 1024 * 1024 * 1024)
+
+///
+#define SHL_RAM_MAX_LIMIT (512UL * 1024 * 1024 * 1024)
+
 #define SHL_HUGEPAGE 1
-#define SHL_REPLICATION 0
+#define SHL_REPLICATION 1
 #define SHL_DISTRIBUTION 1
 #define SHL_PARTITION 0
 

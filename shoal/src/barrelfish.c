@@ -29,7 +29,7 @@ int shl__barrelfish_init(size_t num_threads)
     args.args.uniform.nphi = 2;
     args.args.uniform.argc = argcount;
     args.args.uniform.argv = argvals;
-    args.args.uniform.worker_loc = XOMP_WORKER_LOC_LOCAL;
+    args.args.uniform.worker_loc = XOMP_WORKER_LOC_MIXED;
 
     err = bomp_xomp_init(&args);
     if (err_is_fail(err)) {
@@ -124,10 +124,17 @@ void *shl__alloc_struct_shared(size_t shared_size)
     struct mem_info mi;
     errval_t err;
 
+    uint64_t min_base, max_limit;
+    ram_get_affinity(&min_base, &max_limit);
+    ram_set_affinity(SHL_RAM_MIN_BASE, SHL_RAM_MAX_LIMIT);
+
+
     err = frame_alloc(&mi.frame, shared_size, &shared_size);
     if (err_is_fail(err)) {
         return NULL;
     }
+
+    ram_set_affinity(min_base, max_limit);
 
     mi.vaddr = malloc_next;
 
@@ -212,17 +219,22 @@ void* shl__malloc(size_t size,
 
 
     // round up to multiple of page size
-    #if !SHL_BARRELFISH_USE_SHARED
-        size = (size + objsize + pg_size - 1) & ~(pg_size - 1);
-    #else
-        size = (size + pg_size - 1) & ~(pg_size - 1);
-    #endif
+#if !SHL_BARRELFISH_USE_SHARED
+    size = (size + objsize + pg_size - 1) & ~(pg_size - 1);
+#else
+    size = (size + pg_size - 1) & ~(pg_size - 1);
+#endif
 
+    uint64_t min_base, max_limit;
+    ram_get_affinity(&min_base, &max_limit);
+    ram_set_affinity(SHL_RAM_MIN_BASE, SHL_RAM_MAX_LIMIT);
 
     err = frame_alloc(&mi->frame, size, &size);
     if (err_is_fail(err)) {
         goto err_alloc;
     }
+
+    ram_set_affinity(min_base, max_limit);
 
     err = vspace_map_one_frame_fixed(mi->vaddr, size, mi->frame, NULL, NULL);
     if (err_is_fail(err)) {
