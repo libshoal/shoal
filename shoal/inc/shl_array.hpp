@@ -16,6 +16,8 @@
 #include "shl.h"
 #include "shl_configuration.hpp"
 
+//#define PROFILE
+
 // --------------------------------------------------
 // Implementations
 // --------------------------------------------------
@@ -36,6 +38,11 @@ protected:
     T* array = NULL;
     T* array_copy = NULL;
 
+#ifdef PROFILE
+    int64_t num_wr;
+    int64_t num_rd;
+#endif
+
     void *mem;
 
     bool is_used;
@@ -49,6 +56,11 @@ public:
         use_hugepage = get_conf()->use_hugepage;
         read_only = false;
         alloc_done = false;
+
+#ifdef PROFILE
+        num_wr = 0;
+        num_rd = 0;
+#endif
     }
 
     virtual void alloc(void)
@@ -73,6 +85,30 @@ public:
     virtual bool do_copy_in(void)
     {
         return is_used && !is_dynamic;
+    }
+
+    virtual T get(size_t i)
+    {
+#ifdef PROFILE
+        __sync_fetch_and_add(&num_rd, 1);
+#endif
+        return array[i];
+    }
+
+    virtual void set(size_t i, T v)
+    {
+#ifdef PROFILE
+        __sync_fetch_and_add(&num_wr, 1);
+#endif
+        array[i] = v;
+    }
+
+    virtual void print_statistics(void)
+    {
+#ifdef PROFILE
+        printf("Number of writes %10d\n", num_wr);
+        printf("Number of reads  %10d\n", num_rd);
+#endif
     }
 
     /*
