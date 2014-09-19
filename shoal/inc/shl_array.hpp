@@ -375,6 +375,23 @@ public:
         }
     }
 
+    virtual T get(size_t i)
+    {
+#ifdef PROFILE
+        __sync_fetch_and_add(&shl_array<T>::num_rd, 1);
+#endif
+        return rep_array[lookup()][i];
+    }
+
+    virtual void set(size_t i, T v)
+    {
+#ifdef PROFILE
+        __sync_fetch_and_add(&shl_array<T>::num_wr, 1);
+#endif
+        for (int j=0; j<num_replicas; j++)
+            rep_array[j][i] = v;
+    }
+
     ~shl_array_replicated(void)
     {
         // // Free replicas
@@ -446,7 +463,7 @@ shl_array<T>* shl__malloc(size_t size,
 
     // 2) Replicate if array is read-only and can't be partitioned
     bool replicate = !partition && // none of the others
-        is_ro && get_conf()->use_replication;
+        /*is_ro &&*/ get_conf()->use_replication;
 
     // 3) Distribute if nothing else works and there is more than one node
     bool distribute = !replicate && !partition && // none of the others
