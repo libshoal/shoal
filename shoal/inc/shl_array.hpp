@@ -463,7 +463,7 @@ shl_array<T>* shl__malloc(size_t size,
 
     // 2) Replicate if array is read-only and can't be partitioned
     bool replicate = !partition && // none of the others
-        /*is_ro &&*/ get_conf()->use_replication;
+        is_ro && get_conf()->use_replication;
 
     // 3) Distribute if nothing else works and there is more than one node
     bool distribute = !replicate && !partition && // none of the others
