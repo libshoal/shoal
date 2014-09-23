@@ -448,12 +448,13 @@ protected:
  */
 template <class T>
 shl_array<T>* shl__malloc(size_t size,
-                          const char *name,
-                          bool is_ro,
-                          bool is_dynamic,
-                          bool is_used,
-                          bool is_graph,
-                          bool is_indexed) {
+            const char *name,
+            bool is_ro,
+            bool is_dynamic,
+            bool is_used,
+            bool is_graph,
+            bool is_indexed,
+            bool initialize) {
 
     // Policy for memory allocation
     // --------------------------------------------------
@@ -468,7 +469,7 @@ shl_array<T>* shl__malloc(size_t size,
     // 3) Distribute if nothing else works and there is more than one node
     bool distribute = !replicate && !partition && // none of the others
         shl__get_num_replicas()>1 &&
-        get_conf()->use_distribution;
+        get_conf()->use_distribution && initialize;
 
     shl_array<T> *res = NULL;
 
