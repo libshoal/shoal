@@ -106,13 +106,19 @@ void papi_start(void)
 
 int shl__get_rep_id(void)
 {
+    return shl__lookup_rep_id(omp_get_thread_num());
+
+}
+
+int shl__lookup_rep_id(int core)
+{
 #ifdef DEBUG
     __sync_fetch_and_add(&num_lookup, 1);
 #endif
     assert(omp_get_num_threads()<MAXCORES);
-    assert(replica_lookup[omp_get_thread_num()]>=0);
+    assert(replica_lookup[core]>=0);
 
-    return replica_lookup[omp_get_thread_num()];
+    return replica_lookup[core];
 }
 
 int shl__get_num_replicas(void)
@@ -127,9 +133,6 @@ void shl__repl_sync(void* src, void **dest, size_t num_dest, size_t size)
 #ifdef BARRELFISH
     assert(!"NYI");
 #else
-    omp_set_dynamic(0);     // Explicitly disable dynamic teams
-    omp_set_num_threads(32); // Use 4 threads for all consecutive parallel regions
-
     for (size_t i=0; i<num_dest; i++) {
 
         #pragma omp parallel for
@@ -138,8 +141,6 @@ void shl__repl_sync(void* src, void **dest, size_t num_dest, size_t size)
             ((char*) dest[i])[j] = ((char*) src)[j];
         }
     }
-
-    omp_set_num_threads(0);
 #endif
 }
 
@@ -164,10 +165,14 @@ coreid_t *affinity_conf = NULL;
 
 void shl__init(size_t num_threads, bool partitioned_support)
 {
-    printf("SHOAL (v %s) initialization .. ", VERSION);
+    printf("SHOAL (v %s) initialization .. %zu threads .. ",
+           VERSION, num_threads);
+    assert(num_threads>0);
 
     Configuration *conf = get_conf();
     assert (numa_available()>=0);
+
+    conf->num_threads = num_threads;
 
     assert (!get_conf()->use_partition || partitioned_support || !"Compile with -DSHL_STATIC");
     if (!get_conf()->use_partition && partitioned_support) {
@@ -222,4 +227,14 @@ void shl__init(size_t num_threads, bool partitioned_support)
     printf("[%c] Distribution\n", conf->use_distribution ? 'x' : ' ');
     printf("[%c] Partition\n", conf->use_partition ? 'x' : ' ');
     printf("[%c] Hugepage\n", conf->use_hugepage ? 'x' : ' ');
+}
+
+int shl__num_threads(void)
+{
+    return get_conf()->num_threads;
+}
+
+int shl__get_tid(void)
+{
+    return omp_get_thread_num();
 }

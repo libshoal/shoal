@@ -292,11 +292,13 @@ template <class T>
 class shl_array_replicated : public shl_array<T>
 {
     T* master_copy;
-    T** rep_array;
-    int num_replicas;
-    int (*lookup)(void);
 
     void **mem_array;
+
+protected:
+    int num_replicas;
+    T** rep_array;
+    int (*lookup)(void);
 
 public:
     /**
@@ -405,7 +407,7 @@ public:
     void synchronize(void)
     {
         assert (shl_array<T>::alloc_done);
-        shl__repl_sync(master_copy, rep_array, num_replicas, shl_array<T>::size*sizeof(T));
+        shl__repl_sync(master_copy, (void**) rep_array, num_replicas, shl_array<T>::size*sizeof(T));
     }
 
 protected:

@@ -113,6 +113,7 @@ coreid_t* parse_affinity (bool ignore)
                         return NULL;
 
                     res = (coreid_t*) malloc(sizeof(coreid_t)*count);
+                    assert (res!=NULL);
                 }
             do
                 {

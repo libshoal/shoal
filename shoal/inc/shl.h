@@ -104,12 +104,15 @@ void shl__end(void);
 void papi_stop(void);
 void papi_init(void);
 void papi_start(void);
-int shl__get_rep_id(void);
+int  shl__get_rep_id(void);
+int  shl__lookup_rep_id(int);
 void shl__repl_sync(void*, void**, size_t, size_t);
 void shl__init_thread(int);
 void handle_error(int);
-int shl__get_num_replicas(void);
+int  shl__get_num_replicas(void);
 void shl__init(size_t,bool);
+int  shl__num_threads(void);
+int  shl__get_tid(void);
 // array helpers
 // --------------------------------------------------
 void** shl__copy_array(void *src, size_t size, bool is_used,

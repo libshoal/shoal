@@ -21,7 +21,7 @@ class Configuration {
 
     ~Configuration(void) {
 
-        delete node_mem_avail;
+        //        delete node_mem_avail;
     }
 
     // Should large pages be used
@@ -44,6 +44,9 @@ class Configuration {
 
     // How much memory is available on each node
     long* node_mem_avail;
+
+    // Number of threads
+    size_t num_threads;
 };
 
 Configuration* get_conf(void);
