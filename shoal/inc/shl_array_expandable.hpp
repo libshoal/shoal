@@ -4,13 +4,14 @@
 #include "shl.h"
 
 #include <map>
+#include <vector>
 
 extern "C" {
 #include <pthread.h>
 }
 
 #define SANITY_CHECK
-#define SHL_DBG_ARRAY
+//#define SHL_DBG_ARRAY
 
 /**
  * \brief Array that is initally single-copy, but can be expanded to
@@ -44,9 +45,15 @@ extern "C" {
 template <class T>
 class shl_array_expandable : public shl_array_replicated<T>
 {
-    typedef std::map<size_t, T> write_set_t;
+    // Elements in a write set
+    typedef std::pair<size_t, T> write_set_e;
+
+    // A single write set: vector of writeset-elements
+    typedef std::vector<write_set_e> write_set_t;
+    typedef typename std::vector<write_set_e>::iterator write_set_i;
+
+    // One writeset per thread: map(tid -> writeset)
     typedef std::map<size_t, write_set_t> write_sets_t;
-    typedef typename std::map<size_t, T>::iterator write_set_i;
     typedef typename std::map<size_t, write_set_t>::iterator write_sets_i;
 
     bool is_expanded;
@@ -79,6 +86,7 @@ public:
                            (void**) shl_array_replicated<T>::rep_array,
                            shl_array_replicated<T>::num_replicas,
                            shl_array<T>::size*sizeof(T));
+            printf("Done!\n");
         }
         pthread_barrier_wait(&b);
     }
@@ -109,7 +117,7 @@ public:
 
                     size_t idx = j->first;
                     T val = j->second;
-#ifdef DEBUG
+#ifdef SHL_DBG_ARRAY
                     printf("Update on [%10zu] to %10d\n", idx, val);
 #endif
 
@@ -137,6 +145,7 @@ public:
 
             write_set_t t;
             write_sets.insert(make_pair(i, t));
+            write_sets[i].reserve(1000000);
         }
 
         is_expanded = false;
@@ -182,10 +191,16 @@ public:
     virtual void set(size_t i, T v)
     {
         if (is_expanded) {
+
+            if (i%10000==0)
+                printf("writing index %zu\n", i);
+
             int rep_id = shl_array_replicated<T>::lookup();
             shl_array_replicated<T>::rep_array[rep_id][i] = v;
             // Record write-set
-            write_sets[shl__get_tid()].insert(std::make_pair(i, v));
+            write_set_e e = std::make_pair(i,v);
+            write_set_t *t = &(write_sets[shl__get_tid()]);
+            t->insert(t->begin(), e);
         }
 
         else {
