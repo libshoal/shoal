@@ -14,9 +14,12 @@
 // --------------------------------------------------
 class Timer {
  public:
-    void start();
-    double stop();
+    long tv_sec = 0;
+    long tv_usec = 0;
     double timer_secs = 0.0;
+    void start(void);
+    double stop(void);
+    double get(void);
  private:
     struct timeval TV1, TV2;
 };

@@ -126,7 +126,7 @@ public:
         printf("\n");
     }
 
-    ~shl_array(void)
+    virtual ~shl_array(void)
     {
         // if (array!=NULL) {
         //     free(array);
@@ -223,6 +223,14 @@ protected:
         printf(" -- ");
         printf("hugepage=[%c] ", use_hugepage ? 'X' : ' ');
     }
+
+    void dump(void)
+    {
+        for (size_t i=0; i<size; i++) {
+
+            printf("idx[%3zu] is %d\n", i, array[i]);
+        }
+    }
 };
 
 
@@ -298,6 +306,7 @@ class shl_array_replicated : public shl_array<T>
 protected:
     int num_replicas;
     T** rep_array;
+public:
     int (*lookup)(void);
 
 public:
@@ -394,7 +403,7 @@ public:
             rep_array[j][i] = v;
     }
 
-    ~shl_array_replicated(void)
+    virtual ~shl_array_replicated(void)
     {
         // // Free replicas
         // for (int i=0; i<num_replicas; i++) {

@@ -33,6 +33,9 @@ extern "C" {
 #define GIGA (MEGA*BASE_UNIT)
 #define MAXCORES 100
 
+// Size of a cacheline (bytes)
+#define CACHELINE 8
+
 // --------------------------------------------------
 // Hardcoded page sizes
 // --------------------------------------------------

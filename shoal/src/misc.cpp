@@ -24,9 +24,15 @@ double Timer::stop(void)
 {
     gettimeofday(&TV2, NULL);
     timer_secs += (TV2.tv_sec - TV1.tv_sec)*1000 + (TV2.tv_usec - TV1.tv_usec)*0.001;
+    tv_sec += (TV2.tv_sec - TV1.tv_sec);
+    tv_usec += (TV2.tv_usec - TV1.tv_usec);
     return timer_secs;
 }
 
+double Timer::get(void)
+{
+    return tv_sec*1000 + tv_usec*0.0001;
+}
 
 void shl__start_timer(void)
 {

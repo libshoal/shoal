@@ -126,8 +126,6 @@ int shl__get_num_replicas(void)
     return numa_max_node()+1;
 }
 
-
-
 void shl__repl_sync(void* src, void **dest, size_t num_dest, size_t size)
 {
 #ifdef BARRELFISH
@@ -202,7 +200,7 @@ void shl__init(size_t num_threads, bool partitioned_support)
     if (conf->use_replication) {
         for (size_t i=0; i<num_threads; i++) {
             replica_lookup[i] = numa_cpu_to_node(affinity_conf[i]);
-            printf("replication: CPU %zu is on node %d\n", i, replica_lookup[i]);
+            printf("replication: CPU % 3zu is on node % 2d\n", i, replica_lookup[i]);
         }
     }
 
