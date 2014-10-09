@@ -295,6 +295,8 @@ protected:
 /**
  * \brief Array implementing replication
  *
+ *
+ * The number of replicas is given by shl_malloc_replicated.
  */
 template <class T>
 class shl_array_replicated : public shl_array<T>

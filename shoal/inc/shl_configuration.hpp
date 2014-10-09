@@ -47,6 +47,11 @@ class Configuration {
 
     // Number of threads
     size_t num_threads;
+
+    // NUMA trim
+    // Use this to instruct the runtime to not replica on all n NUMA nodes,
+    // but only n/trim_factor ones.
+    int numa_trim;
 };
 
 Configuration* get_conf(void);

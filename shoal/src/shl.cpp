@@ -38,6 +38,7 @@ Configuration::Configuration(void) {
     use_replication = get_env_int("SHL_REPLICATION", 1);
     use_distribution = get_env_int("SHL_DISTRIBUTION", 1);
     use_partition = get_env_int("SHL_PARTITION", 1);
+    numa_trim = get_env_int("SHL_NUMA_TRIM", 1);
 #endif
     // NUMA information
     num_nodes = numa_max_node();
@@ -118,14 +119,21 @@ int shl__lookup_rep_id(int core)
     __sync_fetch_and_add(&num_lookup, 1);
 #endif
     assert(omp_get_num_threads()<MAXCORES);
+    assert(core<MAXCORES);
     assert(replica_lookup[core]>=0);
 
-    return replica_lookup[core];
+    int repid = replica_lookup[core];
+
+    return repid/get_conf()->numa_trim;
 }
 
 int shl__get_num_replicas(void)
 {
-    return numa_max_node()+1;
+    int trim = get_conf()->numa_trim;
+    int num_nodes = numa_max_node()+1;
+    assert (num_nodes%2 == 0 && num_nodes>=2*trim);
+
+    return num_nodes/trim;
 }
 
 void shl__repl_sync(void* src, void **dest, size_t num_dest, size_t size)
@@ -163,6 +171,10 @@ void handle_error(int retval)
 // translate: virtual COREID -> physical COREID
 coreid_t *affinity_conf = NULL;
 
+/**
+ * \brief Initialize shoal library
+ *
+ */
 void shl__init(size_t num_threads, bool partitioned_support)
 {
     printf("SHOAL (v %s) initialization .. %zu threads .. ",
@@ -204,7 +216,7 @@ void shl__init(size_t num_threads, bool partitioned_support)
 
             if (conf->use_replication) {
                 printf("replication: CPU %03zu is on node % 2d\n",
-                       i, replica_lookup[i]);
+                       i, shl__lookup_rep_id(i));
             }
         }
         for (int i=0; i<shl__get_num_replicas(); i++) {
@@ -230,10 +242,12 @@ void shl__init(size_t num_threads, bool partitioned_support)
     papi_init();
 #endif
 
+    // Print configuration
     printf("[%c] Replication\n", conf->use_replication ? 'x' : ' ');
     printf("[%c] Distribution\n", conf->use_distribution ? 'x' : ' ');
     printf("[%c] Partition\n", conf->use_partition ? 'x' : ' ');
     printf("[%c] Hugepage\n", conf->use_hugepage ? 'x' : ' ');
+    printf("[%d] NUMA trim\n", conf->numa_trim);
 }
 
 int shl__num_threads(void)
