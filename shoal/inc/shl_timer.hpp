@@ -14,12 +14,14 @@
 // --------------------------------------------------
 class Timer {
  public:
+    bool running = false;
     long tv_sec = 0;
     long tv_usec = 0;
-    double timer_secs = 0.0;
+    double timer_secs = 0.0; // these are actually miliseconds
     void start(void);
     double stop(void);
     double get(void);
+    double reset(void);
  private:
     struct timeval TV1, TV2;
 };

@@ -17,11 +17,13 @@ int replica_lookup[MAXCORES];
 
 void Timer::start(void)
 {
+    running = true;
     gettimeofday(&TV1, NULL);
  }
 
 double Timer::stop(void)
 {
+    assert (running);
     gettimeofday(&TV2, NULL);
     timer_secs += (TV2.tv_sec - TV1.tv_sec)*1000 + (TV2.tv_usec - TV1.tv_usec)*0.001;
     tv_sec += (TV2.tv_sec - TV1.tv_sec);
@@ -32,6 +34,14 @@ double Timer::stop(void)
 double Timer::get(void)
 {
     return tv_sec*1000 + tv_usec*0.0001;
+}
+
+double Timer::reset(void)
+{
+    tv_sec = 0;
+    tv_usec = 0;
+    running = false;
+    timer_secs = 0.0;
 }
 
 void shl__start_timer(void)

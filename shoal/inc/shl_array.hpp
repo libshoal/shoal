@@ -224,7 +224,7 @@ protected:
         printf("hugepage=[%c] ", use_hugepage ? 'X' : ' ');
     }
 
-    void dump(void)
+    virtual void dump(void)
     {
         for (size_t i=0; i<size; i++) {
 
@@ -301,6 +301,7 @@ class shl_array_replicated : public shl_array<T>
 {
     T* master_copy;
 
+public:
     void **mem_array;
 
 protected:
@@ -335,6 +336,7 @@ public:
                                                 &num_replicas,
                                                 shl_array<T>::get_options());
 
+        // ?
         mem_array = ((void **)rep_array) + num_replicas;
 
 
@@ -425,6 +427,18 @@ protected:
         shl_array<T>::print_options();
         printf("replication=[X]");
     }
+
+    virtual void dump(void)
+    {
+        for (int j=0; j<num_replicas; j++) {
+
+            for (size_t i=0; i<shl_array<T>::size; i++) {
+
+                printf("rep[%2d] idx[%3zu] is %d\n", j, i, rep_array[j][i]);
+            }
+        }
+    }
+
 };
 
 // --------------------------------------------------

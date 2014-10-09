@@ -19,6 +19,9 @@ struct array_cache {
 };
 
 #define SANITY_CHECK
+#define WS_BUFFER_SIZE (1024*1024*100)
+
+#define SHL_EXPAND_NO_HOUSEKEEPING
 //#define SHL_DBG_ARRAY
 
 /**
@@ -64,16 +67,95 @@ template <class T>
 class shl_array_expandable : public shl_array_replicated<T>
 {
 
+public:
+    Timer t_collapse;
+    Timer t_expand[MAXCORES];
+
 private:
-    Timer expand_timer;
     Timer t_write_back[MAXCORES];
     union counter_element c_write_back[MAXCORES];
+
+    /**
+     * \brief Check given writeset for given index
+     *
+     * Checks if given index is part of the write-set
+     */
+    bool in_writeset(size_t idx, int ws)
+    {
+        bool res = false;
+        struct ws_thread_e *wst = &write_set[ws].p;
+
+        for (size_t ii=0; ii<wst->ws_size; ii++) {
+
+            if (wst->buffer[ii].index == idx)
+                res = true;
+        }
+
+        return res;
+    }
+
+    /**
+     * \brief Print debug information for the given index
+     *
+     * This is:
+     * - print the current value in the master and each replica
+     * - for each write-set if the given index is in there
+     */
+    void debug_index(size_t idx)
+    {
+        // Dump content of master copy
+        printf("%30s %d\n", "master-copy", shl_array<T>::array[idx]);
+        printf("\n");
+
+        // Dump content of replicas
+        for (int i=0; i<shl_array_replicated<T>::num_replicas; i++) {
+            printf("%4d %25s %d\n", i, "replica", shl_array_replicated<T>::rep_array[i][idx]);
+        }
+        printf("\n");
+
+        // Check if in any of the write sets
+        for (int jinner=0; jinner<shl__num_threads(); jinner++) {
+            printf("%4d %4d %20s %d\n", jinner, shl__lookup_rep_id(jinner),
+                   "write-set", in_writeset(idx, jinner));
+        }
+    }
+
+    /**
+     * \brief Check consistency of arrays
+     *
+     * Checks for each replica if it is consistency with the master copy
+     */
+    bool check_consistency(void)
+    {
+        for (int j=0; j<shl_array_replicated<T>::num_replicas; j++) {
+
+            size_t num_total = shl_array<T>::size;
+            for (size_t i=0; i<num_total; i++) {
+
+                if (shl_array<T>::array[i] !=
+                    shl_array_expandable<T>::rep_array[j][i]) {
+
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
 
     /**
      * \brief Write back write set of current thread to master copy
      */
     void ws_write_back(void)
     {
+#ifdef SHL_EXPAND_NO_HOUSEKEEPING
+        //        printf("ws_write_back deactivated\n");
+        // XXX put an assert here!
+        int tid = shl__get_tid();
+        struct ws_thread_e *e = &write_set[tid].p;
+        e->ws_size = 0;
+        return;
+#else /* SHL_EXPAND_NO_HOUSEKEEPING */
         debug_printf("Writing back on %d .. \n", shl__get_tid());
 
         int tid = shl__get_tid();
@@ -95,7 +177,15 @@ private:
 
         t_write_back[tid].stop();
         c_write_back[tid].counter++;
+#endif /* SHL_EXPAND_NO_HOUSEKEEPING */
     }
+
+// public:
+//     // Make master array used distribution
+//     virtual int get_options(void)
+//     {
+//         return shl_array<T>::get_options() | SHL_MALLOC_DISTRIBUTED;
+//     }
 
 protected:
 
@@ -113,7 +203,6 @@ protected:
 
     write_sets_t write_sets;
 #else
-    #define WS_BUFFER_SIZE 10*1024
 
     // State information for writes
     //
@@ -156,6 +245,15 @@ public:
 
     void expand(void)
     {
+        static size_t num_expand = 0;
+        num_expand++;
+
+        int tid = shl__get_tid();
+
+        t_expand[tid].start();
+
+        assert(!is_expanded);
+
         int r = pthread_barrier_wait(&b);
         assert(r==PTHREAD_BARRIER_SERIAL_THREAD || r==0);
 
@@ -165,6 +263,7 @@ public:
 
             printf("Expanding array .. SERIAL\n");
 
+            Timer expand_timer;
             expand_timer.start();
             assert (is_expanded==false);
 
@@ -175,42 +274,75 @@ public:
                            shl_array<T>::size*sizeof(T));
             double s = expand_timer.stop();
 
-            printf("Done! (t_expand: %lf)\n", s);
+            printf("Done! (t_expand: %lf ms)\n", s);
         }
         pthread_barrier_wait(&b);
 #else
+#if defined(SHL_DBG_ARR)
         if (r==PTHREAD_BARRIER_SERIAL_THREAD) {
 
+            shl_array<T>::dump();
             printf("Expanding array .. SERIAL\n");
         }
+#endif /* SHL_DBG_ARR */
+        pthread_barrier_wait(&b);
 
-        Timer t_expand;
-        t_expand.start();
 
         // Every thread copies their own data
-        if (shl__get_tid()==shl__get_rep_id()) {
+        if (shl__rep_coordinator(shl__get_tid())) {
             memcpy((void*)shl_array_replicated<T>::rep_array[shl__get_rep_id()],
                     (void*)shl_array<T>::array,
                     shl_array<T>::size*sizeof(T));
         }
-        pthread_barrier_wait(&b);
+        r = pthread_barrier_wait(&b);
 
+#if defined(SHL_DBG_ARR)
         if (r==PTHREAD_BARRIER_SERIAL_THREAD) {
 
-            printf("Done! (t_expand: %lf)\n", t_expand.stop());
+            shl_array_replicated<T>::dump();
+
+            // At this point, all arrays have to be consistent
+            assert(check_consistency());
         }
+#endif /* SHL_DBG_ARR */
+
+        t_expand[tid].stop();
+#ifdef SHL_DBG_ARRAY
+        pthread_barrier_wait(&b);
+        printf("Done! (t_expand: %lf)\n", t_expand[tid].get());
+#endif
 
         is_expanded = true;
 
 #endif
+#if defined(SHL_DBG_ARR)
+        noprintf("---%d------------------------------------\n", shl__get_tid());
+        r = pthread_barrier_wait(&b);
+#endif /* SHL_DBG_ARR */
+
+        assert(is_expanded);
     }
 
+    /**
+     * \brief Collapse arrays
+     *
+     * Writes to replicas will be synchronized back to the master copy.
+     *
+     * If multiple replicas have been written at the same index i1
+     * since the last expand, the value i1' written back to the master
+     * copy is undeterministic.
+     */
     void collapse(void)
     {
-#ifdef SHL_EXPAND_STL
-        int r = pthread_barrier_wait(&b);
+        assert (is_expanded);
+
+        // XXX I think it also works without this barrier
+        // (it was inside SHL_EXPAND_STL before)
+
+        int r __attribute((unused)) = pthread_barrier_wait(&b);
         assert(r==PTHREAD_BARRIER_SERIAL_THREAD || r==0);
 
+#ifdef SHL_EXPAND_STL
         if (r==PTHREAD_BARRIER_SERIAL_THREAD) {
 
             printf("Collapsing array .. SERIAL \n");
@@ -231,32 +363,152 @@ public:
                     T val = j->second;
 #ifdef SHL_DBG_ARRAY
                     printf("Update on [%10zu] to %10d\n", idx, val);
-#endif
+#endif /* SHL_DBG_ARRAY */
 
 #ifdef SANITY_CHECK
                     assert (shl_array_replicated<T>::rep_array[pid][idx] == val);
-#endif
+#endif /* SANITY_CHECK */
                     shl_array<T>::array[idx] = val;
                 }
             }
             is_expanded = false;
         }
-#else
-        ws_write_back();
-        is_expanded = false;
-#endif
-        int r __attribute((unused)) = pthread_barrier_wait(&b);
+#else /* SHL_EXPAND_STL */
+#ifdef SHL_EXPAND_NO_HOUSEKEEPING
+        if (r == PTHREAD_BARRIER_SERIAL_THREAD) {
+
+            t_collapse.start();
+
+#ifdef  SHL_DBG_ARRAY
+            printf("housekeeping-free collapse on %d\n", shl__get_tid());
+
+            // Determine the size of all the write-sets
+            size_t ws_size = 0;
+            // So we have many duplicates ..
+            for (int c=0; c<shl__num_threads(); c++) {
+                ws_size += write_set[c].p.ws_size;
+            }
+            printf("size of write-sets is %zu\n", ws_size);
+#endif /* SHL_DBG_ARRAY */
+
+            size_t num_total = shl_array<T>::size;
+            size_t num_written = 0;
+            for (size_t i=0; i<num_total; i++) {
+
+                // Remeber original master value
+                T master_value = shl_array<T>::array[i];
+
+                // Last value copied from replica to master copy
+                T new_value = master_value;
+
+                bool updated = false;
+
+                // Check all replicas for update
+                for (int j=0; j<shl_array_replicated<T>::num_replicas; j++) {
+
+                    // Read copy from replica
+                    T rep_value = shl_array_replicated<T>::rep_array[j][i];
+                    if (rep_value != master_value) {
+
+                        // Value in replica is different, copy to master copy
 
 #ifdef SHL_DBG_ARRAY
+                        // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+                        // SANITY CHECK
+                        printf("Sanity check start for id=%zu.. \n", i);
+                        bool in_ws = false;
+
+                        // Walk all write-sets
+                        for (int jinner=0; jinner<shl__num_threads(); jinner++) {
+                            // Look at the if the thread of that ws belongs to the same
+                            if (shl__lookup_rep_id(jinner)==j) {
+
+                                struct ws_thread_e *wst = &write_set[jinner].p;
+                                printf("Checking write-set of %d - size is %zu\n",
+                                       jinner, wst->ws_size);
+                                for (size_t ii=0; ii<wst->ws_size; ii++) {
+
+                                    if (wst->buffer[ii].index == i)
+                                        in_ws = true;
+                                }
+                            }
+                        }
+
+                        if (!in_ws) {
+                            printf("Copying idx=%zu from %d to master, but "
+                                   "it's not in write-set, written before=%d\n",
+                                   i, j, updated);
+
+                            debug_index(i);
+                        }
+
+                        // otherwise we copy a value from a replica that did not record the write
+                        assert (in_ws);
+
+                        printf("Sanity check end .. \n");
+                        // END SANITY CHECK
+                        // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+#endif /* SHL_DBG_ARRAY */
+
+                        shl_array<T>::array[i] = rep_value;
+                        num_written++;
+
+                        // in case of several updates, all of them are the same
+                        if (updated) {
+                            assert (rep_value == new_value);
+                        }
+
+                        new_value = rep_value;
+                        updated = true;
+                    }
+                }
+
+#if defined(SHL_DBG_ARR)
+                if (!updated) {
+                    printf("Did not update idx=%zu\n", i);
+                }
+#endif /* SHL_DBG_ARR */
+            }
+
+            for (int c=0; c<shl__num_threads(); c++) {
+                write_set[c].p.ws_size = 0;
+            }
+
+            noprintf("naive copy-back done (%06zu/%06zu), %lf\n",
+                     num_written, num_total, num_written*1.0/num_total);
+
+            is_expanded = false;
+            t_collapse.stop();
+        }
+#else /* SHL_EXPAND_NO_HOUSEKEEPING */
+        ws_write_back();
+        is_expanded = false;
+#endif /* SHL_EXPAND_NO_HOUSEKEEPING */
+#endif /* SHL_EXPAND_STL */
+
+        pthread_barrier_wait(&b);
+
+        if (r==PTHREAD_BARRIER_SERIAL_THREAD) { // r from above
+            double t = t_collapse.get();
+            printf("Collapsing .. (t_collapse=%lf)\n", t);
+        }
+
+#if defined(SHL_DBG_ARR)
         printf("---client-%-2d---collapse-done---------------------------\n",
                shl__get_tid());
+
+        r = pthread_barrier_wait(&b);
+#endif /* SHL_DBG_ARR */
+
+#ifdef SHL_DBG_ARRAY
 
         if (r==PTHREAD_BARRIER_SERIAL_THREAD) {
 
             shl_array<T>::dump();
         }
 #endif
-
+        // After collapse, every thread sees a collapsed version of the array
+        assert (!is_expanded);
     }
 
     /**
@@ -291,7 +543,7 @@ public:
      * \brief Return pointer to beginning of replica.
      *
      * Writes to this pointer will result in undefined behavior. The
-     * set() function has to be used to write arrays.
+     * set-function has to be used to write arrays.
      */
     virtual T* get_array(void)
     {
@@ -328,7 +580,8 @@ public:
     {
         if (is_expanded) {
 
-            debug_printf("writing index %zu on %d\n", i, shl__get_tid());
+            debug_printf("Setting new idx=%zu old=%d new=%d on thread %d\n",
+                         i, get(i), v, shl__get_tid());
 
             int rep_id = shl_array_replicated<T>::lookup();
             set_cached(i, v, (struct array_cache) { .rid = rep_id,
@@ -341,8 +594,13 @@ public:
 
     void set_cached(size_t i, T v, struct array_cache c)
     {
+        debug_printf("set_cached: %zu: %d -> %d on rep %d thread %d\n",
+                     i, shl_array_replicated<T>::rep_array[c.rid][i], v,
+                     c.rid, c.tid);
+
         shl_array_replicated<T>::rep_array[c.rid][i] = v;
 
+#ifndef SHL_EXPAND_NO_HOUSEKEEPING
 #ifdef SHL_EXPAND_STL
         // Record write-set
         write_set_e e = std::make_pair(i,v);
@@ -354,10 +612,12 @@ public:
         e->buffer[e->ws_size++] = w;
 
         // write back buffer if full
+        assert (e->ws_size != WS_BUFFER_SIZE); // SK remove again
         if (e->ws_size == WS_BUFFER_SIZE) {
             ws_write_back();
         }
 #endif
+#endif /* SHL_EXPAND_NO_HOUSEKEEPING */
     }
 
     bool get_expanded(void)
@@ -369,11 +629,13 @@ public:
     {
         pthread_barrier_destroy(&b);
 
+#if defined(SHL_DBG_ARR)
         for (int i=0; i<shl__num_threads(); i++) {
 
             printf("destructor %2d: t_write_back %11.6lf - c_write_back % 4d\n",
                    i, t_write_back[i].get(), c_write_back[i].counter);
         }
+#endif /* SHL_DBG_ARR */
     }
 
 protected:

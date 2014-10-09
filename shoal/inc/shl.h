@@ -27,6 +27,8 @@ extern "C" {
 #include "linux.h"
 #endif
 
+#define noprintf(x,...) void(0)
+
 #define BASE_UNIT 1024
 #define KILO BASE_UNIT
 #define MEGA (KILO*BASE_UNIT)
@@ -116,6 +118,8 @@ int  shl__get_num_replicas(void);
 void shl__init(size_t,bool);
 int  shl__num_threads(void);
 int  shl__get_tid(void);
+int  shl__rep_coordinator(int);
+bool shl__is_rep_coordinator(int);
 // array helpers
 // --------------------------------------------------
 void** shl__copy_array(void *src, size_t size, bool is_used,

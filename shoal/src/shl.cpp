@@ -7,6 +7,8 @@
  * ETH Zurich D-INFK, Universitaetsstrasse 6, CH-8092 Zurich. Attn: Systems Group.
  */
 #include <stdio.h>
+#include <algorithm>
+#include <climits>
 
 extern "C" {
 #include <omp.h>
@@ -187,20 +189,27 @@ void shl__init(size_t num_threads, bool partitioned_support)
 #else
     affinity_conf = parse_affinity (false);
 
+    for (int i=0; i<MAXCORES; i++)
+        replica_lookup[i] = -1;
+
     if (affinity_conf==NULL) {
         printf(ANSI_COLOR_RED "WARNING:" ANSI_COLOR_RESET " no affinity set! "
                "Disabling replication! "
                "Use SHL_CPU_AFFINITY\n");
         conf->use_replication = false;
     }
-
-    for (int i=0; i<MAXCORES; i++)
-        replica_lookup[i] = -1;
-
-    if (conf->use_replication) {
+    else {
         for (size_t i=0; i<num_threads; i++) {
             replica_lookup[i] = numa_cpu_to_node(affinity_conf[i]);
-            printf("replication: CPU % 3zu is on node % 2d\n", i, replica_lookup[i]);
+
+            if (conf->use_replication) {
+                printf("replication: CPU %03zu is on node % 2d\n",
+                       i, replica_lookup[i]);
+            }
+        }
+        for (int i=0; i<shl__get_num_replicas(); i++) {
+
+            printf("replica %d - coordinator %d\n", i, shl__rep_coordinator(i));
         }
     }
 
@@ -235,4 +244,27 @@ int shl__num_threads(void)
 int shl__get_tid(void)
 {
     return omp_get_thread_num();
+}
+
+int shl__rep_coordinator(int rep)
+{
+    int c = INT_MAX;
+    for (int i=0; i<shl__num_threads(); i++) {
+
+        if (shl__lookup_rep_id(i)==rep)
+            c = std::min(c, i);
+    }
+
+    return c;
+}
+
+bool shl__is_rep_coordinator(int tid)
+{
+    for (int j=0; j<shl__get_num_replicas(); j++) {
+
+        if( shl__rep_coordinator(j)==tid)
+            return true;
+    }
+
+    return false;
 }
