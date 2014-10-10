@@ -21,7 +21,7 @@ struct array_cache {
 #define SANITY_CHECK
 #define WS_BUFFER_SIZE (1024*1024*100)
 
-#define SHL_EXPAND_NO_HOUSEKEEPING
+//#define SHL_EXPAND_NO_HOUSEKEEPING
 //#define SHL_DBG_ARRAY
 
 /**
@@ -134,6 +134,10 @@ private:
 
                 if (shl_array<T>::array[i] !=
                     shl_array_expandable<T>::rep_array[j][i]) {
+
+                    printf("check_consistency failed for index %d\n", i);
+                    printf("    ");
+                    debug_index(i);
 
                     return false;
                 }
@@ -277,19 +281,20 @@ public:
             printf("Done! (t_expand: %lf ms)\n", s);
         }
         pthread_barrier_wait(&b);
-#else
+#else /* SHL_EXPAND_NAIVE */
 #if defined(SHL_DBG_ARR)
         if (r==PTHREAD_BARRIER_SERIAL_THREAD) {
 
             shl_array<T>::dump();
             printf("Expanding array .. SERIAL\n");
         }
-#endif /* SHL_DBG_ARR */
         pthread_barrier_wait(&b);
-
+#endif /* SHL_DBG_ARR */
 
         // Every thread copies their own data
-        if (shl__rep_coordinator(shl__get_tid())) {
+        if (shl__is_rep_coordinator(shl__get_tid())) {
+            printf("Thread %d executes a memcpy for replica %d\n",
+                   shl__get_tid(), shl__get_rep_id());
             memcpy((void*)shl_array_replicated<T>::rep_array[shl__get_rep_id()],
                     (void*)shl_array<T>::array,
                     shl_array<T>::size*sizeof(T));
@@ -302,8 +307,10 @@ public:
             shl_array_replicated<T>::dump();
 
             // At this point, all arrays have to be consistent
+            printf("Checking consistency of arrays .. \n");
             assert(check_consistency());
         }
+        pthread_barrier_wait(&b); // Need to wait while checking consistency
 #endif /* SHL_DBG_ARR */
 
         t_expand[tid].stop();
