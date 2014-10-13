@@ -12,12 +12,6 @@ extern "C" {
 #include <pthread.h>
 }
 
-struct array_cache {
-
-    int rid;
-    int tid;
-};
-
 #define SANITY_CHECK
 #define WS_BUFFER_SIZE (1024*1024*100)
 

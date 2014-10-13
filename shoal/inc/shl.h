@@ -202,4 +202,10 @@ static uint64_t num_lookup = 0;
 }
 #endif
 
+struct array_cache {
+
+    int rid;
+    int tid;
+};
+
 #endif

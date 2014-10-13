@@ -14,6 +14,7 @@
 #include <iostream>
 
 #include "shl.h"
+#include "shl_timer.hpp"
 #include "shl_configuration.hpp"
 
 //#define PROFILE
@@ -230,6 +231,24 @@ protected:
 
             printf("idx[%3zu] is %d\n", i, array[i]);
         }
+    }
+public:
+    Timer t_collapse;
+    Timer t_expand[MAXCORES];
+
+    virtual void collapse(void)
+    {
+        // nop
+    }
+
+    virtual void expand(void)
+    {
+        // nop
+    }
+
+    virtual void set_cached(size_t i, T v, struct array_cache c)
+    {
+        set(i, v);
     }
 };
 
