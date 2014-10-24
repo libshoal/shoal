@@ -41,6 +41,9 @@ extern "C" {
  * disjunct. If they are not, the semantics of concurrent writes in
  * the presence of parallel OMP loops is undeterministc anyway, so we
  * can just write back changes in any order we want (I think).
+ *
+ * Consistency: This should implement release consistency, I think:
+ * collapse -> release, expand -> acquire.
  */
 
 #ifdef SHL_DBG_ARRAY
@@ -109,7 +112,7 @@ private:
 
 protected:
 
-    bool is_expanded;
+    bool is_expanded[MAXCORES];
     pthread_barrier_t b;
 
 public:
@@ -125,47 +128,18 @@ public:
 
     void expand(void)
     {
-        static size_t num_expand = 0;
-        num_expand++;
+        // static size_t num_expand = 0;
+        // num_expand++;
 
         int tid = shl__get_tid();
 
-        t_expand[tid].start();
+        //        t_expand[tid].start();
 
-        assert(!is_expanded);
+        //        assert(!is_expanded);
 
-        int r = pthread_barrier_wait(&b);
-        assert(r==PTHREAD_BARRIER_SERIAL_THREAD || r==0);
+        //        int r = pthread_barrier_wait(&b);
+        //        assert(r==PTHREAD_BARRIER_SERIAL_THREAD || r==0);
 
-#if SHL_EXPAND_NAIVE
-
-        if (r==PTHREAD_BARRIER_SERIAL_THREAD) {
-
-            printf("Expanding array .. SERIAL\n");
-
-            Timer expand_timer;
-            expand_timer.start();
-            assert (is_expanded==false);
-
-            is_expanded = true;
-            shl__repl_sync((void*) shl_array<T>::array,
-                           (void**) shl_array_replicated<T>::rep_array,
-                           shl_array_replicated<T>::num_replicas,
-                           shl_array<T>::size*sizeof(T));
-            double s = expand_timer.stop();
-
-            printf("Done! (t_expand: %lf ms)\n", s);
-        }
-        pthread_barrier_wait(&b);
-#else /* SHL_EXPAND_NAIVE */
-#if defined(SHL_DBG_ARR)
-        if (r==PTHREAD_BARRIER_SERIAL_THREAD) {
-
-            shl_array<T>::dump();
-            printf("Expanding array .. SERIAL\n");
-        }
-        pthread_barrier_wait(&b);
-#endif /* SHL_DBG_ARR */
 
         // Every thread copies their own data
         if (shl__is_rep_coordinator(shl__get_tid())) {
@@ -175,35 +149,14 @@ public:
                     (void*)shl_array<T>::array,
                     shl_array<T>::size*sizeof(T));
         }
-        r = pthread_barrier_wait(&b);
+        //        r = pthread_barrier_wait(&b);
 
-#if defined(SHL_DBG_ARR)
-        if (r==PTHREAD_BARRIER_SERIAL_THREAD) {
 
-            shl_array_replicated<T>::dump();
+        //        t_expand[tid].stop();
 
-            // At this point, all arrays have to be consistent
-            printf("Checking consistency of arrays .. \n");
-            assert(check_consistency());
-        }
-        pthread_barrier_wait(&b); // Need to wait while checking consistency
-#endif /* SHL_DBG_ARR */
+        is_expanded[tid] = true;
 
-        t_expand[tid].stop();
-#ifdef SHL_DBG_ARRAY
-        pthread_barrier_wait(&b);
-        printf("Done! (t_expand: %lf)\n", t_expand[tid].get());
-#endif
-
-        is_expanded = true;
-
-#endif
-#if defined(SHL_DBG_ARR)
-        noprintf("---%d------------------------------------\n", shl__get_tid());
-        r = pthread_barrier_wait(&b);
-#endif /* SHL_DBG_ARR */
-
-        assert(is_expanded);
+        //        assert(is_expanded);
     }
 
     /**
@@ -217,17 +170,13 @@ public:
      */
     void collapse(void)
     {
-        assert (is_expanded);
+        //        assert (is_expanded);
 
-        int r  = pthread_barrier_wait(&b);
-        if (r == PTHREAD_BARRIER_SERIAL_THREAD) {
-
-            is_expanded = false;
-        }
+        is_expanded[shl__get_tid()] = false;
 
         pthread_barrier_wait(&b);
 
-        assert (!is_expanded);
+        //        assert (!is_expanded);
     }
 
     /**
@@ -238,7 +187,9 @@ public:
         shl_array<T>::alloc(); shl_array<T>::alloc_done = false;
         shl_array_replicated<T>::alloc();
 
-        is_expanded = false;
+        for (int i=0; i<MAXCORES; i++) {
+            is_expanded[i] = false;
+        }
     }
 
     /**
@@ -249,12 +200,8 @@ public:
      */
     virtual T* get_array(void)
     {
-#ifdef SHL_DBG_ARRAY
-        printf("Getting pointer for array [%s] expanded=%d\n",
-               shl_array<T>::name, is_expanded);
-#endif
         if (shl_array<T>::alloc_done) {
-            return is_expanded ? shl_array_replicated<T>::get_array() :
+            return is_expanded[shl__get_tid()] ? shl_array_replicated<T>::get_array() :
                 shl_array<T>::get_array();
         } else {
             return NULL;
@@ -269,7 +216,7 @@ public:
      */
     virtual T get(size_t i)
     {
-        return is_expanded ? shl_array_replicated<T>::get(i) : shl_array<T>::get(i);
+        return is_expanded[shl__get_tid()] ? shl_array_replicated<T>::get(i) : shl_array<T>::get(i);
     }
 
     /**
@@ -280,7 +227,7 @@ public:
      */
     virtual void set(size_t i, T v)
     {
-        if (is_expanded) {
+        if (is_expanded[shl__get_tid()]) {
 
             debug_printf("Setting new idx=%zu old=%d new=%d on thread %d\n",
                          i, get(i), v, shl__get_tid());
@@ -294,6 +241,11 @@ public:
         }
     }
 
+    /**
+     * \brief Write to the array
+     *
+     * Guarantees: threads read their own writes
+     */
     void set_cached(size_t i, T v, struct array_cache c)
     {
         debug_printf("set_cached: %zu: %d -> %d on rep %d thread %d\n",
@@ -306,7 +258,7 @@ public:
 
     bool get_expanded(void)
     {
-        return is_expanded;
+        return is_expanded[shl__get_tid()];
     }
 
     virtual ~shl_array_expandable(void)
