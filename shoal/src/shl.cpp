@@ -131,7 +131,9 @@ int shl__get_num_replicas(void)
 {
     int trim = get_conf()->numa_trim;
     int num_nodes = numa_max_node()+1;
-    assert (num_nodes%2 == 0 && num_nodes>=2*trim);
+
+    assert (num_nodes%2 == 0 || trim == 1);
+    assert (num_nodes>=trim);
 
     return num_nodes/trim;
 }
