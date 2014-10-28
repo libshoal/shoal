@@ -280,6 +280,16 @@ protected:
         shl_array<T>::print_options();
         printf("expandable=[X]");
     }
+
+    virtual void copy_back(T* a)
+    {
+        shl_array<T>::copy_back(a);
+    }
+
+    virtual bool do_copy_back(void)
+    {
+        return true;
+    }
 };
 
 #endif /* SHL_ARRAY_EXPANDABLE_H */
