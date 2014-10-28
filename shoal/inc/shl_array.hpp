@@ -569,6 +569,7 @@ int shl__estimate_working_set_size(int num, ...)
 {
     // Determine working set size
 
+    printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
     printf("Number of arrays is: %d\n", num);
 
     va_list a_list;
@@ -612,6 +613,7 @@ int shl__estimate_working_set_size(int num, ...)
                ANSI_COLOR_RESET "\n");
     }
 
+    printf("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
     return 0;
 }
 
