@@ -132,8 +132,7 @@ public:
         // num_expand++;
 
         int tid = shl__get_tid();
-
-        //        t_expand[tid].start();
+        /*
 
         //        assert(!is_expanded);
 
@@ -142,18 +141,23 @@ public:
 
 
         // Every thread copies their own data
-        if (shl__is_rep_coordinator(shl__get_tid())) {
-            printf("Thread %d executes a memcpy for replica %d\n",
-                   shl__get_tid(), shl__get_rep_id());
+        if (shl__is_rep_coordinator(tid)) {
+            t_expand[tid].start();
+            asm volatile ("" : : : "memory");
+            printf("Thread %d executes a memcpy for replica %d (w/ timers)\n",
+                   tid, shl__get_rep_id());
             memcpy((void*)shl_array_replicated<T>::rep_array[shl__get_rep_id()],
                     (void*)shl_array<T>::array,
                     shl_array<T>::size*sizeof(T));
+            asm volatile ("" : : : "memory");
+            printf("t_e = %lf\n", t_expand[tid].stop());
         }
         //        r = pthread_barrier_wait(&b);
 
 
-        //        t_expand[tid].stop();
+        //
 
+        */
         is_expanded[tid] = true;
 
         //        assert(is_expanded);
@@ -216,6 +220,7 @@ public:
      */
     virtual T get(size_t i)
     {
+        assert (!"We should use the direct implementation now");
         return is_expanded[shl__get_tid()] ? shl_array_replicated<T>::get(i) : shl_array<T>::get(i);
     }
 
@@ -227,6 +232,7 @@ public:
      */
     virtual void set(size_t i, T v)
     {
+        assert (!"We should use the direct implementation now");
         if (is_expanded[shl__get_tid()]) {
 
             debug_printf("Setting new idx=%zu old=%d new=%d on thread %d\n",
@@ -283,7 +289,13 @@ protected:
 
     virtual void copy_back(T* a)
     {
-        shl_array<T>::copy_back(a);
+        printf("Copy back e/c\n");
+
+        for (unsigned int i=0; i<shl_array<T>::size; i++) {
+
+            shl_array<T>::array_copy[i] = shl_array_replicated<T>::rep_array[0][i];
+        }
+
     }
 
     virtual bool do_copy_back(void)

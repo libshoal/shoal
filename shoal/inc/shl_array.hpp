@@ -32,14 +32,15 @@
 template <class T>
 class shl_array {
 
+public:
+    T* array = NULL;
+    T* array_copy = NULL;
 protected:
     size_t size;
     bool use_hugepage;
     bool read_only;
     bool alloc_done;
     const char *name;
-    T* array = NULL;
-    T* array_copy = NULL;
 
 #ifdef PROFILE
     int64_t num_wr;
@@ -326,10 +327,10 @@ class shl_array_replicated : public shl_array<T>
 
 public:
     void **mem_array;
+    T** rep_array;
 
 protected:
     int num_replicas;
-    T** rep_array;
 public:
     int (*lookup)(void);
 
