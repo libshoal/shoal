@@ -232,7 +232,7 @@ protected:
     {
         for (size_t i=0; i<size; i++) {
 
-            printf("idx[%3zu] is %d\n", i, array[i]);
+            noprintf("idx[%3zu] is %d\n", i, array[i]);
         }
     }
 public:
@@ -458,7 +458,7 @@ protected:
 
             for (size_t i=0; i<shl_array<T>::size; i++) {
 
-                printf("rep[%2d] idx[%3zu] is %d\n", j, i, rep_array[j][i]);
+                noprintf("rep[%2d] idx[%3zu] is %d\n", j, i, rep_array[j][i]);
             }
         }
     }
