@@ -24,6 +24,9 @@ output = ({}, {})
 arrays =[]
 program = 'UNKNOWN'
 
+# Output file for array cost (C header file)
+COST_FILE='/tmp/shl_array_cost.h'
+
 def gm_extract_cost(line):
     """
     Extract array access costs from GM program
@@ -111,6 +114,31 @@ def main():
            '\\caption{%s arrays access cost as extracted by \\project}\n'
            '\\end{table}\n'
            '\\end{center}') % program.replace('_', '\\_')
+
+
+    # C header output
+    # --------------------------------------------------
+    print
+
+    f = open(COST_FILE, 'w')
+    f.write('#ifndef SHL_COST\n')
+    f.write('#define SHL_COST\n')
+    f.write('\n')
+    f.write('// Automatically generated from <shoal>/tools/parse_cost.py\n')
+
+    for a in arrays:
+
+        # Set default in case array is not written/read
+        if not a in output[0]:
+            output[0][a] = '0'
+        if not a in output[1]:
+            output[1][a] = '0'
+
+        f.write('#define %s_wr "%s"\n' % (a, output[0][a]))
+        f.write('#define %s_rd "%s"\n' % (a, output[1][a]))
+
+    f.write('#endif /* SHL_COST */\n')
+    f.close()
 
     print
 
