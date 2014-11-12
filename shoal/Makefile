@@ -8,6 +8,7 @@ TARGET=libshl.so
 CXXFLAGS := $(CXXFLAGS)
 OBJS += $(SHLPREFIX)/src/misc.o \
 	$(SHLPREFIX)/src/linux.o \
+	$(SHLPREFIX)/src/shl_array.o \
 	$(SHLPREFIX)/src/shl.o
 
 DEPS = $(OBJS)

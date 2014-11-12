@@ -26,11 +26,30 @@
 // --------------------------------------------------
 
 /**
+ * \brief Base class for shoal array
+ *
+ *
+ */
+class shl_base_array {
+public:
+    const char *name;
+
+public:
+    shl_base_array(const char *name)
+    {
+        shl_base_array::name = name;
+    }
+};
+
+/**
  * \brief Base class representing shoal arrays
  *
  */
 template <class T>
-class shl_array {
+class shl_array : public shl_base_array {
+
+public:
+    T** rep_array = NULL;
 
 public:
     T* array = NULL;
@@ -40,7 +59,6 @@ protected:
     bool use_hugepage;
     bool read_only;
     bool alloc_done;
-    const char *name;
 
 #ifdef PROFILE
     int64_t num_wr;
@@ -53,10 +71,9 @@ protected:
     bool is_dynamic;
 
 public:
-    shl_array(size_t s, const char *_name)
+    shl_array(size_t s, const char *_name) : shl_base_array(_name)
     {
         size = s;
-        shl_array<T>::name = _name;
         use_hugepage = get_conf()->use_hugepage;
         read_only = false;
         alloc_done = false;
@@ -166,7 +183,7 @@ public:
             return;
 
 #ifdef SHL_DBG_ARRAY
-        printf("Copying array %s\n", name);
+        printf("Copying array %s\n", shl_base_array::name);
 #endif
         assert (alloc_done);
 
@@ -191,7 +208,7 @@ public:
 
         assert (alloc_done);
 
-        printf("shl_array[%s]: Copying back\n", shl_array<T>::name);
+        printf("shl_array[%s]: Copying back\n", shl_base_array::name);
         assert (array_copy == a);
         assert (array_copy != NULL);
         for (unsigned int i=0; i<size; i++) {
@@ -222,7 +239,8 @@ public:
 protected:
     virtual void print_options(void)
     {
-        printf("Array[%20s]: elements=%10zu-", name, size); print_number(size);
+        printf("Array[%20s]: elements=%10zu-", shl_base_array::name, size);
+        print_number(size);
         printf(" size=%10zu-", size*sizeof(T)); print_number(size*sizeof(T));
         printf(" -- ");
         printf("hugepage=[%c] ", use_hugepage ? 'X' : ' ');
@@ -381,7 +399,7 @@ public:
 
         shl_array<T>::array_copy = src;
         printf("shl_array_replicated[%s]: Copying to %d replicas\n",
-               shl_array<T>::name, num_replicas);
+               shl_base_array::name, num_replicas);
 
         for (int j=0; j<num_replicas; j++) {
             for (unsigned int i=0; i< shl_array<T>::size; i++) {
@@ -403,7 +421,7 @@ public:
     virtual T* get_array(void)
     {
 #ifdef SHL_DBG_ARRAY
-        printf("Getting pointer for array [%s]\n", shl_array<T>::name);
+        printf("Getting pointer for array [%s]\n", shl_base_array::name);
 #endif
         if (shl_array<T>::alloc_done) {
             return rep_array[lookup()];
@@ -497,13 +515,14 @@ protected:
  */
 template <class T>
 shl_array<T>* shl__malloc(size_t size,
-            const char *name,
-            bool is_ro,
-            bool is_dynamic,
-            bool is_used,
-            bool is_graph,
-            bool is_indexed,
-            bool initialize) {
+                          const char *name,
+                          //
+                          bool is_ro,
+                          bool is_dynamic,
+                          bool is_used,
+                          bool is_graph,
+                          bool is_indexed,
+                          bool initialize) {
 
     // Policy for memory allocation
     // --------------------------------------------------
@@ -566,56 +585,49 @@ int shl__estimate_size(size_t size,
 }
 
 
-int shl__estimate_working_set_size(int num, ...)
+int shl__estimate_working_set_size(int num, ...);
+
+/**
+ * \brief Profide cached array access information for wr-rep.
+ *
+ * This is per-thread state
+ */
+template <class T>
+class arr_thread_ptr {
+
+ public:
+
+    T *rep_ptr;
+    T *ptr1;
+    T *ptr2;
+    struct array_cache c;
+};
+
+/**
+ * \brief Initialize per-thread state for use of wr-rep arrays.
+ *
+ * This is essentially a set of pointers, all of them pointing to each
+ * replica.
+ */
+template <class T>
+void shl__wr_rep_ptr_thread_init(shl_array<T> *base,
+                                 class arr_thread_ptr<T> *p)
 {
-    // Determine working set size
+    if (base->rep_array == NULL)
+        return;
 
-    printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
-    printf("Number of arrays is: %d\n", num);
+    // XXX very ugly
+    shl_array_replicated<T> *btc =
+        (shl_array_replicated<T>*) base;
 
-    va_list a_list;
-    va_start(a_list, num);
+    p->rep_ptr = base->get_array();
+    p->ptr1 = btc->rep_array[0];
+    p->ptr2 = btc->rep_array[1];
 
-    int sum = 0;
-
-    for (int x = 0; x<num; x++) {
-
-        int tmp = va_arg(a_list, int);
-        printf("Size of array %10d in bytes is %10d\n",
-               x, tmp);
-
-        sum += tmp;
-    }
-    va_end (a_list);
-
-    printf("Total working set size: %d bytes - ", sum);
-    print_number(sum);
-    printf("\n");
-
-    // Figure out minimum NUMA node
-    long minsize = std::numeric_limits<long>::max();
-    for (int i=0; i<shl__max_node()+1; i++) {
-
-        long tmp = shl__node_size(i, NULL);
-        minsize = std::min(minsize, tmp);
-        printf("Size of node %2d is %10ld\n", i, tmp);
-    }
-
-    printf("minimum node size is: %ld - ", minsize);
-    print_number(minsize);
-    printf("\n");
-
-    if (minsize>sum) {
-
-        printf("working set fits into each node\n");
-    } else {
-
-        printf(ANSI_COLOR_RED "working set does NOT fit into each node"
-               ANSI_COLOR_RESET "\n");
-    }
-
-    printf("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
-    return 0;
+    p->c = (struct array_cache) {
+        .rid = shl__get_rep_id(),
+        .tid = shl__get_tid()
+    };
 }
 
 #endif /* __SHL_ARRAY */
