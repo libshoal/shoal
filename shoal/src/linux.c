@@ -334,14 +334,20 @@ void* shl__malloc(size_t size, int opts, int *pagesize, void **ret_mi)
 
 /**
  *
- * \param num_replicas Set to the number of replicas that have been
- * used or 0 in case of error.
+ * \param num_replicas Specifies the number of replicas to be
+ * generated. If value given is <0, shl_malloc_replicated will
+ * determine the number of replicas to be used.
  */
 void** shl_malloc_replicated(size_t size,
                              int* num_replicas,
                              int options)
 {
-    *num_replicas = shl__get_num_replicas();
+    if (*num_replicas<0) {
+        *num_replicas = shl__get_num_replicas();
+    }
+
+    assert (*num_replicas>0 && *num_replicas<12); // Sanity check
+
     int pagesize;
 
     void **tmp = (void**) (malloc(*num_replicas*sizeof(void*)));

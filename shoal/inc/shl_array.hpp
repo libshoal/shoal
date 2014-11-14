@@ -49,9 +49,6 @@ template <class T>
 class shl_array : public shl_base_array {
 
 public:
-    T** rep_array = NULL;
-
-public:
     T* array = NULL;
     T* array_copy = NULL;
 protected:
@@ -363,6 +360,7 @@ public:
         shl_array<T>::read_only = true;
         lookup = f_lookup;
         master_copy = NULL;
+        num_replicas = -1;
     }
 
     virtual void alloc(void)
@@ -602,32 +600,5 @@ class arr_thread_ptr {
     T *ptr2;
     struct array_cache c;
 };
-
-/**
- * \brief Initialize per-thread state for use of wr-rep arrays.
- *
- * This is essentially a set of pointers, all of them pointing to each
- * replica.
- */
-template <class T>
-void shl__wr_rep_ptr_thread_init(shl_array<T> *base,
-                                 class arr_thread_ptr<T> *p)
-{
-    if (base->rep_array == NULL)
-        return;
-
-    // XXX very ugly
-    shl_array_replicated<T> *btc =
-        (shl_array_replicated<T>*) base;
-
-    p->rep_ptr = base->get_array();
-    p->ptr1 = btc->rep_array[0];
-    p->ptr2 = btc->rep_array[1];
-
-    p->c = (struct array_cache) {
-        .rid = shl__get_rep_id(),
-        .tid = shl__get_tid()
-    };
-}
 
 #endif /* __SHL_ARRAY */
