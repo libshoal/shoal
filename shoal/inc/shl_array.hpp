@@ -19,6 +19,10 @@
 #include "shl_timer.hpp"
 #include "shl_configuration.hpp"
 
+extern "C" {
+#include "crc.h"
+}
+
 //#define PROFILE
 
 // --------------------------------------------------
@@ -250,6 +254,19 @@ protected:
             noprintf("idx[%3zu] is %d\n", i, array[i]);
         }
     }
+
+public:
+    virtual unsigned long get_crc(void)
+    {
+        crc_t crc = crc_init();
+
+        uintptr_t max = sizeof(T)*size;
+        crc = crc_update(crc, (unsigned char*) array, max);
+
+        crc_finalize(crc);
+
+        return (unsigned long) crc;
+    }
 public:
     Timer t_collapse;
     Timer t_expand[MAXCORES];
@@ -479,6 +496,39 @@ protected:
         }
     }
 
+public:
+    virtual unsigned long get_crc(void)
+    {
+
+        crc_t *crc = (crc_t*) malloc(sizeof(crc_t)*num_replicas);
+        assert (crc);
+
+        for (int i=0; i<1; i++) {
+
+            crc[i] = crc_init();
+
+            uintptr_t max = sizeof(T)*shl_array<T>::size;
+            crc[i] = crc_update(crc[i], (unsigned char*) (rep_array[i]), max);
+
+            crc[i] = crc_finalize(crc[i]);
+
+            if (! (i==0 || ((unsigned long) crc[i] == (unsigned long) crc[0]))) {
+
+                printf(ANSI_COLOR_CYAN "WARNING: " ANSI_COLOR_RESET \
+                       "replica %d's content diverges (%lx vs %lx)\n", i,
+                       (unsigned long) crc[i], (unsigned long) crc[0]);
+            } else {
+                printf("replica %d's content is %lx\n", i,
+                       (unsigned long) crc[i]);
+            }
+        }
+
+        unsigned long r = (unsigned long) crc[0];
+        free (crc);
+        return r;
+    }
+
+
 };
 
 // --------------------------------------------------
@@ -593,8 +643,7 @@ int shl__estimate_working_set_size(int num, ...);
 template <class T>
 class arr_thread_ptr {
 
- public:
-
+public:
     T *rep_ptr;
     T *ptr1;
     T *ptr2;

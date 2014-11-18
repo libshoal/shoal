@@ -10,6 +10,7 @@
 
 extern "C" {
 #include <pthread.h>
+#include "crc.h"
 }
 
 #define SANITY_CHECK
@@ -278,6 +279,12 @@ public:
                    i, t_write_back[i].get(), c_write_back[i].counter);
         }
 #endif /* SHL_DBG_ARR */
+    }
+
+public:
+    virtual unsigned long get_crc(void)
+    {
+        return shl_array_replicated<T>::get_crc();
     }
 
 protected:

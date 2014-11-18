@@ -9,7 +9,10 @@ CXXFLAGS := $(CXXFLAGS)
 OBJS += $(SHLPREFIX)/src/misc.o \
 	$(SHLPREFIX)/src/linux.o \
 	$(SHLPREFIX)/src/shl_array.o \
+	$(SHLPREFIX)/src/shl_array_wr-rep.o \
 	$(SHLPREFIX)/src/shl.o
+
+EXTERNAL_OBJS += $(BASE)contrib/pycrc/crc.o
 
 DEPS = $(OBJS)
 DEPS += $(wildcard $(BASE)/inc/*)
@@ -30,15 +33,22 @@ endif
 
 INC += -I$(BASE)contrib/numactl-2.0.9 \
 	-I$(BASE)shoal/inc \
-	-I$(BASE)contrib/papi-5.3.0/src
+	-I$(BASE)contrib/papi-5.3.0/src \
+	-I$(BASE)contrib/pycrc/
+
 LIBS += -L$(BASE)contrib/numactl-2.0.9 -lnuma \
 	-L$(BASE)contrib/papi-5.3.0/src -lpapi \
 	-L$(BASE)contrib/papi-5.3.0/src/libpfm4/lib -lpfm
+
 CXXFLAGS += -DVERSION=\"$(GIT_VERSION)\" -fPIC -pthread -fopenmp -std=c++11 -Wall
 
-all: $(DEPS)
-	$(CXX) $(CXXFLAGS) $(INC) -shared $(OBJS) $(LIBS) -o $(TARGET)
+# Build shared library
+# --------------------------------------------------
+all: $(DEPS) $(EXTERNAL_OBJS)
+	$(CXX) $(CXXFLAGS) $(INC) -shared $(OBJS) $(EXTERNAL_OBJS) $(LIBS) -o $(TARGET)
 
+# Compile object files
+# --------------------------------------------------
 %.o : %.cpp
 	$(CXX) $(CXXFLAGS) $(INC) -c $< -o $@
 
