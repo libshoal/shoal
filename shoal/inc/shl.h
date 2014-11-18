@@ -101,6 +101,7 @@ long shl__node_size(int node, long *freep);
 int numa_cpu_to_node(int);
 void* shl__malloc(size_t size, int opts, int *pagesize, void **ret_mi);
 void** shl_malloc_replicated(size_t, int*, int);
+bool shl__check_hugepage_support(void);
 void loc(size_t, int, int*, void **);
 
 // --------------------------------------------------

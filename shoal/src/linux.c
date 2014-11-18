@@ -396,3 +396,17 @@ int shl__max_node(void)
 {
     return numa_max_node();
 }
+
+bool shl__check_hugepage_support(void)
+{
+    int options = MAP_ANONYMOUS | MAP_PRIVATE | MAP_HUGETLB;
+    void *res = mmap(NULL, 4096, PROT_READ | PROT_WRITE, options, -1, 0);
+
+    if (res==MAP_FAILED) {
+        return false;
+    } else {
+        int r = munmap(res, 4096);
+        assert (r);
+        return true;
+    }
+}

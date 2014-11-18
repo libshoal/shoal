@@ -190,9 +190,18 @@ void shl__init(size_t num_threads, bool partitioned_support)
 
     assert (!get_conf()->use_partition || partitioned_support || !"Compile with -DSHL_STATIC");
     if (!get_conf()->use_partition && partitioned_support) {
-        printf(ANSI_COLOR_YELLOW "WARNING: " ANSI_COLOR_RESET
+        printf(ANSI_COLOR_YELLOW "\n .. WARNING: " ANSI_COLOR_RESET
                "partitioning disabled, but program is compiled with "
                "partition support\n");
+    }
+
+    if (get_conf()->use_hugepage) {
+        if (!shl__check_hugepage_support()) {
+
+            printf(" \n .. " ANSI_COLOR_RED "FAILURE:" ANSI_COLOR_RESET \
+                   " no hugepage support on this machine, aborting .. \n");
+            exit(2);
+        }
     }
 
 #ifdef BARRELFISH
