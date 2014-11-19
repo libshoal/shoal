@@ -52,13 +52,11 @@ void shl__wr_rep_ptr_thread_init(shl_array<T> *base,
         return;
 
     // Used for reads
-    //    p->rep_ptr = btc->rep_array[shl__get_wr_rep_rid()];
-    //    p->rep_ptr = btc->get_array();
-    p->rep_ptr = btc->rep_array[0];
+    p->rep_ptr = btc->rep_array[shl__get_wr_rep_rid()];
 
     // Used for writes
     p->ptr1 = btc->rep_array[0];
-    p->ptr2 = btc->rep_array[0];
+    p->ptr2 = btc->rep_array[1];
 
     p->c = (struct array_cache) {
         .rid = shl__get_rep_id(),
@@ -93,10 +91,10 @@ public:
         shl_array_replicated<T>::alloc();
 
         // Use arrays on far away NUMA node
-        shl_array_replicated<T>::rep_array[0] = \
-            shl_array_replicated<T>::rep_array[0];
-        shl_array_replicated<T>::rep_array[1] = \
-            shl_array_replicated<T>::rep_array[shl_array_replicated<T>::num_replicas-1];
+        // shl_array_replicated<T>::rep_array[0] = \
+        //     shl_array_replicated<T>::rep_array[0];
+        // shl_array_replicated<T>::rep_array[1] = \
+        //     shl_array_replicated<T>::rep_array[shl_array_replicated<T>::num_replicas-1];
 
         shl_array_replicated<T>::num_replicas = 2;
 
