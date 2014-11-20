@@ -109,6 +109,7 @@ void loc(size_t, int, int*, void **);
 // SHOAL
 // --------------------------------------------------
 void shl__end(void);
+void shl__start(void);
 void papi_stop(void);
 void papi_init(void);
 void papi_start(void);

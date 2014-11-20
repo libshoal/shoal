@@ -51,6 +51,13 @@ Configuration::Configuration(void) {
     }
 }
 
+void shl__start(void)
+{
+#ifdef PAPI
+    papi_start();
+#endif
+}
+
 void shl__end(void)
 {
 #ifdef PAPI
