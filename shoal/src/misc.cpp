@@ -36,7 +36,7 @@ double Timer::get(void)
     return tv_sec*1000 + tv_usec*0.0001;
 }
 
-double Timer::reset(void)
+void Timer::reset(void)
 {
     tv_sec = 0;
     tv_usec = 0;
@@ -198,12 +198,20 @@ coreid_t* parse_affinity (bool ignore)
 
 void print_number(long long number)
 {
+    char buf[1024];
+    convert_number(number, buf);
+
+    printf("%s", buf);
+}
+
+void convert_number(long long number, char *buf)
+{
     if (number>=GIGA)
-        printf("%5.2f G", number/((double) GIGA));
+        sprintf(buf, "%5.2f G", number/((double) GIGA));
     else if (number>=MEGA)
-        printf("%5.2f M", number/((double) MEGA));
+        sprintf(buf, "%5.2f M", number/((double) MEGA));
     else if (number>=KILO)
-        printf("%5.2f K", number/((double) KILO));
+        sprintf(buf, "%5.2f K", number/((double) KILO));
     else
-        printf("%lld", number);
+        sprintf(buf, "%lld", number);
 }

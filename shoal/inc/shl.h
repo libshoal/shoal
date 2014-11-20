@@ -29,7 +29,7 @@ extern "C" {
 
 #define noprintf(x,...) void(0)
 
-#define BASE_UNIT 1024
+#define BASE_UNIT 1000
 #define KILO BASE_UNIT
 #define MEGA (KILO*BASE_UNIT)
 #define GIGA (MEGA*BASE_UNIT)
@@ -89,6 +89,7 @@ coreid_t *parse_affinity(bool);
 char* get_env_str(const char*, const char*);
 int get_env_int(const char*, int);
 void print_number(long long);
+void convert_number(long long, char *);
 
 // --------------------------------------------------
 // OS specific stuff

@@ -5,7 +5,6 @@ BASE = ../
 
 TARGET=libshl.so
 
-CXXFLAGS := $(CXXFLAGS)
 OBJS += $(SHLPREFIX)/src/misc.o \
 	$(SHLPREFIX)/src/linux.o \
 	$(SHLPREFIX)/src/shl_array.o \
@@ -23,6 +22,12 @@ GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
 # Do this only if not yet defined (e.g. from parent Makefile)
 ifndef BUILDTYPE
 	BUILDTYPE := release
+endif
+
+CXXFLAGS += -Wall
+
+ifdef SHL_PAPI
+	CXXFLAGS += -DPAPI
 endif
 
 ifeq ($(BUILDTYPE),debug)

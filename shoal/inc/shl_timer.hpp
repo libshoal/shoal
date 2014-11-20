@@ -21,7 +21,7 @@ class Timer {
     void start(void);
     double stop(void);
     double get(void);
-    double reset(void);
+    void reset(void);
  private:
     struct timeval TV1, TV2;
 };

@@ -53,6 +53,10 @@ Configuration::Configuration(void) {
 
 void shl__end(void)
 {
+#ifdef PAPI
+    papi_stop();
+#endif
+
     printf("Time for copy: %.6f\n", shl__get_timer());
 #ifdef DEBUG
     printf("Number of lookups: %ld\n", num_lookup);
@@ -60,18 +64,41 @@ void shl__end(void)
 }
 
 #ifdef PAPI
+#define PAPI_EVENTS_MAX 16
 void papi_stop(void)
 {
     // Stop PAPI events
-    long long values[1];
+    long long values[PAPI_EVENTS_MAX];
+    int events[PAPI_EVENTS_MAX];
+
+    printf("Stopping PAPI .. \n");
+
+    // Read performance counters
     if (PAPI_stop(EventSet, values) != PAPI_OK) handle_error(1);
-    printf("Stopping PAPI .. ");
-    print_number(values[0]); printf("\n");
-    printf("END PAPI\n");
+
+    // Read event IDs
+    int num_events = PAPI_EVENTS_MAX;
+    if (PAPI_list_events(EventSet, events, &num_events) != PAPI_OK) handle_error(1);
+
+    for (int i=0; i<num_events; i++) {
+
+        char event_name[PAPI_MAX_STR_LEN];
+        if (PAPI_event_code_to_name(events[i], event_name) != PAPI_OK) handle_error(1);
+
+        char number_buf[1024];
+        convert_number(values[i], number_buf);
+
+        printf(ANSI_COLOR_BLUE "PAPI: " ANSI_COLOR_RESET "%20s %15lld %15s\n",
+               event_name, values[i], number_buf);
+    }
 }
 
+static bool shl__papi_init_done = 0;
 void papi_init(void)
 {
+    if (shl__papi_init_done)
+        return;
+    shl__papi_init_done = 1;
     printf("Initializing PAPI .. ");
 
     // Initialize PAPI and make sure version matches
@@ -91,18 +118,42 @@ void papi_init(void)
 
 void papi_start(void)
 {
-    printf("Starting PAPI .. ");
+    printf("Starting PAPI .. \n");
 
-    // Add events to be monitored
+    // Create event set
     EventSet = PAPI_NULL;
     if (PAPI_create_eventset(&EventSet) != PAPI_OK) handle_error(1);
-    if (PAPI_add_event(EventSet, PAPI_L2_DCM) != PAPI_OK) handle_error(1);
 
-    // PAPI_TLB_DM
+    // Read PAPI event from the environment variable
+    char* papi_events =  get_env_str("SHL_PAPI", "PAPI_L2_DCM");
+    char seps[] = ",";
+
+    char input[PAPI_EVENTS_MAX][PAPI_MAX_STR_LEN];
+    char* token;
+    int i = 0;
+
+    token = strtok (papi_events, seps);
+    while (token != NULL) {
+        sscanf (token, "%s", input[i++]);
+        token = strtok (NULL, seps);
+    }
+
+    // Add PAPI events
+    for (int j=0; j<i; j++) {
+
+        printf("PAPI: monitoring event [%s] .. ", input[j]);
+
+        // Translate ..
+        int event_code;
+        if (PAPI_event_name_to_code(input[j], &event_code) != PAPI_OK) handle_error(1);
+        printf(" %d\n", event_code);
+
+        // Add events to be monitored
+        if (PAPI_add_event(EventSet, event_code) != PAPI_OK) handle_error(1);
+    }
 
     // Start monitoring
-    if (PAPI_start(EventSet) != PAPI_OK)
-        handle_error(1);
+    if (PAPI_start(EventSet) != PAPI_OK) handle_error(1);
     printf("DONE\n");
 }
 #endif
@@ -187,6 +238,10 @@ void shl__init(size_t num_threads, bool partitioned_support)
     assert (numa_available()>=0);
 
     conf->num_threads = num_threads;
+
+#ifdef PAPI
+    printf(ANSI_COLOR_BLUE "PAPI .. " ANSI_COLOR_RESET);
+#endif
 
     assert (!get_conf()->use_partition || partitioned_support || !"Compile with -DSHL_STATIC");
     if (!get_conf()->use_partition && partitioned_support) {
