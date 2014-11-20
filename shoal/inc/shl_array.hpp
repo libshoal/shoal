@@ -258,6 +258,9 @@ protected:
 public:
     virtual unsigned long get_crc(void)
     {
+        if (!alloc_done)
+            return 0;
+
         crc_t crc = crc_init();
 
         uintptr_t max = sizeof(T)*size;
@@ -267,6 +270,11 @@ public:
 
         return (unsigned long) crc;
     }
+    virtual void print_crc(void)
+    {
+        printf("CRC %s 0x%lx\n", shl_base_array::name, get_crc());
+    }
+
 public:
     Timer t_collapse;
     Timer t_expand[MAXCORES];
@@ -499,6 +507,9 @@ protected:
 public:
     virtual unsigned long get_crc(void)
     {
+
+        if (!shl_array<T>::alloc_done)
+            return 0;
 
         crc_t *crc = (crc_t*) malloc(sizeof(crc_t)*num_replicas);
         assert (crc);
