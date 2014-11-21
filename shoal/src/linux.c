@@ -347,7 +347,7 @@ void** shl_malloc_replicated(size_t size,
                              int* num_replicas,
                              int options)
 {
-    if (*num_replicas<0) {
+    if (*num_replicas<=0) {
         *num_replicas = shl__get_num_replicas();
     }
 

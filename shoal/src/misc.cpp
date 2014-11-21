@@ -42,6 +42,7 @@ void Timer::reset(void)
     tv_usec = 0;
     running = false;
     timer_secs = 0.0;
+}
 
 void MultiTimer::start(void)
 {

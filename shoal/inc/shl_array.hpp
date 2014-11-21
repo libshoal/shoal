@@ -451,6 +451,7 @@ public:
 
         assert(!shl_array<T>::alloc_done);
 
+        num_replicas = 0;
         rep_array = (T**) shl_malloc_replicated(shl_array<T>::size * sizeof(T),
                                                 &num_replicas,
                                                 shl_array<T>::get_options());
