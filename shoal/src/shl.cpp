@@ -74,6 +74,9 @@ void shl__end(void)
 #define PAPI_EVENTS_MAX 16
 void papi_stop(void)
 {
+    if (!shl__papi_running)
+        return;
+
     // Stop PAPI events
     long long values[PAPI_EVENTS_MAX];
     int events[PAPI_EVENTS_MAX];
@@ -101,6 +104,7 @@ void papi_stop(void)
 }
 
 static bool shl__papi_init_done = 0;
+static bool shl__papi_running = 0;
 void papi_init(void)
 {
     if (shl__papi_init_done)
@@ -159,9 +163,13 @@ void papi_start(void)
         if (PAPI_add_event(EventSet, event_code) != PAPI_OK) handle_error(1);
     }
 
-    // Start monitoring
-    if (PAPI_start(EventSet) != PAPI_OK) handle_error(1);
-    printf("DONE\n");
+    if (i>0) {
+        // Start monitoring
+        if (PAPI_start(EventSet) != PAPI_OK) handle_error(1);
+        printf("DONE\n");
+
+        shl__papi_running = 1;
+    }
 }
 #endif
 
