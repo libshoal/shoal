@@ -106,14 +106,13 @@ public:
             return;
 
         print();
-#if defined(BARRELFISH) && SHL_BARRELFISH_USE_SHARED
         assert(!alloc_done);
 
-
+#if defined(BARRELFISH) && SHL_BARRELFISH_USE_SHARED
+        printf("already allocated during init.\n");
+#else
         int pagesize;
         array = (T*) shl__malloc(size * sizeof(T), get_options(), &pagesize, &meminfo);
-#else
-        printf("already allocated during init.\n");
 #endif
 
         alloc_done = true;
@@ -425,6 +424,8 @@ public:
         shl_array<T>::read_only = true;
         lookup = f_lookup;
         master_copy = NULL;
+        num_replicas = -1;
+        rep_array = NULL;
     }
 
     shl_array_replicated(size_t s,
@@ -438,6 +439,7 @@ public:
         lookup = f_lookup;
         master_copy = NULL;
         num_replicas = -1;
+        rep_array = NULL;
     }
 
 
@@ -451,7 +453,6 @@ public:
 
         assert(!shl_array<T>::alloc_done);
 
-        num_replicas = 0;
         rep_array = (T**) shl_malloc_replicated(shl_array<T>::size * sizeof(T),
                                                 &num_replicas,
                                                 shl_array<T>::get_options());

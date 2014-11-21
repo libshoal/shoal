@@ -51,6 +51,9 @@ void shl__wr_rep_ptr_thread_init(shl_array<T> *base,
     if  (btc == NULL)
         return;
 
+    if (btc->rep_array==NULL)
+        return;
+
     // Used for reads
     p->rep_ptr = btc->rep_array[shl__get_wr_rep_rid()];
 
