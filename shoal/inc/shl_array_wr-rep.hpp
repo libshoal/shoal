@@ -166,9 +166,9 @@ public:
         // shl_array_replicated<T>::rep_array[0] =
         //     shl_array_replicated<T>::rep_array[0];
         // shl_array_replicated<T>::rep_array[1] =
-        //     shl_array_replicated<T>::rep_array[shl_array_replicated<T>::num_replicas-1];
+        //     shl_array_replicated<T>::rep_array[shl__get_num_replicas()-1];
 
-        shl_array_replicated<T>::num_replicas = 2;
+        shl_array_replicated<T>::num_replicas = NUM_REPLICAS;
 
         assert (shl_array_replicated<T>::rep_array != NULL);
     }
