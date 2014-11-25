@@ -10,9 +10,13 @@
 
 /**
  * \brief Implements  replication with write-support
- *
- * This is currently limited to only TWO replicas.
  */
+
+// Configuration
+// --------------------------------------------------
+
+// Number of replicas
+#define NUM_REPLICAS 2
 
 #ifdef SHL_DBG_ARRAY
 #define debug_printf(x...) printf(x)
@@ -20,12 +24,78 @@
 #define debug_printf(x...) void()
 #endif
 
-#define NUM_REPLICAS 2
+#define CONCAT(x,y) x ## y
+
+// Macros for write access depending on number of replicas
+// --------------------------------------------------
+// wrappers
+#define WR_REP__WR(arr,n,i,v) { CONCAT(WR_REP__WR_N,n) (arr, i, v) }
+// recursion
+#define WR_REP__WR_N1(arr,i,v) WR_REP__WR_E (arr,i,v,1)
+#define WR_REP__WR_N2(arr,i,v) WR_REP__WR_N1(arr,i,v) WR_REP__WR_E(arr,i,v,2)
+#define WR_REP__WR_N3(arr,i,v) WR_REP__WR_N2(arr,i,v) WR_REP__WR_E(arr,i,v,3)
+#define WR_REP__WR_N4(arr,i,v) WR_REP__WR_N3(arr,i,v) WR_REP__WR_E(arr,i,v,4)
+// entry
+#define WR_REP__WR_E(arr,i,v,num) shl__ ## arr.ptr ## num[i] = v;
+
+// Macros for copy function
+// --------------------------------------------------
+// wrappers
+#define WR_REP__CPY(n) { CONCAT(WR_REP__CPY_N,n) () }
+// recursion
+#define WR_REP__CPY_N1() WR_REP__CPY_E (0)
+#define WR_REP__CPY_N2() WR_REP__CPY_N1() WR_REP__CPY_E(1)
+#define WR_REP__CPY_N3() WR_REP__CPY_N2() WR_REP__CPY_E(2)
+#define WR_REP__CPY_N4() WR_REP__CPY_N3() WR_REP__CPY_E(3)
+// entry
+#define WR_REP__CPY_E(num) \
+    shl_array_replicated<T>::rep_array[num][j]= src->array[j];
+
+// Macros for thread_init
+// --------------------------------------------------
+// wrappers
+#define WR_REP__INIT(n) { CONCAT(WR_REP__INIT_N,n) () }
+// recursion
+#define WR_REP__INIT_N1() WR_REP__INIT_E (1,0)
+#define WR_REP__INIT_N2() WR_REP__INIT_N1() WR_REP__INIT_E(2,1)
+#define WR_REP__INIT_N3() WR_REP__INIT_N2() WR_REP__INIT_E(3,2)
+#define WR_REP__INIT_N4() WR_REP__INIT_N3() WR_REP__INIT_E(4,3)
+// entry
+#define WR_REP__INIT_E(num, idx) \
+    p->ptr ## num = btc->rep_array[idx];
+
+// Macros for array cache struct
+// --------------------------------------------------
+// wrappers
+#define WR_REP__ARR_CACHE(n) CONCAT(WR_REP__ARR_CACHE_N,n) ()
+// recursion
+#define WR_REP__ARR_CACHE_N1() WR_REP__ARR_CACHE_E (1)
+#define WR_REP__ARR_CACHE_N2() WR_REP__ARR_CACHE_N1() WR_REP__ARR_CACHE_E(2)
+#define WR_REP__ARR_CACHE_N3() WR_REP__ARR_CACHE_N2() WR_REP__ARR_CACHE_E(3)
+#define WR_REP__ARR_CACHE_N4() WR_REP__ARR_CACHE_N3() WR_REP__ARR_CACHE_E(4)
+// entry
+#define WR_REP__ARR_CACHE_E(num) \
+    T *ptr ## num;
+
+
+/**
+ * \brief Profide cached array access information for wr-rep.
+ *
+ * This is per-thread state
+ */
+template <class T>
+class arr_thread_ptr {
+
+public:
+    T *rep_ptr;
+    WR_REP__ARR_CACHE(NUM_REPLICAS);
+    struct array_cache c;
+};
 
 /**
  * \brief Return the ID of the replica this thread should operate on.
  *
- * Since we only have two replicas here, we apply a module operation
+ * Since we only have two replicas here, we apply a modulo operation
  * to the output of shl__get_rep_id (which assumes there is one
  * replica on every NUMA node).
  *
@@ -58,8 +128,7 @@ void shl__wr_rep_ptr_thread_init(shl_array<T> *base,
     p->rep_ptr = btc->rep_array[shl__get_wr_rep_rid()];
 
     // Used for writes
-    p->ptr1 = btc->rep_array[0];
-    p->ptr2 = btc->rep_array[1];
+    WR_REP__INIT(NUM_REPLICAS);
 
     p->c = (struct array_cache) {
         .rid = shl__get_rep_id(),
@@ -131,6 +200,61 @@ protected:
     {
         return true;
     }
+
+#define COPY_BATCH_SIZE 1024
+    virtual void copy_from_array(shl_array<T> *src)
+    {
+        static Timer t;
+        t.start();
+
+        unsigned int j = 0;
+#ifdef COPY_MEMCPY
+        // --------------------------------------------------
+        // Use memcpy
+        assert (!"Currently assumes NUM_REPLICAS==2");
+#pragma omp parallel for
+        for (j=0; j<shl_array<T>::size-COPY_BATCH_SIZE; j+=COPY_BATCH_SIZE) {
+
+            memcpy(shl_array_replicated<T>::rep_array[0]+j, src->array+j, COPY_BATCH_SIZE);
+            memcpy(shl_array_replicated<T>::rep_array[1]+j, src->array+j, COPY_BATCH_SIZE);
+        }
+
+#pragma omp parallel for
+        for (j=j; j<shl_array<T>::size; j++) {
+
+            shl_array_replicated<T>::rep_array[0][j] = src->array[j];
+            shl_array_replicated<T>::rep_array[1][j] = src->array[j];
+        }
+#else
+#pragma omp parallel for schedule(static,1024)
+        // --------------------------------------------------
+        // Use regular per-element copy, but write BOTH rep's in same iteration
+
+        for (j=0; j<shl_array<T>::size; j++) {
+
+            WR_REP__CPY(NUM_REPLICAS);
+        }
+
+#endif
+            printf("time for copy_from_array is %lf\n", t.stop());
+    }
+
+    virtual void init_from_value(T value)
+    {
+
+        assert (!"Number of replicas hardcoded, generate macros for this");
+
+#pragma omp parallel for schedule(static,1024)
+        for (unsigned int j=0; j<shl_array<T>::size; j++) {
+
+            shl_array_replicated<T>::rep_array[0][j] = value;
+            shl_array_replicated<T>::rep_array[1][j] = value;
+            shl_array_replicated<T>::rep_array[2][j] = value;
+            shl_array_replicated<T>::rep_array[3][j] = value;
+        }
+
+    }
+
 };
 
 #endif /* SHL_ARRAY_WR_REP_H */

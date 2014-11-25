@@ -12,6 +12,7 @@
 
 #include <cstdlib>
 #include <cstdarg>
+#include <cstring> // memset
 #include <iostream>
 #include <limits>
 
@@ -48,6 +49,7 @@ public:
 /**
  * \brief Base class representing shoal arrays
  *
+ * This class implements single-node arrays.
  */
 template <class T>
 class shl_array : public shl_base_array {
@@ -56,6 +58,9 @@ public:
     T* array = NULL;
     T* array_copy = NULL;
 protected:
+    /**
+     * Size of array in elements (and not bytes)
+     */
     size_t size;
     bool use_hugepage;
     bool read_only;
@@ -189,6 +194,23 @@ public:
             options |= SHL_MALLOC_HUGEPAGE;
 
         return options;
+    }
+
+    /**
+     * \brief Optimized method to copy the content of arrays between
+     * each other.
+     *
+     * This is useful for example for "double-buffering" for parallel
+     * OpenMP loops.
+     */
+    virtual void copy_from_array(shl_array<T> *src)
+    {
+        assert (!"Not yet implemented");
+    }
+
+    virtual void init_from_value(T value)
+    {
+        memset(array, value, size);
     }
 
     /**
@@ -734,20 +756,5 @@ int shl__estimate_size(size_t size,
 
 
 int shl__estimate_working_set_size(int num, ...);
-
-/**
- * \brief Profide cached array access information for wr-rep.
- *
- * This is per-thread state
- */
-template <class T>
-class arr_thread_ptr {
-
-public:
-    T *rep_ptr;
-    T *ptr1;
-    T *ptr2;
-    struct array_cache c;
-};
 
 #endif /* __SHL_ARRAY */
