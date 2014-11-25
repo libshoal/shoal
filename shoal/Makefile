@@ -11,10 +11,13 @@ OBJS += $(SHLPREFIX)/src/misc.o \
 	$(SHLPREFIX)/src/shl_array_wr-rep.o \
 	$(SHLPREFIX)/src/shl.o
 
+HEADERS=$(wildcard inc/*.hpp) \
+	$(wildcard inc/*.h)
+
 EXTERNAL_OBJS += $(BASE)contrib/pycrc/crc.o
 
 DEPS = $(OBJS)
-DEPS += $(wildcard $(BASE)/inc/*)
+DEPS += $(HEADERS)
 
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
 
@@ -37,7 +40,7 @@ else
 endif
 
 INC += -I$(BASE)contrib/numactl-2.0.9 \
-	-I$(BASE)shoal/inc \
+	-I$(SHLPREFIX)/inc \
 	-I$(BASE)contrib/papi-5.3.0/src \
 	-I$(BASE)contrib/pycrc/
 
@@ -62,3 +65,6 @@ all: $(DEPS) $(EXTERNAL_OBJS)
 
 clean:
 	rm -f src/*.o $(TARGET)
+
+debug:
+	echo $(HEADERS)
