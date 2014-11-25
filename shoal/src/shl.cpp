@@ -72,6 +72,8 @@ void shl__end(void)
 
 #ifdef PAPI
 #define PAPI_EVENTS_MAX 16
+static bool shl__papi_running = 0;
+static bool shl__papi_init_done = 0;
 void papi_stop(void)
 {
     if (!shl__papi_running)
@@ -103,8 +105,6 @@ void papi_stop(void)
     }
 }
 
-static bool shl__papi_init_done = 0;
-static bool shl__papi_running = 0;
 void papi_init(void)
 {
     if (shl__papi_init_done)
@@ -136,7 +136,7 @@ void papi_start(void)
     if (PAPI_create_eventset(&EventSet) != PAPI_OK) handle_error(1);
 
     // Read PAPI event from the environment variable
-    char* papi_events =  get_env_str("SHL_PAPI", "PAPI_L2_DCM");
+    char* papi_events =  get_env_str("SHL_PAPI", "");
     char seps[] = ",";
 
     char input[PAPI_EVENTS_MAX][PAPI_MAX_STR_LEN];
@@ -169,6 +169,9 @@ void papi_start(void)
         printf("DONE\n");
 
         shl__papi_running = 1;
+    } else {
+
+        printf(ANSI_COLOR_BLUE "PAPI: " ANSI_COLOR_RESET "no events given, will not activate");
     }
 }
 #endif
