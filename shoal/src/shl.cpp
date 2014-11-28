@@ -58,6 +58,14 @@ void shl__start(void)
 #endif
 }
 
+void shl__thread_init(void)
+{
+#ifdef PAPI
+    if (PAPI_thread_init(pthread_self) != PAPI_OK)
+        exit(1);
+#endif
+}
+
 void shl__end(void)
 {
 #ifdef PAPI

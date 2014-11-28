@@ -116,9 +116,7 @@ void loc(size_t, int, int*, void **);
 // --------------------------------------------------
 void shl__end(void);
 void shl__start(void);
-void papi_stop(void);
-void papi_init(void);
-void papi_start(void);
+void shl__thread_init(void);
 int  shl__get_rep_id(void);
 int  shl__lookup_rep_id(int);
 void shl__repl_sync(void*, void**, size_t, size_t);
@@ -130,6 +128,13 @@ int  shl__num_threads(void);
 int  shl__get_tid(void);
 int  shl__rep_coordinator(int);
 bool shl__is_rep_coordinator(int);
+// --------------------------------------------------
+// PAPI
+// --------------------------------------------------
+void papi_stop(void);
+void papi_init(void);
+void papi_start(void);
+void papi_th_init(void);
 // array helpers
 // --------------------------------------------------
 void** shl__copy_array(void *src, size_t size, bool is_used,
