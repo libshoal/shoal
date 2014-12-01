@@ -650,15 +650,15 @@ public:
  *
  */
 template <class T>
-shl_array<T>* shl__malloc(size_t size,
-                          const char *name,
-                          //
-                          bool is_ro,
-                          bool is_dynamic,
-                          bool is_used,
-                          bool is_graph,
-                          bool is_indexed,
-                          bool initialize)
+shl_array<T>* shl__malloc_array(size_t size,
+                                const char *name,
+                                //
+                                bool is_ro,
+                                bool is_dynamic,
+                                bool is_used,
+                                bool is_graph,
+                                bool is_indexed,
+                                bool initialize)
 {
     // Policy for memory allocation
     // --------------------------------------------------
