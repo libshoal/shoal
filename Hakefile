@@ -22,18 +22,18 @@
         "shoal/src/shl_array_wr-rep.cpp"
        
     ],
-    addCFlags = [
-      "-fopenmp"
-    ],
-    addCxxFlags = [
-      "-fopenmp"
-    ],
+ --   addCFlags = [
+ --     "-fopenmp"
+ --   ],
+ --   addCxxFlags = [
+ --     "-fopenmp"
+ --   ],
     addIncludes = [
         "shoal/inc"
     ],
-    addLibraries = libDeps [
-        "bomp"
-    ],
+ --  addLibraries = libDeps [
+ --       "bomp"
+ --   ],
     architectures = [
       "x86_64",
       "k1om"
