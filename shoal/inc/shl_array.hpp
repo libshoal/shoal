@@ -60,33 +60,38 @@ class shl_base_array {
  */
 
 /**
- * \brief Base class representing shoal arrays
+ * \brief Generic Shoal Array
  *
  * This class implements single-node arrays.
  */
 template<class T>
 class shl_array : public shl_base_array {
 
- public:
-    T* array;
-    T* array_copy;
+
+ private:
+    T* array;           ///< pointer to the backing memory region
+    T* array_copy;      ///< XXX: what's that for?
 
  protected:
     /**
      * Size of array in elements (and not bytes)
      */
     size_t size;        ///< size of the array in elements
+
+    /* ------------------------- Flags ------------------------- */
     bool use_hugepage;  ///< flag indicating the use of huge pages
     bool read_only;     ///< flag indicating that this is a read only array
     bool alloc_done;    ///< flag indicating the allocation is done
                         /// XXX: is this needed can't we just take the  array pointer ?
+    bool is_used;       ///< flag indicating that this array is used
+                        /// XXX: What does that mean?
+    bool is_dynamic;    ///< flag indicating the array is dynamic
+                        /// XXX: what does that mean?
 
 #ifdef BARRELFISH
-    void *meminfo;
+    void *meminfo;      ///< backend specific memory information
 #endif
 
-    bool is_used;       ///<
-    bool is_dynamic;    ///<
 
 #ifdef PROFILE
     int64_t num_wr;
@@ -94,8 +99,19 @@ class shl_array : public shl_base_array {
 #endif
 
 
-
  public:
+
+    /*
+     * ---------------------------------------------------------------------------
+     * Constructors / Destructors
+     * ---------------------------------------------------------------------------
+     */
+
+    /**
+     * \brief Generic array constructure
+     * @param s
+     * @param _name
+     */
     shl_array(size_t s, const char *_name) :
                     shl_base_array(_name)
     {
@@ -127,6 +143,21 @@ class shl_array : public shl_base_array {
         meminfo = mem;
         alloc_done = true;
     }
+
+    virtual ~shl_array(void)
+    {
+        // if (array!=NULL) {
+        //     free(array);
+        // }
+
+        // array = NULL;
+    }
+
+    /*
+     * ---------------------------------------------------------------------------
+     * Array Initialization Methods
+     * ---------------------------------------------------------------------------
+     */
 
     /**
      * \brief
@@ -166,6 +197,12 @@ class shl_array : public shl_base_array {
         return is_used && !is_dynamic;
     }
 
+    /*
+     * ---------------------------------------------------------------------------
+     * Array Access Methods
+     * ---------------------------------------------------------------------------
+     */
+
     virtual T get(size_t i)
     {
 #ifdef PROFILE
@@ -181,6 +218,8 @@ class shl_array : public shl_base_array {
 #endif
         array[i] = v;
     }
+
+
 
     virtual void print_statistics(void)
     {
@@ -205,14 +244,7 @@ class shl_array : public shl_base_array {
         printf("\n");
     }
 
-    virtual ~shl_array(void)
-    {
-        // if (array!=NULL) {
-        //     free(array);
-        // }
 
-        // array = NULL;
-    }
 
     virtual T* get_array(void)
     {
