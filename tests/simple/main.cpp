@@ -14,7 +14,11 @@ static bool test_simple(size_t s)
 
     float *a = ac->get_array();
 
-    std::cout << "Writing array..." << std::endl;
+    std::cout << "Writing array... " << a << std::endl;
+
+    if (a == NULL) {
+        return 0;
+    }
 
 
     // Write to it
@@ -26,6 +30,8 @@ static bool test_simple(size_t s)
     // Verify content
     for (unsigned int i=0;i<s; i++)
         assert (a[i]==i);
+
+    std::cout << "[PASS]" << std::endl;
 
     delete ac;
 

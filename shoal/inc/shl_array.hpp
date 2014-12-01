@@ -35,14 +35,13 @@ extern "C" {
 
 /**
  * \brief Base class for shoal array
- *
- *
  */
 class shl_base_array {
-public:
+ public:
     const char *name;   ///< name of the array
 
-public:
+ public:
+
     /**
      * \brief base array constructor
      *
@@ -65,13 +64,14 @@ public:
  *
  * This class implements single-node arrays.
  */
-template <class T>
+template<class T>
 class shl_array : public shl_base_array {
 
-public:
+ public:
     T* array;
     T* array_copy;
-protected:
+
+ protected:
     /**
      * Size of array in elements (and not bytes)
      */
@@ -81,18 +81,23 @@ protected:
     bool alloc_done;    ///< flag indicating the allocation is done
                         /// XXX: is this needed can't we just take the  array pointer ?
 
+#ifdef BARRELFISH
     void *meminfo;
+#endif
+
+    bool is_used;       ///<
+    bool is_dynamic;    ///<
 
 #ifdef PROFILE
     int64_t num_wr;
     int64_t num_rd;
 #endif
 
-    bool is_used;
-    bool is_dynamic;
 
-public:
-    shl_array(size_t s, const char *_name) : shl_base_array(_name)
+
+ public:
+    shl_array(size_t s, const char *_name) :
+                    shl_base_array(_name)
     {
         size = s;
         use_hugepage = get_conf()->use_hugepage;
@@ -101,18 +106,15 @@ public:
         is_dynamic = false;
         is_used = false;
         meminfo = NULL;
+        array = NULL;
+        array_copy = NULL;
 #ifdef PROFILE
         num_wr = 0;
         num_rd = 0;
 #endif
-        array = NULL;
-        array_copy = NULL;
     }
 
-    shl_array(size_t s,
-              const char *_name,
-              void *mem,
-              void *data)
+    shl_array(size_t s, const char *_name, void *mem, void *data)
     {
         size = s;
         is_dynamic = false;
@@ -120,34 +122,36 @@ public:
         shl_array<T>::name = _name;
         use_hugepage = get_conf()->use_hugepage;
         read_only = false;
-        array = (T*)data;
+        array = (T*) data;
         array_copy = NULL;
         meminfo = mem;
         alloc_done = true;
     }
 
+    /**
+     * \brief
+     *
+     * XXX: should this not return an error in case malloc fails?
+     */
     virtual void alloc(void)
     {
-        if (!do_alloc())
+        if (array) {
             return;
+        }
 
-        print();
+        //if (!do_alloc())
+        //   return;
+
         assert(!alloc_done);
 
+        print();
 
-
-#if defined(BARRELFISH)
-#if SHL_BARRELFISH_USE_SHARED
-        printf("already allocated during init.\n");
-#else
+        /*
+         * XXX: What's the case with the page size here
+         */
         int pagesize;
-        shl__malloc(size * sizeof(T),
-                                 sizeof(T),get_options(), &pagesize, &meminfo, (void **)&array);
-#endif
-#else
-        int pagesize;
-        array = (T*) shl__malloc(size * sizeof(T), get_options(), &pagesize, &meminfo);
-#endif
+        array = (T*) shl__malloc(size * sizeof(T), get_options(), &pagesize,
+                                 SHL_NUMA_IGNORE, &meminfo);
 
         alloc_done = true;
     }
@@ -234,7 +238,7 @@ public:
      */
     virtual void copy_from_array(shl_array<T> *src)
     {
-        assert (!"Not yet implemented");
+        assert(!"Not yet implemented");
     }
 
     virtual void init_from_value(T value)
@@ -270,7 +274,7 @@ public:
             array[i] = src[i];
         }
 #if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
-       shl__barrelfish_share_frame((struct mem_info *)meminfo);
+        shl__barrelfish_share_frame((struct mem_info *)meminfo);
 #endif
     }
 
@@ -288,9 +292,9 @@ public:
         assert(alloc_done);
 
         printf("shl_array[%s]: Copying back\n", shl_base_array::name);
-        assert (array_copy == a);
-        assert (array_copy != NULL);
-        for (unsigned int i=0; i<size; i++) {
+        assert(array_copy == a);
+        assert(array_copy != NULL);
+        for (unsigned int i = 0; i < size; i++) {
 
 #ifdef SHL_DBG_ARRAY
             if( i<5 ) {
@@ -319,20 +323,21 @@ public:
     {
         printf("Array[%20s]: elements=%10zu-", shl_base_array::name, size);
         print_number(size);
-        printf(" size=%10zu-", size*sizeof(T)); print_number(size*sizeof(T));
+        printf(" size=%10zu-", size * sizeof(T));
+        print_number(size * sizeof(T));
         printf(" -- ");
         printf("hugepage=[%c] ", use_hugepage ? 'X' : ' ');
     }
 
     virtual void dump(void)
     {
-        for (size_t i=0; i<size; i++) {
+        for (size_t i = 0; i < size; i++) {
 
             noprintf("idx[%3zu] is %d\n", i, array[i]);
         }
     }
 
-public:
+ public:
     virtual unsigned long get_crc(void)
     {
 #ifdef BARRELFISH
@@ -343,7 +348,7 @@ public:
 
         crc_t crc = crc_init();
 
-        uintptr_t max = sizeof(T)*size;
+        uintptr_t max = sizeof(T) * size;
         crc = crc_update(crc, (unsigned char*) array, max);
 
         crc_finalize(crc);
@@ -357,7 +362,7 @@ public:
         printf("CRC %s 0x%lx\n", shl_base_array::name, get_crc());
     }
 
-public:
+ public:
     Timer t_collapse;
     Timer t_expand[MAXCORES];
 
@@ -393,15 +398,17 @@ class shl_array_distributed : public shl_array<T> {
     /**
      * \brief Initialize distributed array
      */
-    shl_array_distributed(size_t s,
-                          const char *_name) :
-                    shl_array<T>(s, _name) {};
+    shl_array_distributed(size_t s, const char *_name) :
+                    shl_array<T>(s, _name)
+    {
+    }
+    ;
 
-    shl_array_distributed(size_t s,
-                          const char *_name,
-                          void *mem,
-                          void *data) :
-                    shl_array<T>(s, _name, mem, data) {};
+    shl_array_distributed(size_t s, const char *_name, void *mem, void *data) :
+                    shl_array<T>(s, _name, mem, data)
+    {
+    }
+    ;
 
     virtual int get_options(void)
     {
@@ -433,19 +440,17 @@ class shl_array_partitioned : public shl_array<T> {
     /**
      * \brief Initialize partitioned array
      */
-    shl_array_partitioned(size_t s,
-                          const char *_name) :
+    shl_array_partitioned(size_t s, const char *_name) :
                     shl_array<T>(s, _name)
-    {};
+    {
+    }
+    ;
 
-    shl_array_partitioned(size_t s,
-                          const char *_name,
-                          void *mem,
-                          void *data) :
+    shl_array_partitioned(size_t s, const char *_name, void *mem, void *data) :
                     shl_array<T>(s, _name, mem, data)
-    { };
-
-
+    {
+    }
+    ;
 
     virtual int get_options(void)
     {
@@ -477,22 +482,20 @@ template<class T>
 class shl_array_replicated : public shl_array<T> {
     T* master_copy;
 
-public:
+ public:
     void **mem_array;
     T** rep_array;
 
-protected:
+ protected:
     int num_replicas;
-public:
+ public:
     int (*lookup)(void);
 
-public:
+ public:
     /**
      * \brief Initialize replicated array
      */
-    shl_array_replicated(size_t s,
-                         const char *_name,
-                         int (*f_lookup)(void)) :
+    shl_array_replicated(size_t s, const char *_name, int (*f_lookup)(void)) :
                     shl_array<T>(s, _name)
     {
         shl_array<T>::read_only = true;
@@ -516,8 +519,6 @@ public:
         rep_array = NULL;
     }
 
-
-
     virtual void alloc(void)
     {
         if (!shl_array<T>::do_alloc())
@@ -531,7 +532,7 @@ public:
                                                 &num_replicas,
                                                 shl_array<T>::get_options());
 
-        mem_array = ((void **)rep_array) + num_replicas;
+        mem_array = ((void **) rep_array) + num_replicas;
 
         assert(num_replicas > 0);
         for (int i = 0; i < num_replicas; i++)
@@ -595,7 +596,7 @@ public:
 #ifdef PROFILE
         __sync_fetch_and_add(&shl_array<T>::num_wr, 1);
 #endif
-        for (int j=0; j<num_replicas; j++)
+        for (int j = 0; j < num_replicas; j++)
             rep_array[j][i] = v;
     }
 
@@ -611,8 +612,9 @@ public:
 
     void synchronize(void)
     {
-        assert (shl_array<T>::alloc_done);
-        shl__repl_sync(master_copy, (void**) rep_array, num_replicas, shl_array<T>::size*sizeof(T));
+        assert(shl_array<T>::alloc_done);
+        shl__repl_sync(master_copy, (void**) rep_array, num_replicas,
+                       shl_array<T>::size * sizeof(T));
     }
 
  protected:
@@ -624,16 +626,16 @@ public:
 
     virtual void dump(void)
     {
-        for (int j=0; j<num_replicas; j++) {
+        for (int j = 0; j < num_replicas; j++) {
 
-            for (size_t i=0; i<shl_array<T>::size; i++) {
+            for (size_t i = 0; i < shl_array<T>::size; i++) {
 
                 noprintf("rep[%2d] idx[%3zu] is %d\n", j, i, rep_array[j][i]);
             }
         }
     }
 
-public:
+ public:
     virtual unsigned long get_crc(void)
     {
 
@@ -643,35 +645,33 @@ public:
         if (!shl_array<T>::alloc_done)
             return 0;
 
-        crc_t *crc = (crc_t*) malloc(sizeof(crc_t)*num_replicas);
-        assert (crc);
+        crc_t *crc = (crc_t*) malloc(sizeof(crc_t) * num_replicas);
+        assert(crc);
 
-        for (int i=0; i<1; i++) {
+        for (int i = 0; i < 1; i++) {
 
             crc[i] = crc_init();
 
-            uintptr_t max = sizeof(T)*shl_array<T>::size;
+            uintptr_t max = sizeof(T) * shl_array<T>::size;
             crc[i] = crc_update(crc[i], (unsigned char*) (rep_array[i]), max);
 
             crc[i] = crc_finalize(crc[i]);
 
-            if (! (i==0 || ((unsigned long) crc[i] == (unsigned long) crc[0]))) {
+            if (!(i == 0 || ((unsigned long) crc[i] == (unsigned long) crc[0]))) {
 
-                printf(ANSI_COLOR_CYAN "WARNING: " ANSI_COLOR_RESET \
-                       "replica %d's content diverges (%lx vs %lx)\n", i,
-                       (unsigned long) crc[i], (unsigned long) crc[0]);
+                printf(ANSI_COLOR_CYAN "WARNING: " ANSI_COLOR_RESET
+                "replica %d's content diverges (%lx vs %lx)\n",
+                       i, (unsigned long) crc[i], (unsigned long) crc[0]);
             } else {
-                printf("replica %d's content is %lx\n", i,
-                       (unsigned long) crc[i]);
+                printf("replica %d's content is %lx\n", i, (unsigned long) crc[i]);
             }
         }
 
         unsigned long r = (unsigned long) crc[0];
-        free (crc);
+        free(crc);
         return r;
 #endif
     }
-
 
 };
 
@@ -705,10 +705,9 @@ public:
  *   ? how to know the size of the working set?
  *
  */
-template <class T>
-shl_array<T>* shl__malloc_array(size_t size,
-                                const char *name,
-                                //
+template<class T>
+shl_array<T>* shl__malloc_array(size_t size, const char *name,
+//
                                 bool is_ro,
                                 bool is_dynamic,
                                 bool is_used,
@@ -727,9 +726,10 @@ shl_array<T>* shl__malloc_array(size_t size,
                     is_ro && get_conf()->use_replication;
 
     // 3) Distribute if nothing else works and there is more than one node
-    bool distribute = !replicate && !partition && // none of the others
-        shl__get_num_replicas()>1 &&
-        get_conf()->use_distribution && initialize;
+    bool distribute = !replicate && !partition
+                    &&  // none of the others
+                    shl__get_num_replicas() > 1 && get_conf()->use_distribution
+                    && initialize;
 
     shl_array<T> *res = NULL;
 
@@ -740,10 +740,10 @@ shl_array<T>* shl__malloc_array(size_t size,
 #if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
         void *data;
         void *mem;
-        void *array = shl__malloc(size*sizeof(T), sizeof(shl_array_partitioned<T>),
-                                  SHL_MALLOC_HUGEPAGE | SHL_MALLOC_PARTITION, NULL,
-                                  &mem, &data);
-        res = new(array) shl_array_partitioned<T>(size, name, mem, data);
+//        void *array = shl__malloc(size*sizeof(T)),
+//                        SHL_MALLOC_HUGEPAGE | SHL_MALLOC_PARTITION, NULL,
+//                        &mem, &data);
+        res = new shl_array_partitioned<T>(size, name, mem, data);
 #else
         res = new shl_array_partitioned<T>(size, name);
 #endif
@@ -754,10 +754,10 @@ shl_array<T>* shl__malloc_array(size_t size,
 #if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
         void *data;
         void *mem;
-        void *array = shl__malloc(size*sizeof(T), sizeof(shl_array<T>),
-                                  SHL_MALLOC_HUGEPAGE | SHL_MALLOC_REPLICATED,
-                                  NULL, &mem, &data);
-        res = new(array) shl_array<T>(size, name, mem, data);
+//        void *array = shl__malloc(size*sizeof(T), sizeof(shl_array<T>),
+//                        SHL_MALLOC_HUGEPAGE | SHL_MALLOC_REPLICATED,
+//                        NULL, &mem, &data);
+        res = new shl_array<T>(size, name, mem, data);
 #else
         res = new shl_array_replicated<T>(size, name, shl__get_rep_id);
 #endif
@@ -768,10 +768,10 @@ shl_array<T>* shl__malloc_array(size_t size,
 #if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
         void *data;
         void *mem;
-        void *array = shl__malloc(size*sizeof(T), sizeof(shl_array_distributed<T>),
-                                  SHL_MALLOC_HUGEPAGE | SHL_MALLOC_DISTRIBUTED,
-                                  NULL, &mem, &data);
-        res = new(array) shl_array_distributed<T>(size, name, mem, data);
+        //void *array = shl__malloc(size*sizeof(T), sizeof(shl_array_distributed<T>),
+        //                SHL_MALLOC_HUGEPAGE | SHL_MALLOC_DISTRIBUTED,
+        //                NULL, &mem, &data);
+        res = new shl_array_distributed<T>(size, name, mem, data);
 #else
         res = new shl_array_distributed<T>(size, name);
 #endif
@@ -782,8 +782,8 @@ shl_array<T>* shl__malloc_array(size_t size,
 #if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
         void *data;
         void *mem;
-        void *array = shl__malloc(size*sizeof(T), sizeof(shl_array<T>), SHL_MALLOC_HUGEPAGE, NULL, &mem, &data);
-        res = new(array) shl_array<T>(size, name, mem, data);
+        //void *array = shl__malloc(size*sizeof(T), sizeof(shl_array<T>), SHL_MALLOC_HUGEPAGE, NULL, &mem, &data);
+        res = new shl_array<T>(size, name, mem, data);
 #else
         res = new shl_array<T>(size, name);
 #endif
@@ -791,14 +791,13 @@ shl_array<T>* shl__malloc_array(size_t size,
 
     // These are used internally in array to decide if copy-in and
     // copy-out of source arrays are required
-    res->set_dynamic (is_dynamic);
-    res->set_used (is_used);
+    res->set_dynamic(is_dynamic);
+    res->set_used(is_used);
 
     return res;
 }
 
-
-template <class T>
+template<class T>
 int shl__estimate_size(size_t size,
                        const char *name,
                        bool is_ro,
@@ -807,9 +806,8 @@ int shl__estimate_size(size_t size,
                        bool is_graph,
                        bool is_indexed)
 {
-    return is_used ? sizeof(T)*size : 0;
+    return is_used ? sizeof(T) * size : 0;
 }
-
 
 int shl__estimate_working_set_size(int num, ...);
 

@@ -279,7 +279,7 @@ void shl__copy_back_array_single(void *src, void *dest, size_t size, bool is_cop
  *
  * \param ret_mi Is unused on Linux
  */
-void* shl__malloc(size_t size, int opts, int *pagesize, void **ret_mi)
+void* shl__malloc(size_t size, int opts, int *pagesize, int node, void **ret_mi)
 {
     void *res;
     bool use_hugepage = opts & SHL_MALLOC_HUGEPAGE;
@@ -363,7 +363,7 @@ void** shl_malloc_replicated(size_t size,
         // --------------------------------------------------
 
         // Allocate
-        tmp[i] = shl__malloc(size, options, &pagesize, NULL);
+        tmp[i] = shl__malloc(size, options, &pagesize, SHL_NUMA_IGNORE, NULL);
 
         // Allocate on proper node; leverage Linux's first touch strategy
         // --------------------------------------------------

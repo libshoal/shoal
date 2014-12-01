@@ -98,6 +98,37 @@ long numa_node_size(int node,
     return -1;
 }
 
+static int numa_get_range(int node,
+                          uintptr_t *min_base,
+                          uintptr_t *max_limit)
+{
+    uintptr_t mb, ml;
+#if 0
+    if (node == 0) {
+        mb = 0x0;
+        ml = (128UL * 1024 * 1024 * 1024);
+    } else if (node == 1) {
+        mb = (128UL * 1024 * 1024 * 1024);
+        ml = (256UL * 1024 * 1024 * 1024);
+    } else {
+        return -1;
+    }
+#else
+    mb = 0;
+    ml = 0xFFFFFFFF;
+#endif
+
+    if (min_base) {
+        *min_base = mb;
+    }
+
+    if (max_limit) {
+        *max_limit = ml;
+    }
+
+    return 0;
+}
+
 int numa_available(void)
 {
     /* If it returns -1, all other functions in this library are undefined. */
@@ -199,19 +230,11 @@ bool shl__check_hugepage_support(void)
  * - SHL_MALLOC_DISTRIBUTED:
  *    distribute memory approximately equally on nodes that have threads
  */
-#if !SHL_BARRELFISH_USE_SHARED
-void* shl__malloc(size_t size,
-                  size_t objsize,
-                  int opts,
-                  int *pagesize,
-                  void **ret_mi,
-                  void **ret_data)
-#else
 void* shl__malloc(size_t size,
                   int opts,
                   int *pagesize,
+                  int node,
                   void **ret_mi)
-#endif
 {
     errval_t err;
 
@@ -226,29 +249,35 @@ void* shl__malloc(size_t size,
 
     uint32_t pg_size = (opts & SHL_MALLOC_HUGEPAGE) ? PAGESIZE_HUGE : PAGESIZE;
 
-
-
     // round up to multiple of page size
-#if !SHL_BARRELFISH_USE_SHARED
-    size = (size + objsize + pg_size - 1) & ~(pg_size - 1);
-#else
     size = (size + pg_size - 1) & ~(pg_size - 1);
-#endif
 
-    uint64_t min_base, max_limit;
-    ram_get_affinity(&min_base, &max_limit);
-    ram_set_affinity(SHL_RAM_MIN_BASE, SHL_RAM_MAX_LIMIT);
 
+    uintptr_t min_base, max_limit;
+    if (node != SHL_NUMA_IGNORE) {
+        uint64_t mb_new, ml_new;
+        if (!numa_get_range(node, &mb_new, &ml_new)) {
+            printf("Setting range to: 0x%016lx-0x%016lx\n", mb_new, ml_new);
+            ram_get_affinity(&min_base, &max_limit);
+            ram_set_affinity(mb_new, ml_new);
+        } else {
+            goto err_alloc;
+        }
+    }
+
+    printf("Allocating of size: %lu\n", size);
     err = frame_alloc(&mi->frame, size, &size);
     if (err_is_fail(err)) {
         goto err_alloc;
     }
 
-    ram_set_affinity(min_base, max_limit);
-
     err = vspace_map_one_frame_fixed(mi->vaddr, size, mi->frame, NULL, NULL);
     if (err_is_fail(err)) {
         goto err_map;
+    }
+
+    if (node != SHL_NUMA_IGNORE) {
+        ram_set_affinity(min_base, max_limit);
     }
 
     malloc_next += size;
@@ -261,19 +290,13 @@ void* shl__malloc(size_t size,
         *ret_mi = (void *) mi;
     }
 
-#if !SHL_BARRELFISH_USE_SHARED
-    if (ret_data) {
-        *ret_data = (void *)mi->vaddr;
-    }
-    return (void *)(mi->vaddr + ((mi->size + 64 - 1) & ~(64 - 1)));
-#endif
     return (void *) mi->vaddr;
 
     err_map: cap_destroy(mi->frame);
 
     err_alloc: free(mi);
 
-    return 0;
+    return NULL;
 }
 
 void** shl__copy_array(void *src,
