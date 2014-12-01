@@ -217,21 +217,26 @@ protected:
         // --------------------------------------------------
         // Use memcpy
         assert (!"Currently assumes NUM_REPLICAS==2");
+#ifndef BARRELFISH
 #pragma omp parallel for
+#endif
         for (j=0; j<shl_array<T>::size-COPY_BATCH_SIZE; j+=COPY_BATCH_SIZE) {
 
             memcpy(shl_array_replicated<T>::rep_array[0]+j, src->array+j, COPY_BATCH_SIZE);
             memcpy(shl_array_replicated<T>::rep_array[1]+j, src->array+j, COPY_BATCH_SIZE);
         }
-
+#ifndef BARRELFISH
 #pragma omp parallel for
+#endif
         for (j=j; j<shl_array<T>::size; j++) {
 
             shl_array_replicated<T>::rep_array[0][j] = src->array[j];
             shl_array_replicated<T>::rep_array[1][j] = src->array[j];
         }
 #else
+#ifndef BARRELFISH
 #pragma omp parallel for schedule(static,1024)
+#endif
         // --------------------------------------------------
         // Use regular per-element copy, but write BOTH rep's in same iteration
 
@@ -249,7 +254,9 @@ protected:
 
         assert (!"Number of replicas hardcoded, generate macros for this");
 
+#ifndef BARRELFISH
 #pragma omp parallel for schedule(static,1024)
+#endif
         for (unsigned int j=0; j<shl_array<T>::size; j++) {
 
             shl_array_replicated<T>::rep_array[0][j] = value;

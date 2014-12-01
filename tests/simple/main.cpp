@@ -4,11 +4,12 @@
 
 using namespace std;
 
-static bool test_alloc(size_t s)
-{
-    std::cout << "Allocating array..." << std::endl;
 
-    shl_array<float> *ac = shl__malloc(s, "test array", 0,0,0,0,0,0);
+static bool test_simple(size_t s)
+{
+    std::cout << "Single Node Array" << std::endl;
+
+    shl_array<float> *ac = new shl_array<float>(s, "Test Simple Array");
     ac->alloc();
 
     float *a = ac->get_array();
@@ -31,15 +32,30 @@ static bool test_alloc(size_t s)
     return true;
 }
 
+static bool test_partitioned(size_t s)
+{
+    return true;
+}
+
+static bool test_replicated(size_t s)
+{
+    return true;
+}
+
+static bool test_distributed(size_t s)
+{
+    return true;
+}
+
 int main()
 {
     shl__init(1, true);
     std::cout << "Hello World!" << std::endl;
 
-    test_alloc(1);
-    test_alloc(1024);
-   // test_alloc(1024*1024);
-   // test_alloc(1024*1024*1024);
+    test_simple(10);
+    test_partitioned(10);
+    test_replicated(10);
+    test_distributed(10);
 
     return 0;
 }

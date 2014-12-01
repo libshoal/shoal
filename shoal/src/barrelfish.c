@@ -173,7 +173,8 @@ int shl__barrelfish_share_frame(struct mem_info *mi)
         assert("NYI");
     }
 
-    return xomp_master_add_memory(mi->frame, mi->vaddr, type);
+    //return xomp_master_add_memory(mi->frame, mi->vaddr, type);
+    return 0;
 #endif
     assert(!"should not be called");
     return -1;

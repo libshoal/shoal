@@ -32,6 +32,7 @@ Configuration::Configuration(void) {
     use_replication = SHL_REPLICATION;
     use_distribution = SHL_DISTRIBUTION;
     use_partition = SHL_PARTITION;
+    numa_trim = SHL_NUMA_TRIM;
 #else
     // Configuration based on environemnt
     use_hugepage = get_env_int("SHL_HUGEPAGE", 1);
@@ -186,7 +187,11 @@ void papi_start(void)
 
 int shl__get_rep_id(void)
 {
+#ifndef BARRELFISH
     return shl__lookup_rep_id(omp_get_thread_num());
+#else
+    return 0;
+#endif
 
 }
 
@@ -195,7 +200,9 @@ int shl__lookup_rep_id(int core)
 #ifdef DEBUG
     __sync_fetch_and_add(&num_lookup, 1);
 #endif
+#ifndef BARRELFISH
     assert(omp_get_num_threads()<MAXCORES);
+#endif
     assert(core<MAXCORES);
     assert(replica_lookup[core]>=0);
 
@@ -350,7 +357,11 @@ int shl__num_threads(void)
 
 int shl__get_tid(void)
 {
+#ifndef BARRELFISH
     return omp_get_thread_num();
+#else
+    return 0;
+#endif
 }
 
 int shl__rep_coordinator(int rep)
