@@ -15,34 +15,42 @@ Timer shl__default_timer;
 // virtually indexed
 int replica_lookup[MAXCORES];
 
+/*
+ * -------------------------------------------------------------------------------
+ * Timer class definitions
+ * -------------------------------------------------------------------------------
+ */
+
+/**
+ * \brief starts the timer
+ */
 void Timer::start(void)
 {
+    assert(!running);
     running = true;
     gettimeofday(&TV1, NULL);
  }
 
+/**
+ * \brief stops the timer
+ *
+ * \returns
+ */
 double Timer::stop(void)
 {
     assert (running);
     gettimeofday(&TV2, NULL);
-    timer_secs += (TV2.tv_sec - TV1.tv_sec)*1000 + (TV2.tv_usec - TV1.tv_usec)*0.001;
+    msec += (TV2.tv_sec - TV1.tv_sec)*1000 + (TV2.tv_usec - TV1.tv_usec)*0.001;
     tv_sec += (TV2.tv_sec - TV1.tv_sec);
     tv_usec += (TV2.tv_usec - TV1.tv_usec);
-    return timer_secs;
+    return msec;
 }
 
-double Timer::get(void)
-{
-    return tv_sec*1000 + tv_usec*0.0001;
-}
-
-void Timer::reset(void)
-{
-    tv_sec = 0;
-    tv_usec = 0;
-    running = false;
-    timer_secs = 0.0;
-}
+/*
+ * -------------------------------------------------------------------------------
+ * Multi Timer class definitions
+ * -------------------------------------------------------------------------------
+ */
 
 void MultiTimer::start(void)
 {
@@ -90,7 +98,7 @@ double shl__end_timer(void)
 
 double shl__get_timer(void)
 {
-    return shl__default_timer.timer_secs;
+    return shl__default_timer.get();
 }
 
 

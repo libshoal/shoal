@@ -27,8 +27,10 @@ int shl__barrelfish_init(size_t num_threads)
     args.args.uniform.nthreads = num_threads;
     args.core_stride = 2;
     args.args.uniform.nphi = 2;
+    /*
     args.args.uniform.argc = argcount;
     args.args.uniform.argv = argvals;
+    */
     args.args.uniform.worker_loc = XOMP_WORKER_LOC_MIXED;
 
     err = bomp_xomp_init(&args);
@@ -173,6 +175,11 @@ int shl__barrelfish_share_frame(struct mem_info *mi)
 #endif
     assert(!"should not be called");
     return -1;
+}
+
+bool shl__check_hugepage_support(void)
+{
+    return 0;
 }
 
 /**

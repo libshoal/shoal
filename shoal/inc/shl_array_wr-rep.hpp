@@ -130,10 +130,15 @@ void shl__wr_rep_ptr_thread_init(shl_array<T> *base,
     // Used for writes
     WR_REP__INIT(NUM_REPLICAS);
 
-    p->c = (struct array_cache) {
-        .rid = shl__get_rep_id(),
+    struct array_cache ac;
+    ac.rid = shl__get_rep_id();
+    ac.tid = shl__get_tid();
+    /*= {
+        .rid = rep_id,
         .tid = shl__get_tid()
-    };
+    }; */
+
+    p->c = ac;
 }
 
 

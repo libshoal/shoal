@@ -20,9 +20,12 @@
 #include "shl_timer.hpp"
 #include "shl_configuration.hpp"
 
+#ifndef BARRELFISH
+//XXX: is this also available for barrelfish??
 extern "C" {
 #include "crc.h"
 }
+#endif
 
 //#define PROFILE
 
@@ -37,14 +40,23 @@ extern "C" {
  */
 class shl_base_array {
 public:
-    const char *name;
+    const char *name;   ///< name of the array
 
 public:
-    shl_base_array(const char *name)
+    /**
+     * \brief base array constructor
+     *
+     * \param name  Name of the array.
+     */
+    shl_base_array(const char *_name)
     {
-        shl_base_array::name = name;
+        shl_base_array::name = _name;
     }
 };
+
+/*
+ * ==============================================================================
+ */
 
 /**
  * \brief Base class representing shoal arrays
@@ -55,24 +67,27 @@ template <class T>
 class shl_array : public shl_base_array {
 
 public:
-    T* array = NULL;
-    T* array_copy = NULL;
+    T* array;
+    T* array_copy;
 protected:
     /**
      * Size of array in elements (and not bytes)
      */
-    size_t size;
-    bool use_hugepage;
-    bool read_only;
-    bool alloc_done;
+    size_t size;        ///< size of the array in elements
+    bool use_hugepage;  ///< flag indicating the use of huge pages
+    bool read_only;     ///< flag indicating that this is a read only array
+    bool alloc_done;    ///< flag indicating the allocation is done
+                        /// XXX: is this needed can't we just take the  array pointer ?
 
     void *meminfo;
+
 #ifdef PROFILE
     int64_t num_wr;
     int64_t num_rd;
 #endif
 
-    bool is_used;bool is_dynamic;
+    bool is_used;
+    bool is_dynamic;
 
 public:
     shl_array(size_t s, const char *_name) : shl_base_array(_name)
@@ -81,7 +96,9 @@ public:
         use_hugepage = get_conf()->use_hugepage;
         read_only = false;
         alloc_done = false;
-
+        is_dynamic = false;
+        is_used = false;
+        meminfo = NULL;
 #ifdef PROFILE
         num_wr = 0;
         num_rd = 0;
@@ -96,6 +113,8 @@ public:
               void *data)
     {
         size = s;
+        is_dynamic = false;
+        is_used = false;
         shl_array<T>::name = _name;
         use_hugepage = get_conf()->use_hugepage;
         read_only = false;
@@ -113,8 +132,16 @@ public:
         print();
         assert(!alloc_done);
 
-#if defined(BARRELFISH) && SHL_BARRELFISH_USE_SHARED
+
+
+#if defined(BARRELFISH)
+#if SHL_BARRELFISH_USE_SHARED
         printf("already allocated during init.\n");
+#else
+        int pagesize;
+        shl__malloc(size * sizeof(T),
+                                 sizeof(T),get_options(), &pagesize, &meminfo, (void **)&array);
+#endif
 #else
         int pagesize;
         array = (T*) shl__malloc(size * sizeof(T), get_options(), &pagesize, &meminfo);
@@ -306,6 +333,9 @@ public:
 public:
     virtual unsigned long get_crc(void)
     {
+#ifdef BARRELFISH
+        return 0;
+#else
         if (!alloc_done)
             return 0;
 
@@ -317,7 +347,9 @@ public:
         crc_finalize(crc);
 
         return (unsigned long) crc;
+#endif
     }
+
     virtual void print_crc(void)
     {
         printf("CRC %s 0x%lx\n", shl_base_array::name, get_crc());
@@ -585,6 +617,9 @@ public:
     virtual unsigned long get_crc(void)
     {
 
+#ifdef BARRELFISH
+        return 0;
+#else
         if (!shl_array<T>::alloc_done)
             return 0;
 
@@ -614,6 +649,7 @@ public:
         unsigned long r = (unsigned long) crc[0];
         free (crc);
         return r;
+#endif
     }
 
 

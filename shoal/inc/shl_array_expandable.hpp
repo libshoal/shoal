@@ -8,10 +8,12 @@
 #include <vector>
 #include <cstring>
 
+#ifndef BARRELFISH
 extern "C" {
 #include <pthread.h>
 #include "crc.h"
 }
+#endif
 
 #define SANITY_CHECK
 #define WS_BUFFER_SIZE (1024*1024*100)
@@ -240,8 +242,14 @@ public:
                          i, get(i), v, shl__get_tid());
 
             int rep_id = shl_array_replicated<T>::lookup();
-            set_cached(i, v, (struct array_cache) { .rid = rep_id,
-                        .tid = shl__get_tid() });
+            struct array_cache ac;
+            ac.rid = rep_id;
+            ac.tid = shl__get_tid();
+            /*= {
+                .rid = rep_id,
+                .tid = shl__get_tid()
+            }; */
+            set_cached(i, v, ac );
         }
         else {
             shl_array<T>::set(i, v);

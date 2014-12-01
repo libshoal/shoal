@@ -14,24 +14,64 @@
 
 using namespace std;
 
-// --------------------------------------------------
-// Timer
-// --------------------------------------------------
+/*
+ * -------------------------------------------------------------------------------
+ * Timer
+ * -------------------------------------------------------------------------------
+ */
+
+/**
+ * \brief timer class
+ */
 class Timer {
  public:
-    bool running = false;
-    long tv_sec = 0;
-    long tv_usec = 0;
-    double timer_secs = 0.0; // these are actually miliseconds
-    void start(void);
-    double stop(void);
-    double get(void);
-    void reset(void);
+    /**
+     * constructor
+     */
     Timer() {
-        timer_secs = 0.0;
+        reset();
     }
+
+    /**
+     * \brief starts the timer
+     */
+    void start(void);
+
+    /**
+     * \brief stops the timer
+     *
+     * \returns
+     */
+    double stop(void);
+
+    /**
+     * returns the time elapsed
+     *
+     * \returns
+     */
+    double get(void)
+    {
+        return tv_sec*1000 + tv_usec*0.0001;
+    }
+
+    /**
+     * \brief resets the timer values
+     */
+    void reset(void)
+    {
+        tv_sec = 0;
+        tv_usec = 0;
+        running = false;
+        msec = 0.0;
+    }
+
  private:
-    struct timeval TV1, TV2;
+    bool running;        ///< flag indicating that the timer is running
+    long tv_sec;         ///< time value vector (sec part)
+    long tv_usec;        ///< time value vector (usec part)
+    double msec;         ///< elapsed time in msec
+    struct timeval TV1;  ///< timestamp when the timer is started
+    struct timeval TV2;  ///< timestamp when the timer was stopped
 };
 
 class MultiTimer {
