@@ -15,6 +15,7 @@ static lvaddr_t malloc_next = MALLOC_VADDR_START;
  */
 int shl__barrelfish_init(size_t num_threads)
 {
+#if 0
 #if SHL_BARRELFISH_USE_SHARED
     bomp_bomp_init(num_threads);
     return 0;
@@ -39,6 +40,7 @@ int shl__barrelfish_init(size_t num_threads)
     }
 
     omp_set_num_threads(num_threads);
+#endif
 #endif
     return 0;
 }
