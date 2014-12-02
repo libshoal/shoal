@@ -43,6 +43,7 @@ double Timer::stop(void)
     msec += (TV2.tv_sec - TV1.tv_sec)*1000 + (TV2.tv_usec - TV1.tv_usec)*0.001;
     tv_sec += (TV2.tv_sec - TV1.tv_sec);
     tv_usec += (TV2.tv_usec - TV1.tv_usec);
+    running = false;
     return msec;
 }
 

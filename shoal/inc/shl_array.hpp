@@ -110,10 +110,7 @@ class shl_array : public shl_base_array {
                         /// copied back. We probably want to get rid
                         /// of this flag and deal with this in GM.
 
-#ifdef BARRELFISH
     void *meminfo;      ///< backend specific memory information
-#endif
-
 
 #ifdef PROFILE
     int64_t num_wr;
