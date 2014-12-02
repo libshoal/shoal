@@ -378,6 +378,8 @@ class shl_array : public shl_base_array {
         print_number(size * sizeof(T));
         printf(" -- ");
         printf("hugepage=[%c] ", use_hugepage ? 'X' : ' ');
+        printf(" -- ");
+        printf("used=[%c] ", is_used ? 'X' : ' ');
     }
 
     virtual void dump(void)
