@@ -300,12 +300,18 @@ void* shl__malloc(size_t size, int opts, int *pagesize, int node, void **ret_mi)
     printf("shl__alloc: %zu, huge=%d, distribute=%d",
            alloc_size, use_hugepage, distribute);
 
-    // Allocate
-    res = mmap(NULL, alloc_size, PROT_READ | PROT_WRITE, options, -1, 0);
+    // Allocate (alloc_size + 1 page)
+    // might have to shift if memory returned is not starting on page boundary
+    res = mmap(NULL, alloc_size + *pagesize, PROT_READ | PROT_WRITE, options, -1, 0);
     if (res==MAP_FAILED) {
         perror("mmap");
         exit(1);
     }
+
+    // Want the first element of the array starting at pageboundary
+    size_t rres = (size_t) res;
+    while (rres % (*pagesize) != 0) rres++;
+    res = (void*) rres;
 
     // Distribute memory
     // --------------------------------------------------
@@ -323,13 +329,8 @@ void* shl__malloc(size_t size, int opts, int *pagesize, int node, void **ret_mi)
     // --------------------------------------------------
     if (partition) {
 
-        // XXX This assumes that the GM programs are also using
-        // static, 1024
-#pragma omp parallel for schedule(static, 1024)
-        for (unsigned int i=0; i<alloc_size;i++) {
-
-            ((char *) res)[i] = 0;
-        }
+        // SK: cannot establish mapping here, as size of array
+        // elements is not known
     }
 
     printf("\n");

@@ -68,9 +68,6 @@ template<class T>
 class shl_array : public shl_base_array {
 
 
- private:
-    T* array;           ///< pointer to the backing memory region
-
  protected:
     /**
      * Size of array in elements (and not bytes)
@@ -111,6 +108,8 @@ class shl_array : public shl_base_array {
                         /// of this flag and deal with this in GM.
 
     void *meminfo;      ///< backend specific memory information
+    T* array;           ///< pointer to the backing memory region
+
 
 #ifdef PROFILE
     int64_t num_wr;
@@ -503,6 +502,24 @@ class shl_array_partitioned : public shl_array<T> {
     {
     }
     ;
+
+    virtual void alloc(void)
+    {
+        shl_array<T>::alloc();
+
+        // We need to force memory allocation in here (which sucks,
+        // since this file is supposed to be platform independent),
+        // since in shl_malloc, we do not know the size of elements,
+        // and hence, we cannot establish a correct memory mapping for
+        // partitioning in there.
+
+#pragma omp parallel for schedule(static, 1024)
+        for (unsigned int i=0; i<shl_array<T>::size; i++) {
+
+            shl_array<T>::array[i] = 0;
+        }
+
+    }
 
     virtual int get_options(void)
     {
