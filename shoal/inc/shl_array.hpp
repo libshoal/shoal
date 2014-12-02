@@ -81,11 +81,34 @@ class shl_array : public shl_base_array {
     bool use_hugepage;  ///< flag indicating the use of huge pages
     bool read_only;     ///< flag indicating that this is a read only array
     bool alloc_done;    ///< flag indicating the allocation is done
-                        /// XXX: is this needed can't we just take the  array pointer ?
-    bool is_used;       ///< flag indicating that this array is used
-                        /// XXX: What does that mean?
+
+                        /// We have several different array pointers
+                        /// (depending on the array implementation),
+                        /// so we keep an extra bool to simplify
+                        /// tracking of whether arrays have been
+                        /// allocated
+
+    bool is_used;       ///< flag indicating that this array is used.
+
+                        /// Some arrays might be allocated, but are
+                        /// never used (such as part of the graph data
+                        /// structure for some of the Green Marl
+                        /// programs). If we know that arrays are not
+                        /// used, we don't have to copy them
+                        /// around. Alternatively, we could (and
+                        /// should) remove this from the library and
+                        /// deal with this in the Green Marl compiler
+
     bool is_dynamic;    ///< flag indicating the array is dynamic
-                        /// XXX: what does that mean?
+
+                        /// This is an array attribute I found useful
+                        /// to deal with GM programs. There are arrays
+                        /// that are allocated prior to executing the
+                        /// main routine, and others that are
+                        /// dynamically allocated within
+                        /// programs. Latter ones do not have to be
+                        /// copied back. We probably want to get rid
+                        /// of this flag and deal with this in GM.
 
 #ifdef BARRELFISH
     void *meminfo;      ///< backend specific memory information
@@ -159,7 +182,7 @@ class shl_array : public shl_base_array {
     /**
      * \brief
      *
-     * XXX: should this not return an error in case malloc fails?
+     * XXX: Retun error in case malloc fails
      */
     virtual void alloc(void)
     {
@@ -175,9 +198,16 @@ class shl_array : public shl_base_array {
         print();
 
         /*
-         * XXX: What's the case with the page size here
+         * shl__malloc determines the pagesize to be used for an array.
+         *
+         * This might depend on the size of the array, access
+         * patterns, and hardware we are running on.
+         *
+         * Alternatively, the policy on when to use hugepages could
+         * also be part of the array class.
          */
         int pagesize;
+
         array = (T*) shl__malloc(size * sizeof(T), get_options(), &pagesize,
                                  SHL_NUMA_IGNORE, &meminfo);
 
