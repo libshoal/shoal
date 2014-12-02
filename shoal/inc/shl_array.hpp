@@ -21,8 +21,8 @@
 #include "shl_configuration.hpp"
 
 #ifndef BARRELFISH
-//XXX: is this also available for barrelfish??
 extern "C" {
+// SK: This is in contrib/pycrc and should be platform independent
 #include "crc.h"
 }
 #endif
@@ -70,7 +70,6 @@ class shl_array : public shl_base_array {
 
  private:
     T* array;           ///< pointer to the backing memory region
-    T* array_copy;      ///< XXX: what's that for?
 
  protected:
     /**
@@ -123,7 +122,6 @@ class shl_array : public shl_base_array {
         is_used = false;
         meminfo = NULL;
         array = NULL;
-        array_copy = NULL;
 #ifdef PROFILE
         num_wr = 0;
         num_rd = 0;
@@ -139,7 +137,6 @@ class shl_array : public shl_base_array {
         use_hugepage = get_conf()->use_hugepage;
         read_only = false;
         array = (T*) data;
-        array_copy = NULL;
         meminfo = mem;
         alloc_done = true;
     }
@@ -300,8 +297,6 @@ class shl_array : public shl_base_array {
 
         printf("shl_array[%s]: copy_from\n", shl_array<T>::name);
 
-        assert(array_copy == NULL);
-        array_copy = src;
         for (unsigned int i = 0; i < size; i++) {
             array[i] = src[i];
         }
@@ -324,17 +319,15 @@ class shl_array : public shl_base_array {
         assert(alloc_done);
 
         printf("shl_array[%s]: Copying back\n", shl_base_array::name);
-        assert(array_copy == a);
-        assert(array_copy != NULL);
         for (unsigned int i = 0; i < size; i++) {
 
 #ifdef SHL_DBG_ARRAY
             if( i<5 ) {
-                std::cout << array_copy[i] << " " << array[i] << std::endl;
+                std::cout << a[i] << " " << array[i] << std::endl;
             }
 #endif
 
-            array_copy[i] = array[i];
+            a[i] = array[i];
         }
     }
 
@@ -580,9 +573,7 @@ class shl_array_replicated : public shl_array<T> {
             return;
 
         assert(shl_array<T>::alloc_done);
-        assert(shl_array<T>::array_copy==NULL);
 
-        shl_array<T>::array_copy = src;
         printf("shl_array_replicated[%s]: Copying to %d replicas\n",
                shl_base_array::name, num_replicas);
 
