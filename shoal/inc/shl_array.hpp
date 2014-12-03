@@ -605,4 +605,500 @@ class shl_array : public shl_base_array {
     }
 };
 
+
+/*
+ * ==============================================================================
+ * Single node
+ * ==============================================================================
+ */
+template<class T>
+class shl_array_single_node : public shl_array<T> {
+ public:
+    /**
+     * \brief Initialize single_node array
+     */
+    shl_array_single_node(size_t s, const char *_name) :
+                    shl_array<T>(s, _name)
+    {
+    }
+    ;
+
+    shl_array_single_node(size_t s, const char *_name, void *mem, void *data) :
+                    shl_array<T>(s, _name, mem, data)
+    {
+    }
+    ;
+
+    virtual void alloc(void)
+    {
+        shl_array<T>::alloc();
+
+        // Map everything on single node
+        printf("Forcing single-node allocation .. \n");
+        for (unsigned int i=0; i<shl_array<T>::size; i++) {
+
+            shl_array<T>::array[i] = 0;
+        }
+
+    }
+
+    virtual int get_options(void)
+    {
+        return shl_array<T>::get_options() | SHL_MALLOC_PARTITION;
+    }
+
+ protected:
+    virtual void print_options(void)
+    {
+        shl_array<T>::print_options();
+        printf("single-node=[X]");
+    }
+
+};
+
+/*
+ * ==============================================================================
+ * Distributed Array
+ * ==============================================================================
+ */
+
+/**
+ * \brief Array implementing a distributed array
+ *
+ */
+template<class T>
+class shl_array_distributed : public shl_array<T> {
+ public:
+    /**
+     * \brief Initialize distributed array
+     */
+    shl_array_distributed(size_t s, const char *_name) :
+                    shl_array<T>(s, _name)
+    {
+    }
+    ;
+
+    shl_array_distributed(size_t s, const char *_name, void *mem, void *data) :
+                    shl_array<T>(s, _name, mem, data)
+    {
+    }
+    ;
+
+    virtual int get_options(void)
+    {
+        return shl_array<T>::get_options() | SHL_MALLOC_DISTRIBUTED;
+    }
+
+ protected:
+    virtual void print_options(void)
+    {
+        shl_array<T>::print_options();
+        printf("distribution=[X]");
+    }
+
+};
+
+/*
+ * ==============================================================================
+ * Partitioned Array
+ * ==============================================================================
+ */
+
+/**
+ * \brief Array implementing a partitioned array
+ *
+ */
+template<class T>
+class shl_array_partitioned : public shl_array<T> {
+ public:
+    /**
+     * \brief Initialize partitioned array
+     */
+    shl_array_partitioned(size_t s, const char *_name) :
+                    shl_array<T>(s, _name)
+    {
+    }
+    ;
+
+    shl_array_partitioned(size_t s, const char *_name, void *mem, void *data) :
+                    shl_array<T>(s, _name, mem, data)
+    {
+    }
+    ;
+
+    virtual void alloc(void)
+    {
+        shl_array<T>::alloc();
+
+        // We need to force memory allocation in here (which sucks,
+        // since this file is supposed to be platform independent),
+        // since in shl_malloc, we do not know the size of elements,
+        // and hence, we cannot establish a correct memory mapping for
+        // partitioning in there.
+
+#pragma omp parallel for schedule(static, 1024)
+        for (unsigned int i=0; i<shl_array<T>::size; i++) {
+
+            shl_array<T>::array[i] = 0;
+        }
+
+    }
+
+    virtual int get_options(void)
+    {
+        return shl_array<T>::get_options() | SHL_MALLOC_PARTITION;
+    }
+
+ protected:
+    virtual void print_options(void)
+    {
+        shl_array<T>::print_options();
+        printf("partition=[X]");
+    }
+
+};
+
+/*
+ * ==============================================================================
+ * Replicated Array
+ * ==============================================================================
+ */
+
+/**
+ * \brief Array implementing replication
+ *
+ *
+ * The number of replicas is given by shl_malloc_replicated.
+ */
+template<class T>
+class shl_array_replicated : public shl_array<T> {
+    T* master_copy;
+
+ public:
+    void **mem_array;
+    T** rep_array;
+
+ protected:
+    int num_replicas;
+ public:
+    int (*lookup)(void);
+
+ public:
+    /**
+     * \brief Initialize replicated array
+     */
+    shl_array_replicated(size_t s, const char *_name, int (*f_lookup)(void)) :
+                    shl_array<T>(s, _name)
+    {
+        shl_array<T>::read_only = true;
+        lookup = f_lookup;
+        master_copy = NULL;
+        num_replicas = -1;
+        rep_array = NULL;
+    }
+
+    shl_array_replicated(size_t s,
+                         const char *_name,
+                         int (*f_lookup)(void),
+                         void *mem,
+                         void *data) :
+                    shl_array<T>(s, _name, mem, data)
+    {
+        shl_array<T>::read_only = true;
+        lookup = f_lookup;
+        master_copy = NULL;
+        num_replicas = -1;
+        rep_array = NULL;
+    }
+
+    virtual void alloc(void)
+    {
+        if (!shl_array<T>::do_alloc())
+            return;
+
+        shl_array<T>::print();
+
+        assert(!shl_array<T>::alloc_done);
+
+        rep_array = (T**) shl_malloc_replicated(shl_array<T>::size * sizeof(T),
+                                                &num_replicas,
+                                                shl_array<T>::get_options());
+
+        mem_array = ((void **) rep_array) + num_replicas;
+
+        assert(num_replicas > 0);
+        for (int i = 0; i < num_replicas; i++)
+            assert(rep_array[i]!=NULL);
+
+        shl_array<T>::alloc_done = true;
+
+    }
+
+    virtual void copy_from(T* src)
+    {
+        if (!shl_array<T>::do_copy_in())
+            return;
+
+        assert(shl_array<T>::alloc_done);
+
+        printf("shl_array_replicated[%s]: Copying to %d replicas\n",
+               shl_base_array::name, num_replicas);
+
+        for (int j = 0; j < num_replicas; j++) {
+            for (unsigned int i = 0; i < shl_array<T>::size; i++) {
+
+                rep_array[j][i] = src[i];
+            }
+        }
+    }
+
+    virtual void copy_back(T* a)
+    {
+        // nop -- currently only replicating read-only data
+        assert(shl_array<T>::read_only);
+    }
+
+    /**
+     * \brief Return pointer to beginning of replica
+     */
+    virtual T* get_array(void)
+    {
+#ifdef SHL_DBG_ARRAY
+        printf("Getting pointer for array [%s]\n", shl_base_array::name);
+#endif
+        if (shl_array<T>::alloc_done) {
+            return rep_array[lookup()];
+        } else {
+            return NULL;
+        }
+    }
+
+    virtual T get(size_t i)
+    {
+#ifdef PROFILE
+        __sync_fetch_and_add(&shl_array<T>::num_rd, 1);
+#endif
+        return rep_array[lookup()][i];
+    }
+
+    virtual void set(size_t i, T v)
+    {
+#ifdef PROFILE
+        __sync_fetch_and_add(&shl_array<T>::num_wr, 1);
+#endif
+        for (int j = 0; j < num_replicas; j++)
+            rep_array[j][i] = v;
+    }
+
+    virtual ~shl_array_replicated(void)
+    {
+        // // Free replicas
+        // for (int i=0; i<num_replicas; i++) {
+        //     free(rep_array[i]);
+        // }
+        // // Clean up meta-data
+        // delete rep_array;
+    }
+
+    void synchronize(void)
+    {
+        assert(shl_array<T>::alloc_done);
+        shl__repl_sync(master_copy, (void**) rep_array, num_replicas,
+                       shl_array<T>::size * sizeof(T));
+    }
+
+ protected:
+    virtual void print_options(void)
+    {
+        shl_array<T>::print_options();
+        printf("replication=[X]");
+    }
+
+    virtual void dump(void)
+    {
+        for (int j = 0; j < num_replicas; j++) {
+
+            for (size_t i = 0; i < shl_array<T>::size; i++) {
+
+                noprintf("rep[%2d] idx[%3zu] is %d\n", j, i, rep_array[j][i]);
+            }
+        }
+    }
+
+ public:
+    virtual unsigned long get_crc(void)
+    {
+
+#ifdef BARRELFISH
+        return 0;
+#else
+        if (!shl_array<T>::alloc_done)
+            return 0;
+
+        crc_t *crc = (crc_t*) malloc(sizeof(crc_t) * num_replicas);
+        assert(crc);
+
+        for (int i = 0; i < 1; i++) {
+
+            crc[i] = crc_init();
+
+            uintptr_t max = sizeof(T) * shl_array<T>::size;
+            crc[i] = crc_update(crc[i], (unsigned char*) (rep_array[i]), max);
+
+            crc[i] = crc_finalize(crc[i]);
+
+            if (!(i == 0 || ((unsigned long) crc[i] == (unsigned long) crc[0]))) {
+
+                printf(ANSI_COLOR_CYAN "WARNING: " ANSI_COLOR_RESET
+                "replica %d's content diverges (%lx vs %lx)\n",
+                       i, (unsigned long) crc[i], (unsigned long) crc[0]);
+            } else {
+                printf("replica %d's content is %lx\n", i, (unsigned long) crc[i]);
+            }
+        }
+
+        unsigned long r = (unsigned long) crc[0];
+        free(crc);
+        return r;
+#endif
+    }
+
+};
+
+// --------------------------------------------------
+// Allocation
+// --------------------------------------------------
+
+/**
+ *\ brief Allocate array
+ *
+ * \param size Number of elements of type T in array
+ * \param name Name of the array (for debugging purposes)
+ * \param is_ro Indicate if array is read-only
+ * \param is_dynamic Indicate that array is dynamically allocated (i.e.
+ *    does not require copy in and copy out)
+ * \param is_used Some arrays are allocated, but never used (such as
+ *    parts of the graph in Green Marl). We want to avoid copying these,
+ *    so we pass this information on.
+ *
+ * Several choices here:
+ *
+ * - replication: Three policies:
+ * 1) Replica if read-only.
+ * 2) Replica if w/r ratio below a certain threshold.
+ *  2.1) Write to all replicas
+ *  2.2) Write locally; maintain write-set; sync call when updates need to
+ *       be propagated.
+ *
+ * - huge pages: Use if working set < available RAM && alloc_real/size < 1.xx
+ *   ? how to determine available RAM?
+ *   ? how to know the size of the working set?
+ *
+ */
+template<class T>
+shl_array<T>* shl__malloc_array(size_t size, const char *name,
+//
+                                bool is_ro,
+                                bool is_dynamic,
+                                bool is_used,
+                                bool is_graph,
+                                bool is_indexed,
+                                bool initialize)
+{
+    // Policy for memory allocation
+    // --------------------------------------------------
+
+    // 1) Always partition indexed arrays
+    bool partition = is_indexed && get_conf()->use_partition;
+
+    // 2) Replicate if array is read-only and can't be partitioned
+    bool replicate = !partition &&  // none of the others
+                    is_ro && get_conf()->use_replication;
+
+    // 3) Distribute if nothing else works and there is more than one node
+    bool distribute = !replicate && !partition
+                    &&  // none of the others
+                    shl__get_num_replicas() > 1 && get_conf()->use_distribution
+                    && initialize;
+
+    shl_array<T> *res = NULL;
+
+    if (partition) {
+#ifdef SHL_DBG_ARRAY
+        printf("Allocating partitioned array\n");
+#endif
+#if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
+        void *data;
+        void *mem;
+//        void *array = shl__malloc(size*sizeof(T)),
+//                        SHL_MALLOC_HUGEPAGE | SHL_MALLOC_PARTITION, NULL,
+//                        &mem, &data);
+        res = new shl_array_partitioned<T>(size, name, mem, data);
+#else
+        res = new shl_array_partitioned<T>(size, name);
+#endif
+    } else if (replicate) {
+#ifdef SHL_DBG_ARRAY
+        printf("Allocating replicated array\n");
+#endif
+#if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
+        void *data;
+        void *mem;
+//        void *array = shl__malloc(size*sizeof(T), sizeof(shl_array<T>),
+//                        SHL_MALLOC_HUGEPAGE | SHL_MALLOC_REPLICATED,
+//                        NULL, &mem, &data);
+        res = new shl_array<T>(size, name, mem, data);
+#else
+        res = new shl_array_replicated<T>(size, name, shl__get_rep_id);
+#endif
+    } else if (distribute) {
+#ifdef SHL_DBG_ARRAY
+        printf("Allocating distributed array\n");
+#endif
+#if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
+        void *data;
+        void *mem;
+        //void *array = shl__malloc(size*sizeof(T), sizeof(shl_array_distributed<T>),
+        //                SHL_MALLOC_HUGEPAGE | SHL_MALLOC_DISTRIBUTED,
+        //                NULL, &mem, &data);
+        res = new shl_array_distributed<T>(size, name, mem, data);
+#else
+        res = new shl_array_distributed<T>(size, name);
+#endif
+    } else {
+#ifdef SHL_DBG_ARRAY
+        printf("Allocating single-node array\n");
+#endif
+#if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
+        void *data;
+        void *mem;
+        //void *array = shl__malloc(size*sizeof(T), sizeof(shl_array<T>), SHL_MALLOC_HUGEPAGE, NULL, &mem, &data);
+        res = new shl_array_single_node<T>(size, name, mem, data);
+#else
+        res = new shl_array_single_node<T>(size, name);
+#endif
+    }
+
+    // These are used internally in array to decide if copy-in and
+    // copy-out of source arrays are required
+    res->set_dynamic(is_dynamic);
+    res->set_used(is_used);
+
+    return res;
+}
+
+template<class T>
+int shl__estimate_size(size_t size,
+                       const char *name,
+                       bool is_ro,
+                       bool is_dynamic,
+                       bool is_used,
+                       bool is_graph,
+                       bool is_indexed)
+{
+    return is_used ? sizeof(T) * size : 0;
+}
+
+int shl__estimate_working_set_size(int num, ...);
+
 #endif /* __SHL_ARRAY */
