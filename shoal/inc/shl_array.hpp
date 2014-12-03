@@ -27,6 +27,7 @@ extern "C" {
 }
 #endif
 
+///< Enables array access profiling
 //#define PROFILE
 
 // --------------------------------------------------
@@ -112,8 +113,8 @@ class shl_array : public shl_base_array {
 
 
 #ifdef PROFILE
-    int64_t num_wr;
-    int64_t num_rd;
+    int64_t num_wr;     ///< number of writes to that array
+    int64_t num_rd;     ///< number of reads from this array
 #endif
 
 
@@ -126,40 +127,64 @@ class shl_array : public shl_base_array {
      */
 
     /**
-     * \brief Generic array constructure
-     * @param s
-     * @param _name
+     * \brief Generic array constructor. 
+     *
+     * \param _size the element count of this array
+     * \param _name name of the array for identification purposes
+     *
+     * This constructor does not allocate the backing memory for the array.
      */
-    shl_array(size_t s, const char *_name) :
+    shl_array(size_t _size, const char *_name) :
                     shl_base_array(_name)
     {
-        size = s;
+        size = _size;
         use_hugepage = get_conf()->use_hugepage;
         read_only = false;
         alloc_done = false;
         is_dynamic = false;
         is_used = false;
+#ifdef BARRELFISH
         meminfo = NULL;
+#endif
+
         array = NULL;
+
 #ifdef PROFILE
         num_wr = 0;
         num_rd = 0;
 #endif
     }
 
-    shl_array(size_t s, const char *_name, void *mem, void *data)
+    /**
+     * \brief Specialized array constructor
+     *
+     * @param _size
+     * @param _name
+     * @param mem
+     * @param data
+     *
+     * This constructor uses the supplied memory region for the array data.
+     * The caller must ensure that the size of the memory region is large
+     * enough to hold all the array elements.
+     */
+    shl_array(size_t _size, const char *_name, void *mem, void *data) :
+                    shl_base_array(_name)
     {
-        size = s;
+        size = _size;
         is_dynamic = false;
         is_used = false;
-        shl_array<T>::name = _name;
         use_hugepage = get_conf()->use_hugepage;
         read_only = false;
         array = (T*) data;
+#ifdef BARRELFISH
         meminfo = mem;
+#endif
         alloc_done = true;
     }
 
+    /**
+     * \brief Array destructor
+     */
     virtual ~shl_array(void)
     {
         // if (array!=NULL) {
@@ -176,14 +201,14 @@ class shl_array : public shl_base_array {
      */
 
     /**
-     * \brief
+     * \brief allocates a memory region to hold the array data
      *
      * XXX: Retun error in case malloc fails
      */
-    virtual void alloc(void)
+    virtual int alloc(void)
     {
         if (array) {
-            return;
+            return -1;
         }
 
         //if (!do_alloc())
@@ -208,13 +233,23 @@ class shl_array : public shl_base_array {
                                  SHL_NUMA_IGNORE, &meminfo);
 
         alloc_done = true;
+
+        return 0;
     }
 
+    /**
+     *
+     * @return
+     */
     virtual bool do_alloc(void)
     {
         return is_used;
     }
 
+    /**
+     *
+     * @return
+     */
     virtual bool do_copy_in(void)
     {
         return is_used && !is_dynamic;
@@ -226,14 +261,28 @@ class shl_array : public shl_base_array {
      * ---------------------------------------------------------------------------
      */
 
+    /**
+     * \brief gets the i-th element of the array
+     *
+     * \param i index of the element
+     *
+     * \return value of element
+     */
     virtual T get(size_t i)
     {
 #ifdef PROFILE
         __sync_fetch_and_add(&num_rd, 1);
 #endif
+        // XXX: insert null pointer and range check ?
         return array[i];
     }
 
+    /**
+     * \brief writes to the i-th element
+     *
+     * \param i element index
+     * \param v new element value
+     */
     virtual void set(size_t i, T v)
     {
 #ifdef PROFILE
@@ -242,14 +291,37 @@ class shl_array : public shl_base_array {
         array[i] = v;
     }
 
+    /**
+     * \brief returns a raw pointer to the beginning of the array
+     *
+     * \return pointer to the array
+     */
+    virtual T* get_array(void)
+    {
+        return array;
+    }
 
 
+    /**
+     * \brief prints the array access statistics
+     *
+     * Note: The programm has to be compiled with enabled PROFILE
+     */
     virtual void print_statistics(void)
     {
 #ifdef PROFILE
         printf("Number of writes %10d\n", num_wr);
         printf("Number of reads  %10d\n", num_rd);
 #endif
+    }
+
+    /**
+     * \brief
+     */
+    void print(void)
+    {
+        print_options();
+        printf("\n");
     }
 
     /*
@@ -261,18 +333,8 @@ class shl_array : public shl_base_array {
         return is_used && !read_only && !is_dynamic;
     }
 
-    void print(void)
-    {
-        print_options();
-        printf("\n");
-    }
 
 
-
-    virtual T* get_array(void)
-    {
-        return array;
-    }
 
     virtual int get_options(void)
     {
