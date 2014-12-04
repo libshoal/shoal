@@ -27,8 +27,19 @@ extern "C" {
 }
 #endif
 
+///< Enables array access range checks
+#define ENABLE_RANGE_CHECK 1
+
+#if ENABLE_RANGE_CHECK
+#define RANGE_CHECK(_i) assert(array && _i < size);
+#else
+#define RANGE_CHECK(_i)
+#endif
+
 ///< Enables array access profiling
 //#define PROFILE
+
+
 
 // --------------------------------------------------
 // Implementations
@@ -143,9 +154,7 @@ class shl_array : public shl_base_array {
         alloc_done = false;
         is_dynamic = false;
         is_used = false;
-#ifdef BARRELFISH
         meminfo = NULL;
-#endif
 
         array = NULL;
 
@@ -176,9 +185,7 @@ class shl_array : public shl_base_array {
         use_hugepage = get_conf()->use_hugepage;
         read_only = false;
         array = (T*) data;
-#ifdef BARRELFISH
         meminfo = mem;
-#endif
         alloc_done = true;
     }
 
@@ -187,6 +194,7 @@ class shl_array : public shl_base_array {
      */
     virtual ~shl_array(void)
     {
+        // TODO: implementation
         // if (array!=NULL) {
         //     free(array);
         // }
@@ -196,6 +204,175 @@ class shl_array : public shl_base_array {
 
     /*
      * ---------------------------------------------------------------------------
+     * Array Options
+     * ---------------------------------------------------------------------------
+     */
+
+    /**
+     * \brief checks if the array is used and memory is being allocated
+     *
+     * \returns TRUE  iff the array is used by the program
+     *          FALSE iff the array is not used by the program
+     */
+    virtual bool do_alloc(void)
+    {
+        return is_used;
+    }
+
+    /**
+     * \brief checks whether data has to be copied into the array
+     *
+     *
+     * \return TRUE  iff the array is used by the program
+     *         FALSE iff the array is not used or only used internally
+     */
+    virtual bool do_copy_in(void)
+    {
+        return is_used && !is_dynamic;
+    }
+
+
+    /**
+     *
+     * \brief checks if data has to be copied back from the array
+     *
+     * \returns TRUE  iff a copy has to be done
+     *          FALSE otherwise
+     *
+     * Read only data does NOT have to be copied back. Also,
+     * dynamically allocated stuff and arrays that are not used
+     */
+    virtual bool do_copy_back(void)
+    {
+        return is_used && !read_only && !is_dynamic;
+    }
+
+    /**
+     * \brief returns a bit field of the enabled options for this array
+     *
+     * \returns bitfield repesentation of the flags
+     */
+    virtual int get_options(void)
+    {
+        int options = SHL_MALLOC_NONE;
+
+        if (use_hugepage)
+            options |= SHL_MALLOC_HUGEPAGE;
+
+        return options;
+    }
+
+
+    /**
+     * \brief modifies the used state of the array
+     *
+     * \param used  new value for the used flag
+     */
+    void set_used(bool used)
+    {
+        shl_array<T>::is_used = used;
+    }
+
+    /**
+     * \brief modifies the dynamic state of the array
+     *
+     * \param dynamic   new value for the used flag
+     */
+    void set_dynamic(bool dynamic)
+    {
+        shl_array<T>::is_dynamic = dynamic;
+    }
+
+    /*
+     * ---------------------------------------------------------------------------
+     * Array Access Methods
+     * ---------------------------------------------------------------------------
+     */
+
+    /**
+     * \brief gets the i-th element of the array
+     *
+     * \param i index of the element
+     *
+     * \return value of element
+     */
+    virtual T get(size_t i)
+    {
+#ifdef PROFILE
+        __sync_fetch_and_add(&num_rd, 1);
+#endif
+        RANGE_CHECK(i);
+
+        return array[i];
+    }
+
+    /**
+     * \brief writes to the i-th element
+     *
+     * \param i element index
+     * \param v new element value
+     */
+    virtual void set(size_t i, T v)
+    {
+#ifdef PROFILE
+        __sync_fetch_and_add(&num_wr, 1);
+#endif
+        RANGE_CHECK(i);
+
+        array[i] = v;
+    }
+
+    /**
+     * \brief returns a raw pointer to the begining of the array
+     *
+     * \return pointer to the array
+     *         NULL if not initialized
+     */
+    virtual T* get_array(void)
+    {
+        return array;
+    }
+
+    /**
+     * \brief returns the number of elements of the array
+     *
+     * \returns element count
+     */
+    size_t get_size(void)
+    {
+        return size;
+    }
+
+    /*
+     * ---------------------------------------------------------------------------
+     * Array Debug Helpers
+     * ---------------------------------------------------------------------------
+     */
+
+    /**
+     * \brief prints the array access statistics
+     *
+     * Note: The programm has to be compiled with enabled PROFILE
+     */
+    virtual void print_statistics(void)
+    {
+#ifdef PROFILE
+        printf("Number of writes %10d\n", num_wr);
+        printf("Number of reads  %10d\n", num_rd);
+#endif
+    }
+
+    /**
+     * \brief
+     */
+    void print(void)
+    {
+        print_options();
+        printf("\n");
+    }
+
+        /*
+     * ---------------------------------------------------------------------------
      * Array Initialization Methods
      * ---------------------------------------------------------------------------
      */
@@ -203,16 +380,19 @@ class shl_array : public shl_base_array {
     /**
      * \brief allocates a memory region to hold the array data
      *
-     * XXX: Retun error in case malloc fails
+     * XXX: provide number of which NUMA node to allocate?
      */
     virtual int alloc(void)
     {
+        /* don't alloc if the array pointer is present */
         if (array) {
             return -1;
         }
 
-        //if (!do_alloc())
-        //   return;
+        if (!do_alloc()) {
+            /* the array is not used. Skip allocation. */
+            return 0;
+        }
 
         assert(!alloc_done);
 
@@ -237,172 +417,91 @@ class shl_array : public shl_base_array {
         return 0;
     }
 
+
     /**
+     * \brief Optimized method for copying data between two arrays
      *
-     * @return
-     */
-    virtual bool do_alloc(void)
-    {
-        return is_used;
-    }
-
-    /**
+     * \param src   The source array to copy from
      *
-     * @return
-     */
-    virtual bool do_copy_in(void)
-    {
-        return is_used && !is_dynamic;
-    }
-
-    /*
-     * ---------------------------------------------------------------------------
-     * Array Access Methods
-     * ---------------------------------------------------------------------------
-     */
-
-    /**
-     * \brief gets the i-th element of the array
+     * \returns 0        if the copy was successful
+     *          non-zero if there was an error
      *
-     * \param i index of the element
-     *
-     * \return value of element
-     */
-    virtual T get(size_t i)
-    {
-#ifdef PROFILE
-        __sync_fetch_and_add(&num_rd, 1);
-#endif
-        // XXX: insert null pointer and range check ?
-        return array[i];
-    }
-
-    /**
-     * \brief writes to the i-th element
-     *
-     * \param i element index
-     * \param v new element value
-     */
-    virtual void set(size_t i, T v)
-    {
-#ifdef PROFILE
-        __sync_fetch_and_add(&num_wr, 1);
-#endif
-        array[i] = v;
-    }
-
-    /**
-     * \brief returns a raw pointer to the beginning of the array
-     *
-     * \return pointer to the array
-     */
-    virtual T* get_array(void)
-    {
-        return array;
-    }
-
-
-    /**
-     * \brief prints the array access statistics
-     *
-     * Note: The programm has to be compiled with enabled PROFILE
-     */
-    virtual void print_statistics(void)
-    {
-#ifdef PROFILE
-        printf("Number of writes %10d\n", num_wr);
-        printf("Number of reads  %10d\n", num_rd);
-#endif
-    }
-
-    /**
-     * \brief
-     */
-    void print(void)
-    {
-        print_options();
-        printf("\n");
-    }
-
-    /*
-     * Read only data does NOT have to be copied back. Also,
-     * dynamically allocated stuff and arrays that are not used
-     */
-    virtual bool do_copy_back(void)
-    {
-        return is_used && !read_only && !is_dynamic;
-    }
-
-
-
-
-    virtual int get_options(void)
-    {
-        int options = SHL_MALLOC_NONE;
-
-        if (use_hugepage)
-            options |= SHL_MALLOC_HUGEPAGE;
-
-        return options;
-    }
-
-    /**
-     * \brief Optimized method to copy the content of arrays between
-     * each other.
      *
      * This is useful for example for "double-buffering" for parallel
      * OpenMP loops.
      */
-    virtual void copy_from_array(shl_array<T> *src)
+    virtual int copy_from_array(shl_array<T> *src)
     {
         assert(!"Not yet implemented");
+        if (!array || !src->get_array()) {
+            return -1;
+        }
+
+        if (size != src->get_size()) {
+            return -1;
+        }
+
+        memcpy(array, src->get_array(), size * sizeof(T));
+
+        return 0;
     }
 
-    virtual void init_from_value(T value)
+    /**
+     * \brief initializes the array to a specific value
+     *
+     * \param value data two fill the array with
+     *
+     * \returns 0 if the array has been initialized
+     *          non-zero if the array is not yet allocated
+     */
+    virtual int init_from_value(T value)
     {
-        memset(array, value, size);
+        if (array) {
+            memset(array, value, size);
+            return 0;
+        }
+        return -1;
     }
 
     /**
      * \brief Copy data from existing array
      *
-     * Warning: The sice of array src is not checked. Assumption:
-     * sizeof(src) == this->size
+     * \param src pointer to a memory location of data to copy in
+     *
+     * XXX WARNING: The sice of array src is not checked.
+     * Assumption: sizeof(src) == this->size
      */
     virtual void copy_from(T* src)
     {
         if (!do_copy_in()) {
-#if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
-            printf("shl_array[%s]: not copying \n", shl_array<T>::name);
-#endif
             return;
         }
 
 #ifdef SHL_DBG_ARRAY
         printf("Copying array %s\n", shl_base_array::name);
 #endif
-        assert(alloc_done);
 
         printf("shl_array[%s]: copy_from\n", shl_array<T>::name);
 
         for (unsigned int i = 0; i < size; i++) {
+            /* XXX: does this also work with complex types ?*/
             array[i] = src[i];
         }
-#if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
-        shl__barrelfish_share_frame((struct mem_info *)meminfo);
-#endif
     }
 
     /**
      * \brief Copy data to existing array
      *
-     * Warning: The sice of array src is not checked. Assumption:
+     * \param dest  destination array
+     *
+     * XXX WARNING: The sice of array src is not checked. Assumption:
      * sizeof(src) == this->size
      */
-    virtual void copy_back(T* a)
+    virtual void copy_back(T* dest)
     {
-        if (!do_copy_back())
+        if (!do_copy_back()) {
             return;
+        }
 
         assert(alloc_done);
 
@@ -411,27 +510,20 @@ class shl_array : public shl_base_array {
 
 #ifdef SHL_DBG_ARRAY
             if( i<5 ) {
-                std::cout << a[i] << " " << array[i] << std::endl;
+                std::cout << dest[i] << " " << array[i] << std::endl;
             }
 #endif
 
-            a[i] = array[i];
+            dest[i] = array[i];
         }
     }
 
-    void set_used(bool used)
-    {
-
-        shl_array<T>::is_used = used;
-    }
-
-    void set_dynamic(bool dynamic)
-    {
-
-        shl_array<T>::is_dynamic = dynamic;
-    }
 
  protected:
+
+    /**
+     * \brief prints the options for this array
+     */
     virtual void print_options(void)
     {
         printf("Array[%20s]: elements=%10zu-", shl_base_array::name, size);
@@ -576,8 +668,9 @@ class shl_array_partitioned : public shl_array<T> {
         // since in shl_malloc, we do not know the size of elements,
         // and hence, we cannot establish a correct memory mapping for
         // partitioning in there.
-
+#ifndef BARRELFISH
 #pragma omp parallel for schedule(static, 1024)
+#endif
         for (unsigned int i=0; i<shl_array<T>::size; i++) {
 
             shl_array<T>::array[i] = 0;
