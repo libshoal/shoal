@@ -19,7 +19,7 @@
 #include "shl.h"
 #include "shl_timer.hpp"
 #include "shl_configuration.hpp"
-#include "shl_array.hpp"
+
 /**
  * \brief Array implementing replication
  *
@@ -28,17 +28,18 @@
  */
 template<class T>
 class shl_array_replicated : public shl_array<T> {
+
+private:
     T* master_copy;
 
  public:
-
     void **mem_array;   ///<
     T** rep_array;      ///<
+    int (*lookup)(void);
 
  protected:
     int num_replicas;
- public:
-    int (*lookup)(void);
+
 
  public:
     /**
@@ -201,43 +202,29 @@ class shl_array_replicated : public shl_array<T> {
     }
 
  public:
-    virtual unsigned long get_crc(void)
-    {
+    virtual unsigned long get_crc( void )
+        {
+            if (!shl_array<T>::alloc_done)
+                return 0;
 
-#ifdef BARRELFISH
-        return 0;
-#else
-        if (!shl_array<T>::alloc_done)
-            return 0;
+            unsigned long crc_0 = shl__calculate_crc(rep_array[0], shl_array<T>::size, sizeof(T));
+            unsigned long crc_i;
 
-        crc_t *crc = (crc_t*) malloc(sizeof(crc_t) * num_replicas);
-        assert(crc);
-
-        for (int i = 0; i < 1; i++) {
-
-            crc[i] = crc_init();
-
-            uintptr_t max = sizeof(T) * shl_array<T>::size;
-            crc[i] = crc_update(crc[i], (unsigned char*) (rep_array[i]), max);
-
-            crc[i] = crc_finalize(crc[i]);
-
-            if (!(i == 0 || ((unsigned long) crc[i] == (unsigned long) crc[0]))) {
-
-                printf(ANSI_COLOR_CYAN "WARNING: " ANSI_COLOR_RESET
-                "replica %d's content diverges (%lx vs %lx)\n",
-                       i, (unsigned long) crc[i], (unsigned long) crc[0]);
-            } else {
-                printf("replica %d's content is %lx\n", i, (unsigned long) crc[i]);
+            for (int i = 1; i < num_replicas; i++) {
+                crc_i = shl__calculate_crc(rep_array[i], shl_array<T>::size, sizeof(T));
+                if (crc_0 != crc_i) {
+                    printf(ANSI_COLOR_CYAN "WARNING: " ANSI_COLOR_RESET
+                           "replica %d's content diverges (%lx vs %lx)\n",
+                           i, (unsigned long) crc_i, (unsigned long) crc_0);
+                } else {
+                    printf("replica %d's content is %lx\n", i, (unsigned long) crc_i);
+                }
             }
+
+            return crc_0;
         }
 
-        unsigned long r = (unsigned long) crc[0];
-        free(crc);
-        return r;
-#endif
-    }
-
 };
+
 
 #endif /* __SHL_ARRAY */

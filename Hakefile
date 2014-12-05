@@ -12,15 +12,16 @@
   build library {
     target = "shl",
     cFiles = [
-        "shoal/src/barrelfish.c"
+        "shoal/src/barrelfish.c",
+        "contrib/pycrc/crc.c"
     ],
     cxxFiles = [
         "shoal/src/misc.cpp",
         "shoal/src/shl.cpp",
         "shoal/src/shl_array.cpp",
+        "shoal/src/shl_array_replicated.cpp",
        -- "shoal/src/shl_cost.cpp",
         "shoal/src/shl_array_wr-rep.cpp"
-       
     ],
  --   addCFlags = [
  --     "-fopenmp"
@@ -29,7 +30,8 @@
  --     "-fopenmp"
  --   ],
     addIncludes = [
-        "shoal/inc"
+        "shoal/inc",
+        "contrib/pycrc"
     ],
  --  addLibraries = libDeps [
  --       "bomp"

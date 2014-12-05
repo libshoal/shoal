@@ -20,13 +20,6 @@
 #include "shl_timer.hpp"
 #include "shl_configuration.hpp"
 
-#ifndef BARRELFISH
-extern "C" {
-// SK: This is in contrib/pycrc and should be platform independent
-#include "crc.h"
-}
-#endif
-
 ///< Enables array access range checks
 #define ENABLE_RANGE_CHECK 1
 
@@ -548,26 +541,15 @@ class shl_array : public shl_base_array {
     }
 
  public:
-    virtual unsigned long get_crc(void)
+    unsigned long get_crc( void )
     {
-#ifdef BARRELFISH
-        return 0;
-#else
         if (!alloc_done)
             return 0;
 
-        crc_t crc = crc_init();
-
-        uintptr_t max = sizeof(T) * size;
-        crc = crc_update(crc, (unsigned char*) array, max);
-
-        crc_finalize(crc);
-
-        return (unsigned long) crc;
-#endif
+        return shl__calculate_crc(array, size, sizeof(T));
     }
 
-    virtual void print_crc(void)
+    void print_crc( void )
     {
         printf("CRC %s 0x%lx\n", shl_base_array::name, get_crc());
     }

@@ -140,6 +140,8 @@ void shl__copy_back_array_single(void *src, void *dest, size_t size, bool is_cop
                                  bool is_ro, bool is_dynamic, const char* array_name);
 void *shl__alloc_struct_shared(size_t size);
 
+unsigned long shl__calculate_crc(void *array, size_t elements, size_t element_size);
+
 // --------------------------------------------------
 // Auto-tuning interface
 //

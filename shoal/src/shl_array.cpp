@@ -1,6 +1,11 @@
 #include <stdio.h>
+
 #include "shl_array.hpp"
 #include "shl_alloc.hpp"
+
+extern "C" {
+#include "crc.h"
+}
 
 int shl__estimate_working_set_size(int num, ...)
 {
@@ -53,3 +58,17 @@ int shl__estimate_working_set_size(int num, ...)
     printf("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
     return 0;
 }
+
+
+unsigned long shl__calculate_crc(void *array, size_t elements, size_t element_size)
+{
+    crc_t crc = crc_init();
+
+    uintptr_t max = element_size * elements;
+    crc = crc_update(crc, (unsigned char*) array, max);
+
+    crc_finalize(crc);
+
+    return (unsigned long) crc;
+}
+
