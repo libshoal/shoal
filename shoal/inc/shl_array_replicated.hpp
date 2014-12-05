@@ -87,28 +87,7 @@ private:
     /**
      * \brief allocates the arrays
      */
-    virtual void alloc(void)
-    {
-        if (!shl_array<T>::do_alloc())
-            return;
-
-        shl_array<T>::print();
-
-        assert(!shl_array<T>::alloc_done);
-
-        rep_array = (T**) shl_malloc_replicated(shl_array<T>::size * sizeof(T),
-                                                &num_replicas,
-                                                shl_array<T>::get_options());
-
-        mem_array = ((void **) rep_array) + num_replicas;
-
-        assert(num_replicas > 0);
-        for (int i = 0; i < num_replicas; i++)
-            assert(rep_array[i]!=NULL);
-
-        shl_array<T>::alloc_done = true;
-
-    }
+    virtual void alloc(void);
 
     virtual void copy_from(T* src)
     {
@@ -226,5 +205,6 @@ private:
 
 };
 
+#include <shl_array_replicated_backend.hpp>
 
 #endif /* __SHL_ARRAY */
