@@ -149,6 +149,7 @@ static bool test_distributed(size_t s)
 
 int main()
 {
+    // This program is sometimes segfaulting on malloc .. no idea why ..
     shl__init(1, true);
     std::cout << "Hello World!" << std::endl;
 
