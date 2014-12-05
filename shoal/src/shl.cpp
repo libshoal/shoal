@@ -195,6 +195,7 @@ int shl__get_rep_id(void)
 
 }
 
+
 int shl__lookup_rep_id(int core)
 {
 #ifdef DEBUG

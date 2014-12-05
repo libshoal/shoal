@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "shl_array.hpp"
+#include "shl_alloc.hpp"
 
 int shl__estimate_working_set_size(int num, ...)
 {

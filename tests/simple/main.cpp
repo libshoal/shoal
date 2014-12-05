@@ -1,6 +1,6 @@
 #include <iostream>
 #include "shl.h"
-#include "shl_array.hpp"
+#include "shl_arrays.hpp"
 
 using namespace std;
 
