@@ -15,7 +15,8 @@
         "main.cpp"
     ],
     addIncludes = [
-        "/lib/shoal/inc"
+        "/lib/shoal/inc",
+        "/lib/shoal/inc/backend/barrelfish"
     ],
     addLibraries = libDeps [
         "shl"

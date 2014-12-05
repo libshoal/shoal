@@ -47,25 +47,7 @@ class shl_array_partitioned : public shl_array<T> {
     {
     }
 
-
-    virtual void alloc(void)
-    {
-        shl_array<T>::alloc();
-
-        // We need to force memory allocation in here (which sucks,
-        // since this file is supposed to be platform independent),
-        // since in shl_malloc, we do not know the size of elements,
-        // and hence, we cannot establish a correct memory mapping for
-        // partitioning in there.
-#ifndef BARRELFISH
-#pragma omp parallel for schedule(static, 1024)
-#endif
-        for (unsigned int i = 0; i < shl_array<T>::size; i++) {
-
-            shl_array<T>::array[i] = 0;
-        }
-
-    }
+    virtual void alloc(void);
 
     virtual int get_options(void)
     {
@@ -80,5 +62,8 @@ class shl_array_partitioned : public shl_array<T> {
     }
 
 };
+
+/// include backend specific functions
+#include <shl_array_partitioned_backend.hpp>
 
 #endif /* __SHL_ARRAY_PARTITIONED */

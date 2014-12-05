@@ -30,6 +30,7 @@
  --     "-fopenmp"
  --   ],
     addIncludes = [
+        "shoal/inc/backend/barrelfish",
         "shoal/inc",
         "contrib/pycrc"
     ],
