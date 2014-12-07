@@ -29,6 +29,16 @@
 #define RANGE_CHECK(_i)
 #endif
 
+typedef enum array_type {
+    SHL_A_INVALID,
+    SHL_A_SINGLE_NODE,
+    SHL_A_DISTRIBUTED,
+    SHL_A_PARTITIONED,
+    SHL_A_REPLICATED,
+    SHL_A_EXPANDABLE,
+    SHL_A_WR_REPLICATED
+} array_t;
+
 ///< Enables array access profiling
 //#define PROFILE
 
@@ -36,22 +46,23 @@
 // Implementations
 // --------------------------------------------------
 
+
 /**
  * \brief Base class for shoal array
  */
 class shl_base_array {
  public:
     const char *name;   ///< name of the array
-
- public:
+    array_t type;
 
     /**
      * \brief base array constructor
      *
      * \param name  Name of the array.
      */
-    shl_base_array(const char *_name)
+    shl_base_array(const char *_name, const array_t _type)
     {
+        shl_base_array::type = _type;
         shl_base_array::name = _name;
     }
 };
@@ -75,6 +86,8 @@ class shl_array : public shl_base_array {
      * Size of array in elements (and not bytes)
      */
     size_t size;        ///< size of the array in elements
+
+    int pagesize;
 
     /* ------------------------- Flags ------------------------- */
     bool use_hugepage;  ///< flag indicating the use of huge pages
@@ -125,16 +138,8 @@ class shl_array : public shl_base_array {
      * ---------------------------------------------------------------------------
      */
 
-    /**
-     * \brief Generic array constructor.
-     *
-     * \param _size the element count of this array
-     * \param _name name of the array for identification purposes
-     *
-     * This constructor does not allocate the backing memory for the array.
-     */
     shl_array(size_t _size, const char *_name) :
-                    shl_base_array(_name)
+                    shl_base_array(_name, SHL_A_SINGLE_NODE)
     {
         size = _size;
         use_hugepage = get_conf()->use_hugepage;
@@ -143,9 +148,35 @@ class shl_array : public shl_base_array {
         is_dynamic = false;
         is_used = false;
         meminfo = NULL;
-
         array = NULL;
+        pagesize = 0;
 
+#ifdef PROFILE
+        num_wr = 0;
+        num_rd = 0;
+#endif
+    }
+
+    /**
+     * \brief Generic array constructor.
+     *
+     * \param _size the element count of this array
+     * \param _name name of the array for identification purposes
+     *
+     * This constructor does not allocate the backing memory for the array.
+     */
+    shl_array(size_t _size, const char *_name, array_t _type) :
+                    shl_base_array(_name, _type)
+    {
+        size = _size;
+        use_hugepage = get_conf()->use_hugepage;
+        read_only = false;
+        alloc_done = false;
+        is_dynamic = false;
+        is_used = false;
+        meminfo = NULL;
+        array = NULL;
+        pagesize = 0;
 #ifdef PROFILE
         num_wr = 0;
         num_rd = 0;
@@ -164,8 +195,8 @@ class shl_array : public shl_base_array {
      * The caller must ensure that the size of the memory region is large
      * enough to hold all the array elements.
      */
-    shl_array(size_t _size, const char *_name, void *mem, void *data) :
-                    shl_base_array(_name)
+    shl_array(size_t _size, const char *_name, void *mem, void *data, array_t _type) :
+                    shl_base_array(_name, _type)
     {
         size = _size;
         is_dynamic = false;
@@ -175,6 +206,7 @@ class shl_array : public shl_base_array {
         array = (T*) data;
         meminfo = mem;
         alloc_done = true;
+        pagesize = 0;
     }
 
     /**
@@ -405,7 +437,6 @@ class shl_array : public shl_base_array {
          * Alternatively, the policy on when to use hugepages could
          * also be part of the array class.
          */
-        int pagesize;
 
         array = (T*) shl__malloc(size * sizeof(T), get_options(), &pagesize,
                                  numa_node, &meminfo);

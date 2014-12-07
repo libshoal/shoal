@@ -50,7 +50,7 @@ private:
      * \param lookup_fn function handling the lookups
      */
     shl_array_replicated(size_t _size, const char *_name, int (*lookup_fn)(void)) :
-                    shl_array<T>(_size, _name)
+                    shl_array<T>(_size, _name, SHL_A_REPLICATED)
     {
         shl_array<T>::read_only = true;
         lookup = lookup_fn;
@@ -74,7 +74,7 @@ private:
                          int (*lookup_fn)(void),
                          void **mem,
                          void **data) :
-                    shl_array<T>(_size, _name, mem, data)
+                    shl_array<T>(_size, _name, mem, data, SHL_A_REPLICATED)
     {
         shl_array<T>::read_only = true;
         lookup = lookup_fn;

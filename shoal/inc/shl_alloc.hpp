@@ -54,7 +54,6 @@
  */
 template<class T>
 shl_array<T>* shl__malloc_array(size_t size, const char *name,
-//
                                 bool is_ro,
                                 bool is_dynamic,
                                 bool is_used,
@@ -84,56 +83,22 @@ shl_array<T>* shl__malloc_array(size_t size, const char *name,
 #ifdef SHL_DBG_ARRAY
         printf("Allocating partitioned array\n");
 #endif
-#if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
-        void *data;
-        void *mem;
-//        void *array = shl__malloc(size*sizeof(T)),
-//                        SHL_MALLOC_HUGEPAGE | SHL_MALLOC_PARTITION, NULL,
-//                        &mem, &data);
-        res = new shl_array_partitioned<T>(size, name, mem, data);
-#else
         res = new shl_array_partitioned<T>(size, name);
-#endif
     } else if (replicate) {
 #ifdef SHL_DBG_ARRAY
         printf("Allocating replicated array\n");
 #endif
-#if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
-        void *data;
-        void *mem;
-//        void *array = shl__malloc(size*sizeof(T), sizeof(shl_array<T>),
-//                        SHL_MALLOC_HUGEPAGE | SHL_MALLOC_REPLICATED,
-//                        NULL, &mem, &data);
-        res = new shl_array<T>(size, name, mem, data);
-#else
         res = new shl_array_replicated<T>(size, name, shl__get_rep_id);
-#endif
     } else if (distribute) {
 #ifdef SHL_DBG_ARRAY
         printf("Allocating distributed array\n");
 #endif
-#if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
-        void *data;
-        void *mem;
-        //void *array = shl__malloc(size*sizeof(T), sizeof(shl_array_distributed<T>),
-        //                SHL_MALLOC_HUGEPAGE | SHL_MALLOC_DISTRIBUTED,
-        //                NULL, &mem, &data);
-        res = new shl_array_distributed<T>(size, name, mem, data);
-#else
         res = new shl_array_distributed<T>(size, name);
-#endif
     } else {
 #ifdef SHL_DBG_ARRAY
         printf("Allocating regular array\n");
 #endif
-#if defined(BARRELFISH) && !SHL_BARRELFISH_USE_SHARED
-        void *data;
-        void *mem;
-        //void *array = shl__malloc(size*sizeof(T), sizeof(shl_array<T>), SHL_MALLOC_HUGEPAGE, NULL, &mem, &data);
-        res = new shl_array<T>(size, name, mem, data);
-#else
         res = new shl_array<T>(size, name);
-#endif
     }
 
     // These are used internally in array to decide if copy-in and
@@ -143,6 +108,18 @@ shl_array<T>* shl__malloc_array(size_t size, const char *name,
 
     return res;
 }
+
+template<class T>
+shl_array<T>* shl__remalloc_array(size_t size, const char *name,
+                                  void *data, void *meminfo,
+                                  array_t type)
+{
+    switch(type) {
+
+    }
+}
+
+
 
 template<class T>
 int shl__estimate_size(size_t size,

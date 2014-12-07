@@ -31,7 +31,7 @@ class shl_array_partitioned : public shl_array<T> {
      * \brief Initialize partitioned array
      */
     shl_array_partitioned(size_t _size, const char *_name) :
-                    shl_array<T>(_size, _name)
+                    shl_array<T>(_size, _name, SHL_A_PARTITIONED)
     {
     }
 
@@ -43,7 +43,7 @@ class shl_array_partitioned : public shl_array<T> {
      * @param data
      */
     shl_array_partitioned(size_t _size, const char *_name, void *mem, void *data) :
-                    shl_array<T>(_size, _name, mem, data)
+                    shl_array<T>(_size, _name, mem, data, SHL_A_PARTITIONED)
     {
     }
 

@@ -35,7 +35,7 @@ class shl_array_distributed : public shl_array<T> {
      * \param _name name of the array
      */
     shl_array_distributed(size_t _size, const char *_name) :
-                    shl_array<T>(_size, _name)
+                    shl_array<T>(_size, _name, SHL_A_DISTRIBUTED)
     {
         /* nop */
     }
@@ -48,7 +48,7 @@ class shl_array_distributed : public shl_array<T> {
      * @param data
      */
     shl_array_distributed(size_t _size, const char *_name, void *mem, void *data) :
-                    shl_array<T>(_size, _name, mem, data)
+                    shl_array<T>(_size, _name, mem, data, SHL_A_DISTRIBUTED)
     {
         /* nop */
     }

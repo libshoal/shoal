@@ -16,7 +16,11 @@
 template<class T>
 void shl_array_replicated<T>::alloc(void)
 {
-
+    /* todo:
+     *        allocate memory for each replicate
+     *
+     *
+     */
 
 }
 
