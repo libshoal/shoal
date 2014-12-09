@@ -42,12 +42,12 @@ Configuration::Configuration(void) {
     numa_trim = get_env_int("SHL_NUMA_TRIM", 1);
 #endif
     // NUMA information
-    num_nodes = numa_max_node();
+    num_nodes = shl__max_node();
     node_mem_avail = new long[num_nodes];
     mem_avail = 0;
 
-    for (int i=0; i<=numa_max_node(); i++) {
-        numa_node_size(i, &(node_mem_avail[i]));
+    for (int i=0; i<=shl__max_node(); i++) {
+        shl__node_size(i, &(node_mem_avail[i]));
         mem_avail += node_mem_avail[i];
     }
 }
@@ -215,7 +215,7 @@ int shl__lookup_rep_id(int core)
 int shl__get_num_replicas(void)
 {
     int trim = get_conf()->numa_trim;
-    int num_nodes = numa_max_node()+1;
+    int num_nodes = shl__max_node()+1;
 
     assert (num_nodes%2 == 0 || trim == 1);
     assert (num_nodes>=trim);
@@ -269,7 +269,7 @@ void shl__init(size_t num_threads, bool partitioned_support)
     assert(num_threads>0);
 
     Configuration *conf = get_conf();
-    assert (numa_available()>=0);
+    assert (shl__check_numa_availability()>=0);
 
     conf->num_threads = num_threads;
 
@@ -329,7 +329,7 @@ void shl__init(size_t num_threads, bool partitioned_support)
 #endif
 
     // Prevent numa_alloc_onnode fall back to allocating memory elsewhere
-    numa_set_strict (true);
+    shl__set_strict_mode (true);
 
 #ifdef DEBUG
     printf(ANSI_COLOR_RED "WARNING:" ANSI_COLOR_RESET " debug enabled in #define\n");

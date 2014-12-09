@@ -8,6 +8,11 @@
 #include "shl_configuration.hpp"
 #include "shl.h"
 
+int shl__node_from_cpu(int core_id)
+{
+    return numa_cpu_to_node(core_id);
+}
+
 void *shl__alloc_struct_shared(size_t size)
 {
     return malloc(size);
@@ -52,6 +57,27 @@ void shl__bind_processor(int id)
 {
     aff_set_oncpu(id);
 }
+
+/**
+ * \brief checks availability of the NUMA
+ *
+ * \returns  0 iff NUMA is available
+ *          -1 iff NUMA is not available
+ */
+int shl__check_numa_availability(void)
+{
+    return numa_available();
+}
+
+/**
+ * \brief TODO
+ * @param id
+ */
+void shl__set_strict_mode(int id)
+{
+    numa_set_strict(id);
+}
+
 
 int
 numa_cpu_to_node(int cpu)
