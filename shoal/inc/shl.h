@@ -61,6 +61,27 @@ extern "C" {
 #define VERSION "1.0"
 #endif
 
+    // --------------------------------------------------
+    // Array features
+    // --------------------------------------------------
+
+    static enum shl__arr_feature_t {
+
+        SHL_ARR_FEAT_PARTITIONING,
+        SHL_ARR_FEAT_REPLICATION,
+        SHL_ARR_FEAT_DISTRIBUTION,
+        SHL_ARR_FEAT_HUGEPAGE
+
+    } __attribute__ ((unused)) shl__arr_feature;
+
+    static const char* __attribute__ ((unused)) shl__arr_feature_table[] = {
+
+        "partitioning",
+        "replication",
+        "distribution",
+        "hugepage"
+    };
+
 // --------------------------------------------------
 // Configuration
 // --------------------------------------------------
@@ -70,18 +91,6 @@ extern "C" {
 
 // Use NUMA aware memory allocation for replication
 #define NUMA
-
-// This does not seem to be currently used
-//#define LOOKUP
-
-// Add some additional debug checks! This will harm performance a LOT.
-//#define DEBUG
-
-// Enable PAPI support
-//#define PAPI
-
-// Enable support for hugepages
-//#define ENABLE_HUGEPAGE
 
 // --------------------------------------------------
 // Typedefs

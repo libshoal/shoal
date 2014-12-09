@@ -195,7 +195,11 @@ int shl__get_rep_id(void)
 
 }
 
-
+/**
+ * \brief Lookup replica to be used by given _virtual_ core.
+ *
+ * Virtual cores are always contiguous (0..num_threads-1)
+ */
 int shl__lookup_rep_id(int core)
 {
 #ifdef DEBUG
@@ -268,6 +272,10 @@ void shl__init(size_t num_threads, bool partitioned_support)
            VERSION, num_threads);
     assert(num_threads>0);
 
+    printf("LUA init .. ");
+    shl__lua_init();
+    printf("done .. ");
+
     Configuration *conf = get_conf();
     assert (shl__check_numa_availability()>=0);
 
@@ -310,6 +318,7 @@ void shl__init(size_t num_threads, bool partitioned_support)
                "Disabling replication! "
                "Use SHL_CPU_AFFINITY\n");
         conf->use_replication = false;
+        assert (!"Do we really want to support runs without affinity?");
     }
     else {
         for (size_t i=0; i<num_threads; i++) {
@@ -317,7 +326,7 @@ void shl__init(size_t num_threads, bool partitioned_support)
 
             if (conf->use_replication) {
                 printf("replication: CPU %03zu is on node % 2d\n",
-                       i, shl__lookup_rep_id(i));
+                       affinity_conf[i], shl__lookup_rep_id(i));
             }
         }
         for (int i=0; i<shl__get_num_replicas(); i++) {

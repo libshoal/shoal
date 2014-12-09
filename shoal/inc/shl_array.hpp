@@ -15,8 +15,10 @@
 #include <cstring> // memset
 #include <iostream>
 #include <limits>
+#include <stdio.h>
 
 #include "shl.h"
+#include "shl_internal.h"
 #include "shl_timer.hpp"
 #include "shl_configuration.hpp"
 
@@ -169,7 +171,8 @@ class shl_array : public shl_base_array {
                     shl_base_array(_name, _type)
     {
         size = _size;
-        use_hugepage = get_conf()->use_hugepage;
+        use_hugepage = get_conf()->use_hugepage &&
+            shl__get_array_conf(shl_base_array::name, SHL_ARR_FEAT_HUGEPAGE, true);
         read_only = false;
         alloc_done = false;
         is_dynamic = false;
@@ -1009,17 +1012,19 @@ shl_array<T>* shl__malloc_array(size_t size, const char *name,
     // --------------------------------------------------
 
     // 1) Always partition indexed arrays
-    bool partition = is_indexed && get_conf()->use_partition;
+    bool partition = is_indexed && get_conf()->use_partition &&
+        shl__get_array_conf(name, SHL_ARR_FEAT_PARTITIONING, true);
 
     // 2) Replicate if array is read-only and can't be partitioned
     bool replicate = !partition &&  // none of the others
-                    is_ro && get_conf()->use_replication;
+        is_ro && get_conf()->use_replication &&
+        shl__get_array_conf(name, SHL_ARR_FEAT_REPLICATION, true);
 
     // 3) Distribute if nothing else works and there is more than one node
-    bool distribute = !replicate && !partition
-                    &&  // none of the others
-                    shl__get_num_replicas() > 1 && get_conf()->use_distribution
-                    && initialize;
+    bool distribute = !replicate && !partition &&  // none of the others
+        shl__get_num_replicas() > 1 && initialize &&
+        get_conf()->use_distribution &&
+        shl__get_array_conf(name, SHL_ARR_FEAT_DISTRIBUTION, true);
 
     shl_array<T> *res = NULL;
 

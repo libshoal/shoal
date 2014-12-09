@@ -9,6 +9,7 @@ OBJS += $(SHLPREFIX)/src/misc.o \
 	$(SHLPREFIX)/src/linux.o \
 	$(SHLPREFIX)/src/shl_array.o \
 	$(SHLPREFIX)/src/shl_array_wr-rep.o \
+	$(SHLPREFIX)/src/shl_array_conf.o \
 	$(SHLPREFIX)/src/shl.o
 
 HEADERS=$(wildcard inc/*.hpp) \
@@ -49,12 +50,18 @@ LIBS += -L$(BASE)contrib/numactl-2.0.9 -lnuma \
 	-L$(BASE)contrib/papi-5.3.0/src -lpapi \
 	-L$(BASE)contrib/papi-5.3.0/src/libpfm4/lib -lpfm
 
-CXXFLAGS += -DVERSION=\"$(GIT_VERSION)\" -fPIC -pthread -fopenmp -std=c++11 -Wall
+CXXFLAGS += -DVERSION=\"$(GIT_VERSION)\" -fPIC -fpic -pthread -fopenmp -std=c++11 -Wall
+
+# LUA
+LUA := $(BASE)/contrib/lua-5.2.3/src/
+INC += -I$(LUA)
+LIBS += -lm -ldl
+OBJS += $(LUA)/liblua.a
 
 # Build shared library
 # --------------------------------------------------
 all: $(DEPS) $(EXTERNAL_OBJS)
-	$(CXX) $(CXXFLAGS) $(INC) -shared $(OBJS) $(EXTERNAL_OBJS) $(LIBS) -o $(TARGET)
+	$(CXX) -shared $(OBJS) $(EXTERNAL_OBJS) $(LIBS) -o $(TARGET)
 
 # Compile object files
 # --------------------------------------------------
