@@ -33,7 +33,6 @@ private:
     T* master_copy;
 
  public:
-    void **mem_array;   ///<
     T** rep_array;      ///<
     int (*lookup)(void);
 
@@ -57,7 +56,6 @@ private:
         master_copy = NULL;
         num_replicas = -1;
         rep_array = NULL;
-        mem_array = NULL;
     }
 
     /**
@@ -81,7 +79,6 @@ private:
         master_copy = NULL;
         num_replicas = -1;
         rep_array = NULL;
-        mem_array = NULL;
     }
 
     /**
@@ -121,7 +118,7 @@ private:
 #ifdef SHL_DBG_ARRAY
         printf("Getting pointer for array [%s]\n", shl_base_array::name);
 #endif
-        if (shl_array<T>::alloc_done) {
+        if (this->alloc_done) {
             return rep_array[lookup()];
         } else {
             return NULL;
@@ -183,6 +180,7 @@ private:
  public:
     virtual unsigned long get_crc( void )
         {
+        printf("repl get_crc\n");
             if (!shl_array<T>::alloc_done)
                 return 0;
 

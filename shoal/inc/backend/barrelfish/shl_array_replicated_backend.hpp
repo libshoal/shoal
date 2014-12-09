@@ -16,13 +16,22 @@
 template<class T>
 int shl_array_replicated<T>::alloc(void)
 {
-    /* todo:
-     *        allocate memory for each replicate
-     *
-     *
-     */
 
-    return -1;
+    if (!shl_array<T>::do_alloc())
+        return 0;
+
+    shl_array<T>::print();
+
+    assert(!shl_array<T>::alloc_done);
+
+    rep_array = (T**) shl__malloc_replicated(shl_array<T>::size * sizeof(T),
+                                              &num_replicas, &this->pagesize,
+                                              this->get_options(),
+                                              &this->meminfo);
+
+    this->alloc_done = true;
+
+    return 0;
 }
 
 

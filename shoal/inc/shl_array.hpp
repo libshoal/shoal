@@ -572,7 +572,7 @@ class shl_array : public shl_base_array {
     }
 
  public:
-    unsigned long get_crc( void )
+    virtual unsigned long get_crc( void )
     {
         if (!alloc_done)
             return 0;

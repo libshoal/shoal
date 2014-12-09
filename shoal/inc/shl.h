@@ -98,6 +98,9 @@ typedef uint32_t coreid_t;
 double shl__end_timer(void);
 double shl__get_timer(void);
 void shl__start_timer(void);
+
+long shl__timer_get_timestamp(void);
+
 coreid_t *parse_affinity(bool);
 char* get_env_str(const char*, const char*);
 int get_env_int(const char*, int);
@@ -116,7 +119,7 @@ int shl__max_node(void);
 long shl__node_size(int node, long *freep);
 int shl__node_from_cpu(int core_id);
 void* shl__malloc(size_t size, int opts, int *pagesize, int node, void **ret_mi);
-void** shl_malloc_replicated(size_t, int*, int);
+void** shl__malloc_replicated(size_t size, int* num_replicas, int* pagesize, int options, void ** ret_mi);
 
 bool shl__check_hugepage_support(void);
 bool shl__check_largepage_support(void);

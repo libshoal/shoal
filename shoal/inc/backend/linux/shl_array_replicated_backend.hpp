@@ -27,8 +27,6 @@ void shl_array_replicated<T>::alloc(void)
                                             &num_replicas,
                                             shl_array<T>::get_options());
 
-    mem_array = ((void **) rep_array) + num_replicas;
-
     assert(num_replicas > 0);
     for (int i = 0; i < num_replicas; i++)
         assert(rep_array[i]!=NULL);

@@ -10,5 +10,17 @@
 #ifndef __SHL_ARRAY_DISTRIBUTED_BACKEND
 #define __SHL_ARRAY_DISTRIBUTED_BACKEND
 
+template<class T>
+int shl_array_distributed<T>::alloc(void)
+{
+
+    /*
+     * TODO: allocate array in a checker board fashion
+     */
+
+    return -1;
+
+}
+
 
 #endif /* __SHL_ARRAY_DISTRIBUTED_BACKEND */

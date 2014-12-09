@@ -10,5 +10,11 @@
 #ifndef __SHL_ARRAY_DISTRIBUTED_BACKEND
 #define __SHL_ARRAY_DISTRIBUTED_BACKEND
 
+template<class T>
+int shl_array_distributed<T>::alloc(void)
+{
+    return -1;
+
+}
 
 #endif /* __SHL_ARRAY_DISTRIBUTED_BACKEND */

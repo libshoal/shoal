@@ -61,6 +61,8 @@ class shl_array_distributed : public shl_array<T> {
 
     }
 
+    virtual int alloc(void);
+
     /**
      * \brief
      * @return
@@ -78,5 +80,13 @@ class shl_array_distributed : public shl_array<T> {
     }
 
 };
+
+#if defined(BARRELFISH)
+#include <backend/barrelfish/shl_array_distributed_backend.hpp>
+#elif defined(LINUX)
+#include <backend/linux/shl_array_distributed_backend.hpp>
+#else
+#error Unknown Operating System
+#endif
 
 #endif /* __SHL_ARRAY_DISTRIBUTED */

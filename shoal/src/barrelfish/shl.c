@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <barrelfish/barrelfish.h>
+#include <bench/bench.h>
+
 #include <xomp/xomp.h>
 
 #include "shl_internal.h"
@@ -36,10 +38,14 @@ int shl__barrelfish_init(size_t num_threads)
     omp_set_num_threads(num_threads);
 #endif
 #endif
+
+    bench_init();
+
     return 0;
 }
 
-int shl__barrelfish_share_frame(struct mem_info *mi)
+
+int shl__barrelfish_share_frame(struct shl_mi_data *mi)
 {
 #if !SHL_BARRELFISH_USE_SHARED
     xomp_frame_type_t type = XOMP_FRAME_TYPE_SHARED_RW;
@@ -56,4 +62,11 @@ int shl__barrelfish_share_frame(struct mem_info *mi)
 #endif
     assert(!"should not be called");
     return -1;
+}
+
+
+long shl__timer_get_timestamp(void)
+{
+    cycles_t cycles = bench_tsc();
+    return bench_tsc_to_ms(cycles);
 }

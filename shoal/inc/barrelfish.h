@@ -21,7 +21,7 @@
 /**
  * use replicated arrays
  */
-#define SHL_REPLICATION 0
+#define SHL_REPLICATION 1
 
 /**
  * use distributed arrays
@@ -70,11 +70,16 @@
 /**
  * \brief
  */
-struct mem_info {
+struct shl_mi_data {
     struct capref frame;    ///<
     lvaddr_t vaddr;         ///<
     size_t size;            ///<
     uint32_t opts;          ///<
+};
+
+struct shl_mi_header {
+    size_t num;
+    struct shl_mi_data *data;
 };
 
 
@@ -84,7 +89,7 @@ int shl__node_get_range(int node,
 
 
 int shl__barrelfish_init(size_t num_threads);
-int shl__barrelfish_share_frame(struct mem_info *mi);
+int shl__barrelfish_share_frame(struct shl_mi_data *mi);
 
 #define MALLOC_VADDR_START (1UL << 36)
 

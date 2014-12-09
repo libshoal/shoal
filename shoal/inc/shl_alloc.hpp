@@ -63,31 +63,20 @@ shl_array<T>* shl__malloc_array(size_t size, const char *name,
 {
     // Policy for memory allocation
     // --------------------------------------------------
-
-    printf("partition\n");
-
     // 1) Always partition indexed arrays
     bool partition = is_indexed && get_conf()->use_partition;
 
-    printf("replicate\n");
-
     // 2) Replicate if array is read-only and can't be partitioned
-    bool replicate = !partition &&  // none of the others
-                    is_ro && get_conf()->use_replication;
-
-    printf("distribute\n");
+    bool replicate = !partition   // none of the others
+                      && is_ro && get_conf()->use_replication;
 
     // 3) Distribute if nothing else works and there is more than one node
-    bool distribute = !replicate && !partition
-                    &&  // none of the others
-                    shl__get_num_replicas() > 1 && get_conf()->use_distribution
-                    && initialize;
-
-    printf("shl_array<T> *res = NULL;\n");
+    bool distribute = !replicate && !partition // none of the others
+                        &&  shl__get_num_replicas() > 1
+                        && get_conf()->use_distribution
+                        && initialize;
 
     shl_array<T> *res = NULL;
-
-
 
     if (partition) {
         SHL_DEBUG_ALLOC("allocating partitioned array '%s'\n", name);
