@@ -27,6 +27,19 @@ extern "C" {
 #include "linux.h"
 #endif
 
+#define SHL_DEBUG_ENABLED 1
+
+#if SHL_DEBUG_ENABLED
+#define SHL_DEBUG_PRINT(x...) printf("SHL: " x);
+#else
+#define SHL_DEBUG_PRINT(x...);
+#endif
+#define SHL_DEBUG_NOPRINT(x...);
+
+#define SHL_DEBUG_INIT(x...) SHL_DEBUG_PRINT(x)
+#define SHL_DEBUG_ALLOC(x...) SHL_DEBUG_PRINT(x)
+#define SHL_DEBUG_ARRAY(x...) SHL_DEBUG_PRINT(x)
+
 #define noprintf(x,...) void(0)
 
 #define BASE_UNIT 1000
@@ -96,14 +109,18 @@ void convert_number(long long, char *);
 // --------------------------------------------------
 void shl__bind_processor(int proc);
 void shl__bind_processor_aff(int proc);
+int shl__check_numa_availability(void);
+void shl__set_strict_mode(int id);
 int shl__get_proc_for_node(int node);
 int shl__max_node(void);
 long shl__node_size(int node, long *freep);
-int numa_cpu_to_node(int);
+int shl__node_from_cpu(int core_id);
 void* shl__malloc(size_t size, int opts, int *pagesize, int node, void **ret_mi);
 void** shl_malloc_replicated(size_t, int*, int);
 
 bool shl__check_hugepage_support(void);
+bool shl__check_largepage_support(void);
+
 void loc(size_t, int, int*, void **);
 
 // --------------------------------------------------

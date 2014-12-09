@@ -14,7 +14,7 @@
  * \brief allocates the arrays
  */
 template<class T>
-void shl_array_replicated<T>::alloc(void)
+int shl_array_replicated<T>::alloc(void)
 {
     /* todo:
      *        allocate memory for each replicate
@@ -22,6 +22,7 @@ void shl_array_replicated<T>::alloc(void)
      *
      */
 
+    return -1;
 }
 
 

@@ -87,7 +87,7 @@ private:
     /**
      * \brief allocates the arrays
      */
-    virtual void alloc(void);
+    virtual int alloc(void);
 
     virtual void copy_from(T* src)
     {
@@ -205,6 +205,13 @@ private:
 
 };
 
-#include <shl_array_replicated_backend.hpp>
+/// include backend specific functions
+#if defined(BARRELFISH)
+#include <backend/barrelfish/shl_array_replicated_backend.hpp>
+#elif defined(LINUX)
+#include <backend/linux/shl_array_replicated_backend.hpp>
+#else
+#error Unknown Operating System
+#endif
 
 #endif /* __SHL_ARRAY */

@@ -14,9 +14,9 @@
 
 
 template<class T>
-void shl_array_partitioned<T>::alloc(void)
+int shl_array_partitioned<T>::alloc(void)
 {
-
+    return -1;
 
 }
 

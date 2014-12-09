@@ -47,7 +47,7 @@ class shl_array_partitioned : public shl_array<T> {
     {
     }
 
-    virtual void alloc(void);
+    virtual int alloc(void);
 
     virtual int get_options(void)
     {
@@ -64,6 +64,12 @@ class shl_array_partitioned : public shl_array<T> {
 };
 
 /// include backend specific functions
-#include <shl_array_partitioned_backend.hpp>
+#if defined(BARRELFISH)
+#include <backend/barrelfish/shl_array_partitioned_backend.hpp>
+#elif defined(LINUX)
+#include <backend/linux/shl_array_partitioned_backend.hpp>
+#else
+#error Unknown Operating System
+#endif
 
 #endif /* __SHL_ARRAY_PARTITIONED */

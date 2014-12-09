@@ -21,12 +21,12 @@
 /**
  * use replicated arrays
  */
-#define SHL_REPLICATION 1
+#define SHL_REPLICATION 0
 
 /**
  * use distributed arrays
  */
-#define SHL_DISTRIBUTION 1
+#define SHL_DISTRIBUTION 0
 
 /**
  * use partitioned arrays
@@ -36,7 +36,7 @@
 /**
  * enable the numa trim feature
  */
-#define SHL_NUMA_TRIM 0
+#define SHL_NUMA_TRIM 1
 
 /**
  * force using a static schedule for OpenMP loops
@@ -78,11 +78,10 @@ struct mem_info {
 };
 
 
+int shl__node_get_range(int node,
+                   uintptr_t *min_base,
+                  uintptr_t *max_limit);
 
-int numa_max_node(void);
-long numa_node_size(int, long*);
-int numa_available(void);
-void numa_set_strict(int);
 
 int shl__barrelfish_init(size_t num_threads);
 int shl__barrelfish_share_frame(struct mem_info *mi);

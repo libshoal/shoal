@@ -64,12 +64,18 @@ shl_array<T>* shl__malloc_array(size_t size, const char *name,
     // Policy for memory allocation
     // --------------------------------------------------
 
+    printf("partition\n");
+
     // 1) Always partition indexed arrays
     bool partition = is_indexed && get_conf()->use_partition;
+
+    printf("replicate\n");
 
     // 2) Replicate if array is read-only and can't be partitioned
     bool replicate = !partition &&  // none of the others
                     is_ro && get_conf()->use_replication;
+
+    printf("distribute\n");
 
     // 3) Distribute if nothing else works and there is more than one node
     bool distribute = !replicate && !partition
@@ -77,27 +83,23 @@ shl_array<T>* shl__malloc_array(size_t size, const char *name,
                     shl__get_num_replicas() > 1 && get_conf()->use_distribution
                     && initialize;
 
+    printf("shl_array<T> *res = NULL;\n");
+
     shl_array<T> *res = NULL;
 
+
+
     if (partition) {
-#ifdef SHL_DBG_ARRAY
-        printf("Allocating partitioned array\n");
-#endif
+        SHL_DEBUG_ALLOC("allocating partitioned array '%s'\n", name);
         res = new shl_array_partitioned<T>(size, name);
     } else if (replicate) {
-#ifdef SHL_DBG_ARRAY
-        printf("Allocating replicated array\n");
-#endif
+        SHL_DEBUG_ALLOC("allocating replicated array '%s'\n", name);
         res = new shl_array_replicated<T>(size, name, shl__get_rep_id);
     } else if (distribute) {
-#ifdef SHL_DBG_ARRAY
-        printf("Allocating distributed array\n");
-#endif
+        SHL_DEBUG_ALLOC("allocating distributed array '%s'\n", name);
         res = new shl_array_distributed<T>(size, name);
     } else {
-#ifdef SHL_DBG_ARRAY
-        printf("Allocating regular array\n");
-#endif
+        SHL_DEBUG_ALLOC("allocating normal array '%s'\n", name);
         res = new shl_array<T>(size, name);
     }
 

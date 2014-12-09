@@ -10,4 +10,6 @@
 void
 aff_set_oncpu(unsigned int cpu);
 
+
+
 #endif /* __SHL_INTERNAL_H */
