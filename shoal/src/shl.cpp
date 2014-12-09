@@ -73,6 +73,8 @@ void shl__end(void)
     papi_stop();
 #endif
 
+    shl__lua_deinit();
+
     printf("Time for copy: %.6f\n", shl__get_timer());
 #ifdef DEBUG
     printf("Number of lookups: %ld\n", num_lookup);
@@ -273,8 +275,9 @@ void shl__init(size_t num_threads, bool partitioned_support)
     assert(num_threads>0);
 
     printf("LUA init .. ");
+    Timer t; t.start();
     shl__lua_init();
-    printf("done .. ");
+    printf("done (%f) .. ", t.stop());
 
     Configuration *conf = get_conf();
     assert (shl__check_numa_availability()>=0);

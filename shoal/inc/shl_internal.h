@@ -18,6 +18,7 @@ void aff_set_oncpu(unsigned int cpu);
 // --------------------------------------------------
 // Query array configuration
 void shl__lua_init(void);
+void shl__lua_deinit(void);
 bool shl__get_array_conf(const char* array_name, int feature, bool def);
 
 
