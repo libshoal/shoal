@@ -12,7 +12,10 @@
   build library {
     target = "shl",
     cFiles = [
-        "shoal/src/barrelfish.c",
+        "shoal/src/barrelfish/malloc.c",
+        "shoal/src/barrelfish/memcpy.c",
+        "shoal/src/barrelfish/machine.c",
+        "shoal/src/barrelfish/shl.c",
         "contrib/pycrc/crc.c"
     ],
     cxxFiles = [
