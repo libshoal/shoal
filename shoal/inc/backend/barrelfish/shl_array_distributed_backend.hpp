@@ -13,12 +13,26 @@
 template<class T>
 int shl_array_distributed<T>::alloc(void)
 {
+    if (!this->do_alloc())
+            return 0;
 
-    /*
-     * TODO: allocate array in a checker board fashion
-     */
+    this->print();
 
-    return -1;
+    assert(!this->alloc_done);
+
+
+    this->array = (T *)shl__malloc_distributed(this->size * sizeof(T),
+                                               this->get_options(), &this->pagesize,
+                                               &this->meminfo);
+
+    if (this->array == NULL) {
+        return -1;
+    }
+
+
+    this->alloc_done = true;
+
+    return 0;
 
 }
 

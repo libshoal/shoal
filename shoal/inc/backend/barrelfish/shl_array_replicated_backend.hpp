@@ -28,6 +28,9 @@ int shl_array_replicated<T>::alloc(void)
                                               &num_replicas, &this->pagesize,
                                               this->get_options(),
                                               &this->meminfo);
+    if (this->array == NULL) {
+        return -1;
+    }
 
     this->alloc_done = true;
 

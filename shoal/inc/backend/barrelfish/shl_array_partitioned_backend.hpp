@@ -16,8 +16,25 @@
 template<class T>
 int shl_array_partitioned<T>::alloc(void)
 {
-    return -1;
+    if (!this->do_alloc())
+            return 0;
 
+    this->print();
+
+    assert(!this->alloc_done);
+
+    this->array = (T *)shl__malloc_partitioned(this->size * sizeof(T),
+                                               this->get_options(), &this->pagesize,
+                                               &this->meminfo);
+
+    if (this->array == NULL) {
+        return -1;
+    }
+
+
+    this->alloc_done = true;
+
+    return 0;
 }
 
 
