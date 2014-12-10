@@ -3,6 +3,7 @@
 
 #include <barrelfish/caddr.h> // for capref
 
+
 /**
  * \brief This file contains Barrelfish specific declarations
  */
@@ -43,6 +44,10 @@
  */
 #define SHL_STATIC 1
 
+/**
+ * allocation stride for distributed arrays
+ */
+#define SHL_DISTRIBUTION_STRIDE PAGESIZE
 
 /**
  *
@@ -60,27 +65,12 @@
  */
 #define SHL_BARRELFISH_USE_SHARED 0
 
-///
-#define SHL_RAM_MIN_BASE (64UL * 1024 * 1024 * 1024)
 
-///
-#define SHL_RAM_MAX_LIMIT (512UL * 1024 * 1024 * 1024)
-
-
-/**
- * \brief
+/*
+ * forward declarations
  */
-struct shl_mi_data {
-    struct capref frame;    ///<
-    lvaddr_t vaddr;         ///<
-    size_t size;            ///<
-    uint32_t opts;          ///<
-};
+struct shl_mi_data;
 
-struct shl_mi_header {
-    size_t num;
-    struct shl_mi_data *data;
-};
 
 
 int shl__node_get_range(int node,
@@ -91,7 +81,14 @@ int shl__node_get_range(int node,
 int shl__barrelfish_init(size_t num_threads);
 int shl__barrelfish_share_frame(struct shl_mi_data *mi);
 
-#define MALLOC_VADDR_START (1UL << 36)
+void* shl__malloc_distributed(size_t size,
+                              int opts,
+                              int *pagesize,
+                              void **ret_mi);
+void *shl__malloc_partitioned(size_t size,
+                              int opts,
+                              int *pagesize,
+                              void **ret_mi);
 
 
 

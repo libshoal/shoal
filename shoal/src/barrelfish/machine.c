@@ -14,7 +14,7 @@
  */
 #define SHL_MACHINE_BABYBEL 1
 #define SHL_MACHINE_QEMU    2
-#define SHL_MACHINE SHL_MACHINE_BABYBEL
+#define SHL_MACHINE SHL_MACHINE_QEMU
 
 
 /**
@@ -33,7 +33,7 @@ int shl__node_from_cpu(int core_id)
         return 1;
     }
 #elif SHL_MACHINE == SHL_MACHINE_QEMU
-    return 0;
+    return core_id;
 #else
 #error unknown machine
 #endif
@@ -93,7 +93,10 @@ int shl__node_get_range(int node,
 #elif SHL_MACHINE == SHL_MACHINE_QEMU
     if (node == 0) {
         mb = 0;
-        ml = 0xFFFFFFFF;
+        ml = 512UL * 1024 * 1014;
+    } else if (node == 1){
+        mb = 512UL * 1024 * 1014;
+        ml = 1024UL * 1024 * 1014 - 1;
     } else {
         return -1;
     }
@@ -127,7 +130,7 @@ long shl__node_size(int node, long  *freep)
 #if SHL_MACHINE == SHL_MACHINE_BABYBEL
     return 0x203fffffffUL; // from Linux dmesg
 #elif SHL_MACHINE == SHL_MACHINE_QEMU
-    return (1UL << 30); // setting 1GB for QEMU
+    return (1UL << 29); // setting 212MB for QEMU
 #else
 #error unknown machine
 #endif
@@ -146,7 +149,7 @@ int shl__max_node(void)
 #if SHL_MACHINE == SHL_MACHINE_BABYBEL
     return 1; // babybel has two nodes
 #elif SHL_MACHINE == SHL_MACHINE_QEMU
-    return 0;   // qemu just has one node
+    return 1;   // qemu emulates 2 nodess
 #else
 #error unknown machine
 #endif

@@ -5,6 +5,7 @@
 #include <xomp/xomp.h>
 
 #include "shl_internal.h"
+#include <backend/barrelfish/meminfo.h>
 
 /**
  * \brief initializes the barrelfish backend
