@@ -10,6 +10,8 @@ OBJS += $(SHLPREFIX)/src/misc.o \
 	$(SHLPREFIX)/src/shl_array.o \
 	$(SHLPREFIX)/src/shl_array_wr-rep.o \
 	$(SHLPREFIX)/src/shl_array_conf.o \
+	$(SHLPREFIX)/src/shl_timer.o \
+	$(SHLPREFIX)/src/shl_multitimer.o \
 	$(SHLPREFIX)/src/shl.o
 
 HEADERS=$(wildcard inc/*.hpp) \

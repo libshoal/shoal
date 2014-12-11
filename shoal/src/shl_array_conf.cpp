@@ -32,7 +32,7 @@ const char* shl__arr_feature_table[] = {
 #ifdef BARRELFISH
 static const char* SETTINGS_FILE = "/nfs/array_settings.lua";
 #else
-static const char* SETTINGS_FILE = "/home/skaestle/projects/gm/settings.lua";
+static const char* SETTINGS_FILE = "settings.lua";
 #endif
 
 ///<
