@@ -20,15 +20,15 @@ int shl_array_replicated<T>::alloc(void)
     if (!shl_array<T>::do_alloc())
         return 0;
 
-    shl_array<T>::print();
+    this->print();
 
-    assert(!shl_array<T>::alloc_done);
+    assert(!this->alloc_done);
 
-    rep_array = (T**) shl__malloc_replicated(shl_array<T>::size * sizeof(T),
+    rep_array = (T**) shl__malloc_replicated(this->size * sizeof(T),
                                               &num_replicas, &this->pagesize,
                                               this->get_options(),
                                               &this->meminfo);
-    if (this->array == NULL) {
+    if (this->rep_array == NULL) {
         return -1;
     }
 
