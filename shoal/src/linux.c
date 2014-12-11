@@ -439,3 +439,11 @@ bool shl__check_hugepage_support(void)
         return true;
     }
 }
+
+
+unsigned long shl__timer_get_timestamp()
+{
+    struct timeval TV1;
+    gettimeofday(&TV1, NULL);
+    return (TV1.tv_sec * 1000 + TV1.tv_usec/1000);
+}
