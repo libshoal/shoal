@@ -21,6 +21,7 @@
     cxxFiles = [
         "shoal/src/misc.cpp",
         "shoal/src/shl.cpp",
+        "shoal/src/shl_array_conf.cpp",
         "shoal/src/shl_array.cpp",
         "shoal/src/shl_array_replicated.cpp",
        -- "shoal/src/shl_cost.cpp",
@@ -41,7 +42,8 @@
     ],
     addLibraries = libDeps [
  --       "bomp",
-        "bench"
+        "bench",
+        "lua"
     ],
     architectures = [
       "x86_64",
