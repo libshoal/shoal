@@ -66,7 +66,7 @@ int shl__barrelfish_share_frame(struct shl_mi_data *mi)
 }
 
 
-long shl__timer_get_timestamp(void)
+unsigned long shl__timer_get_timestamp(void)
 {
     cycles_t cycles = bench_tsc();
     return bench_tsc_to_ms(cycles);

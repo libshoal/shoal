@@ -12,12 +12,30 @@
 
 #include "shl_internal.h"
 
+
+
+
+/**
+ * \brief initializes the copy infrastructure
+ *
+ * \returns 0 on SUCCESS
+ *          non zero on FAILURE
+ */
+int shl__copy_init(void);
+int shl__copy_init(void)
+{
+    return 0;
+}
+
+
 void** shl__copy_array(void *src,
                        size_t size,
                        bool is_used,
                        bool is_ro,
                        const char* array_name)
 {
+
+
     assert(!"NYI");
     return 0;
 }
