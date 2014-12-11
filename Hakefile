@@ -24,6 +24,8 @@
         "shoal/src/shl_array.cpp",
         "shoal/src/shl_array_replicated.cpp",
        -- "shoal/src/shl_cost.cpp",
+        "shoal/src/shl_timer.cpp",
+        "shoal/src/shl_multitimer.cpp",
         "shoal/src/shl_array_wr-rep.cpp"
     ],
  --   addCFlags = [

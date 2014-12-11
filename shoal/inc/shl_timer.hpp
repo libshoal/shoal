@@ -45,55 +45,29 @@ class Timer {
     double stop(void);
 
     /**
-     * returns the time elapsed
+     * returns the time elapsed in seconds
      *
      * \returns
      */
-    double get(void)
-    {
-        return tv_sec*1000 + tv_usec*0.0001;
-    }
+    double get(void);
 
     /**
      * \brief resets the timer values
      */
-    void reset(void)
-    {
-        tv_sec = 0;
-        tv_usec = 0;
-        running = false;
-        msec = 0.0;
-    }
+    void reset(void);
+
+    /**
+     * \brief prints the elapsed time
+     *
+     * \param label associated label with the timer
+     */
+    void print(char *label);
 
  private:
-    bool running;        ///< flag indicating that the timer is running
-    long tv_sec;         ///< time value vector (sec part)
-    long tv_usec;        ///< time value vector (usec part)
-    double msec;         ///< elapsed time in msec
-    struct timeval TV1;  ///< timestamp when the timer is started
-    struct timeval TV2;  ///< timestamp when the timer was stopped
-};
+    bool running;          ///< flag indicating that the timer is running
 
-class MultiTimer {
-    public:
-        MultiTimer(int steps) {
-            times = vector<double>();
-            times.reserve(steps);
-            step_times = vector<double>();
-            step_times.reserve(steps);
-            labels = vector<string>();\
-            labels.reserve(steps);
-        }
-        void start();
-        void step(string name);
-        void stop();
-        void print();
- private:
-    struct timeval tv_start, tv_prev, tv_current;
-    vector<double> times;
-    vector<double> step_times;
-    vector<string> labels;
-
+    unsigned long t_start; ///< timestamp of the start in msec
+    unsigned long t_end;   ///< time elapes since start [msec]
 };
 
 #endif /* __SHL_TIMER */

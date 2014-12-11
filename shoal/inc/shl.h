@@ -40,6 +40,8 @@ extern "C" {
 #define SHL_DEBUG_ALLOC(x...) SHL_DEBUG_PRINT(x)
 #define SHL_DEBUG_ARRAY(x...) SHL_DEBUG_PRINT(x)
 
+#define SHL_TIMER_USE_MULTI 1
+
 #define noprintf(x,...) void(0)
 
 #define BASE_UNIT 1000
@@ -104,11 +106,12 @@ typedef uint32_t coreid_t;
 // --------------------------------------------------
 // in misc.c
 // --------------------------------------------------
-double shl__end_timer(void);
+double shl__end_timer(const char *label);
 double shl__get_timer(void);
-void shl__start_timer(void);
+void shl__start_timer(int steps);
+void shl__step_timer(const char *label);
 
-long shl__timer_get_timestamp(void);
+unsigned long shl__timer_get_timestamp(void);
 
 coreid_t *parse_affinity(bool);
 char* get_env_str(const char*, const char*);
