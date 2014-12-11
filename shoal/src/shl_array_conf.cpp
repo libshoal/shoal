@@ -1,8 +1,16 @@
+#ifdef BARRELFISH
 extern "C" {
-    #include "lua.h"
-    #include "lualib.h"
-    #include "lauxlib.h"
+#include <lua/lua.h>
+#include <lua/lualib.h>
+#include <lua/lauxlib.h>
 }
+#else
+extern "C" {
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+}
+#endif
 
 #include <cstdio>
 #include <cassert>
@@ -11,69 +19,92 @@ extern "C" {
 #include "shl_internal.h"
 #include "shl_timer.hpp"
 
-static const char* SETTINGS_FILE = "/home/skaestle/projects/gm/settings.lua" ;
+/**
+ *
+ */
+const char* shl__arr_feature_table[] = {
+    "partitioning",
+    "replication",
+    "distribution",
+    "hugepage"
+};
 
+#ifdef BARRELFISH
+static const char* SETTINGS_FILE = "/nfs/array_settings.lua";
+#else
+static const char* SETTINGS_FILE = "/home/skaestle/projects/gm/settings.lua";
+#endif
+
+///<
 static lua_State *L = NULL;
+
+///<
 static Timer lua_timer;
 
+#if 0
 // http://windrealm.org/tutorials/reading-a-lua-configuration-file-from-c.php
-const char* shl__lua_stringexpr( lua_State* L, const char* expr,
-                            const char* def )
+static const char* shl__lua_stringexpr(lua_State* lua, const char* expr, const char* def)
 {
 
-    const char* r = def ;
-    char buf[256] = "" ;
+    const char* r = def;
+    char buf[256] = "";
 
     /* Assign the Lua expression to a Lua global variable. */
-    sprintf( buf, "evalExpr=%s", expr );
-    if ( !luaL_dostring( L, buf ) ) {
+    sprintf(buf, "evalExpr=%s", expr);
+    if (!luaL_dostring(lua, buf)) {
 
         /* Get the value of the global varibable */
-        lua_getglobal( L, "evalExpr" );
-        if ( lua_isstring( L, -1 ) ) {
-            r = lua_tostring( L, -1 );
+        lua_getglobal(lua, "evalExpr");
+        if (lua_isstring(lua, -1)) {
+            r = lua_tostring(lua, -1);
         }
 
         /* remove lua_getglobal value */
-        lua_pop( L, 1 );
+        lua_pop(lua, 1);
     }
 
     return r;
 }
+#endif
 
-int shl__lua_boolexpr( lua_State* L, const char* expr, bool def_val )
+/**
+ *
+ * @param lua
+ * @param expr
+ * @param def_val
+ * @return
+ */
+static int shl__lua_boolexpr(lua_State* lua, const char* expr, bool def_val)
 {
     int ok = def_val;
-    char buf[256] = "" ;
+    char buf[256] = "";
 
     /* Assign the Lua expression to a Lua global variable. */
 
     printf("Querying [%s] ..", expr);
 
-    sprintf( buf, "evalExpr=%s", expr );
+    sprintf(buf, "evalExpr=%s", expr);
 
-    if ( !luaL_dostring( L, buf ) ) {
+    if (!luaL_dostring(lua, buf)) {
 
         /* Get the value of the global varibable */
 
-        lua_getglobal( L, "evalExpr" );
+        lua_getglobal(lua, "evalExpr");
 
-        if ( lua_isboolean( L, -1 ) ) {
-
-            ok = lua_toboolean( L, -1 );
+        if (lua_isboolean(lua, -1)) {
+            ok = lua_toboolean(lua, -1);
             printf(" .. found %d", ok);
-
         }
 
         /* remove lua_getglobal value */
 
-        lua_pop( L, 1 );
+        lua_pop(lua, 1);
 
     }
 
     printf(" .. result %d\n", ok);
 
-    return ok ;
+    return ok;
 
 }
 
@@ -83,8 +114,8 @@ int shl__lua_boolexpr( lua_State* L, const char* expr, bool def_val )
 bool shl__get_array_conf(const char *array_name, int feature, bool def)
 {
     lua_timer.start();
-    assert (strlen(array_name) < SHL__ARRAY_NAME_LEN_MAX);
-    assert (strncmp(array_name, "shl__", 5)==0);
+    assert(strlen(array_name) < SHL__ARRAY_NAME_LEN_MAX);
+    assert(strncmp(array_name, "shl__", 5) == 0);
 
     array_name = array_name + strlen("shl__");
 
@@ -99,24 +130,36 @@ bool shl__get_array_conf(const char *array_name, int feature, bool def)
     return res;
 }
 
+/**
+ *
+ */
 void shl__lua_init(void)
 {
     lua_timer.start();
     L = luaL_newstate();
-     if (L)
+    if (L) {
         luaL_openlibs(L);
+    } else {
+        printf("ERROR: opening LUA\n");
+    }
 
     // Load settings file
-    if ( luaL_dofile( L, SETTINGS_FILE ) == 1 ) {
-
-        printf( "Error loading %s\n", SETTINGS_FILE );
-        assert (!"Error loading settings-file. Check it's syntax.");
+    if ( luaL_dofile( L, SETTINGS_FILE ) == 1) {
+        printf("Error loading %s\n", SETTINGS_FILE);
+        assert(!"Error loading settings-file. Check it's syntax.");
     }
+
+    // luaL_loadbuffer(L, program, strlen(program), "line")
 
     lua_timer.stop();
 }
 
+/**
+ *
+ */
 void shl__lua_deinit(void)
 {
+    lua_close(L);
+    L = NULL;
     printf("LUA done (time spent: %f)\n", lua_timer.get());
 }

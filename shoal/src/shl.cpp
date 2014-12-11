@@ -79,6 +79,11 @@ void shl__end(void)
 #ifdef DEBUG
     printf("Number of lookups: %ld\n", num_lookup);
 #endif
+
+    /*
+     * XXX This line signals the termination of the execution for scalebench
+     */
+    printf("XXXXXXXXXX SHL DONE XXXXXXXXXXXXXX\n");
 }
 
 #ifdef PAPI

@@ -63,26 +63,34 @@ extern "C" {
 #define VERSION "1.0"
 #endif
 
-    // --------------------------------------------------
-    // Array features
-    // --------------------------------------------------
+// --------------------------------------------------
+// Array features
+// --------------------------------------------------
 
-    static enum shl__arr_feature_t {
+typedef enum shl__arr_feature {
+    SHL_ARR_FEAT_PARTITIONING,
+    SHL_ARR_FEAT_REPLICATION,
+    SHL_ARR_FEAT_DISTRIBUTION,
+    SHL_ARR_FEAT_HUGEPAGE
+} shl_arr_feature_t;
 
-        SHL_ARR_FEAT_PARTITIONING,
-        SHL_ARR_FEAT_REPLICATION,
-        SHL_ARR_FEAT_DISTRIBUTION,
-        SHL_ARR_FEAT_HUGEPAGE
+extern const char *shl__arr_feature_table[];
 
-    } __attribute__ ((unused)) shl__arr_feature;
+/*
+static enum shl__arr_feature_t {
 
-    static const char* __attribute__ ((unused)) shl__arr_feature_table[] = {
 
-        "partitioning",
-        "replication",
-        "distribution",
-        "hugepage"
-    };
+
+} __attribute__ ((unused)) shl__arr_feature;
+
+
+static const char* __attribute__ ((unused)) shl__arr_feature_table[] = {
+    "partitioning",
+    "replication",
+    "distribution",
+    "hugepage"
+};
+*/
 
 // --------------------------------------------------
 // Configuration
