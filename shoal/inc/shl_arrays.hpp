@@ -15,6 +15,7 @@
 #include "shl_array_partitioned.hpp"
 #include "shl_array_replicated.hpp"
 #include "shl_array_expandable.hpp"
+#include "shl_array_single_node.hpp"
 #include "shl_array_wr-rep.hpp"
 
 #include "shl_alloc.hpp"

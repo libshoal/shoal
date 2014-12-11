@@ -64,17 +64,20 @@ shl_array<T>* shl__malloc_array(size_t size, const char *name,
     // Policy for memory allocation
     // --------------------------------------------------
     // 1) Always partition indexed arrays
-    bool partition = is_indexed && get_conf()->use_partition;
+   // 1) Always partition indexed arrays
+   bool partition = is_indexed && get_conf()->use_partition &&
+       shl__get_array_conf(name, SHL_ARR_FEAT_PARTITIONING, true);
 
-    // 2) Replicate if array is read-only and can't be partitioned
-    bool replicate = !partition   // none of the others
-                      && is_ro && get_conf()->use_replication;
+   // 2) Replicate if array is read-only and can't be partitioned
+   bool replicate = !partition &&  // none of the others
+       is_ro && get_conf()->use_replication &&
+       shl__get_array_conf(name, SHL_ARR_FEAT_REPLICATION, true);
 
-    // 3) Distribute if nothing else works and there is more than one node
-    bool distribute = !replicate && !partition // none of the others
-                        &&  shl__get_num_replicas() > 1
-                        && get_conf()->use_distribution
-                        && initialize;
+   // 3) Distribute if nothing else works and there is more than one node
+   bool distribute = !replicate && !partition &&  // none of the others
+       shl__get_num_replicas() > 1 && initialize &&
+       get_conf()->use_distribution &&
+       shl__get_array_conf(name, SHL_ARR_FEAT_DISTRIBUTION, true);
 
     shl_array<T> *res = NULL;
 
@@ -88,8 +91,8 @@ shl_array<T>* shl__malloc_array(size_t size, const char *name,
         SHL_DEBUG_ALLOC("allocating distributed array '%s'\n", name);
         res = new shl_array_distributed<T>(size, name);
     } else {
-        SHL_DEBUG_ALLOC("allocating normal array '%s'\n", name);
-        res = new shl_array<T>(size, name);
+        SHL_DEBUG_ALLOC("allocating single_node array '%s'\n", name);
+        res = new shl_array_single_node<T>(size, name);
     }
 
     // These are used internally in array to decide if copy-in and

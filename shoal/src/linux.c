@@ -8,11 +8,6 @@
 #include "shl_configuration.hpp"
 #include "shl.h"
 
-int shl__node_from_cpu(int core_id)
-{
-    return numa_cpu_to_node(core_id);
-}
-
 void *shl__alloc_struct_shared(size_t size)
 {
     return malloc(size);
@@ -37,7 +32,7 @@ aff_set_oncpu(unsigned int cpu)
 int shl__get_proc_for_node(int node)
 {
     for (int i=0; i<MAXCORES; i++)
-        if (numa_cpu_to_node(i)==node)
+        if (shl__node_from_cpu(i)==node)
             return i;
 
     assert (!"Cannot find processor on given node");
@@ -78,9 +73,8 @@ void shl__set_strict_mode(int id)
     numa_set_strict(id);
 }
 
-
 int
-numa_cpu_to_node(int cpu)
+shl__node_from_cpu(int cpu)
 {
     int ret    = -1;
     int ncpus  = numa_num_possible_cpus();
@@ -109,6 +103,7 @@ numa_cpu_to_node(int cpu)
 
     return ret;
 }
+
 void** shl__copy_array(void *src, size_t size, bool is_used,
                        bool is_ro, const char* array_name)
 {
@@ -364,23 +359,24 @@ void* shl__malloc(size_t size, int opts, int *pagesize, int node, void **ret_mi)
     return res;
 }
 
+
 /**
  *
  * \param num_replicas Specifies the number of replicas to be
  * generated. If value given is <0, shl_malloc_replicated will
  * determine the number of replicas to be used.
  */
-void** shl_malloc_replicated(size_t size,
-                             int* num_replicas,
-                             int options)
+void** shl__malloc_replicated(size_t size,
+                              int* pagesize,
+                              int* num_replicas,
+                              int options,
+                              void **meminfo)
 {
     if (*num_replicas<=0) {
         *num_replicas = shl__get_num_replicas();
     }
 
     assert (*num_replicas>0 && *num_replicas<12); // Sanity check
-
-    int pagesize;
 
     void **tmp = (void**) (malloc(*num_replicas*sizeof(void*)));
 
@@ -390,7 +386,8 @@ void** shl_malloc_replicated(size_t size,
         // --------------------------------------------------
 
         // Allocate
-        tmp[i] = shl__malloc(size, options, &pagesize, SHL_NUMA_IGNORE, NULL);
+        tmp[i] = shl__malloc(size, options, pagesize, SHL_NUMA_IGNORE, NULL);
+        assert(tmp[i]);
 
         // Allocate on proper node; leverage Linux's first touch strategy
         // --------------------------------------------------

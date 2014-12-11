@@ -14,26 +14,28 @@
  * \brief allocates the arrays
  */
 template<class T>
-void shl_array_replicated<T>::alloc(void)
+int shl_array_replicated<T>::alloc(void)
 {
     if (!shl_array<T>::do_alloc())
-        return;
+        return -1;
 
     shl_array<T>::print();
 
     assert(!shl_array<T>::alloc_done);
 
-    rep_array = (T**) shl_malloc_replicated(shl_array<T>::size * sizeof(T),
-                                            &num_replicas,
-                                            shl_array<T>::get_options());
+    rep_array = (T**) shl__malloc_replicated(shl_array<T>::size * sizeof(T),
+                                             &this->pagesize,
+                                             &num_replicas,
+                                             shl_array<T>::get_options(), NULL);
 
     assert(num_replicas > 0);
-    for (int i = 0; i < num_replicas; i++)
+    for (int i = 0; i < num_replicas; i++) {
         assert(rep_array[i]!=NULL);
+    }
 
     shl_array<T>::alloc_done = true;
 
+    return 0;
 }
 
 #endif /* __SHL_ARRAY */
-

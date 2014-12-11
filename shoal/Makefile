@@ -35,7 +35,7 @@ ifdef SHL_PAPI
 endif
 
 ifeq ($(BUILDTYPE),debug)
-	CXXFLAGS +=-g -O0 -pg -DSHL_DEBUG
+	CXXFLAGS +=-ggdb -O0 -pg -DSHL_DEBUG
 else
 	CXXFLAGS += -O3
 endif

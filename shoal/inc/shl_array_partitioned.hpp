@@ -66,7 +66,7 @@ class shl_array_partitioned : public shl_array<T> {
 /// include backend specific functions
 #if defined(BARRELFISH)
 #include <backend/barrelfish/shl_array_partitioned_backend.hpp>
-#elif defined(LINUX)
+#elif defined(__linux)
 #include <backend/linux/shl_array_partitioned_backend.hpp>
 #else
 #error Unknown Operating System

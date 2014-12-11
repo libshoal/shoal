@@ -12,8 +12,11 @@
 
 
 template<class T>
-virtual void class shl_array_partitioned<T>::alloc(void)
+int shl_array_partitioned<T>::alloc(void)
 {
+    if (!this->do_alloc())
+        return 0;
+
     shl_array<T>::alloc();
 
     // We need to force memory allocation in here (which sucks,
@@ -27,6 +30,7 @@ virtual void class shl_array_partitioned<T>::alloc(void)
         shl_array<T>::array[i] = 0;
     }
 
+    return 0;
 }
 
 

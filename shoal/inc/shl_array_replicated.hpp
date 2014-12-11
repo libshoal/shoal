@@ -206,7 +206,7 @@ private:
 /// include backend specific functions
 #if defined(BARRELFISH)
 #include <backend/barrelfish/shl_array_replicated_backend.hpp>
-#elif defined(LINUX)
+#elif defined(__linux)
 #include <backend/linux/shl_array_replicated_backend.hpp>
 #else
 #error Unknown Operating System

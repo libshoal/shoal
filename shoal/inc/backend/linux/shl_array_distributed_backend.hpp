@@ -13,8 +13,7 @@
 template<class T>
 int shl_array_distributed<T>::alloc(void)
 {
-    return -1;
-
+    return shl_array<T>::alloc();
 }
 
 #endif /* __SHL_ARRAY_DISTRIBUTED_BACKEND */

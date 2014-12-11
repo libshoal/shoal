@@ -325,7 +325,7 @@ void shl__init(size_t num_threads, bool partitioned_support)
     }
     else {
         for (size_t i=0; i<num_threads; i++) {
-            replica_lookup[i] = numa_cpu_to_node(affinity_conf[i]);
+            replica_lookup[i] = shl__node_from_cpu(affinity_conf[i]);
 
             if (conf->use_replication) {
                 printf("replication: CPU %03zu is on node % 2d\n",
