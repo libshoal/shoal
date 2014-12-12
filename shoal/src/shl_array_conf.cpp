@@ -30,7 +30,7 @@ const char* shl__arr_feature_table[] = {
 };
 
 #ifdef BARRELFISH
-//static const char* SETTINGS_FILE = "/nfs/array_settings.lua";
+static const char* SETTINGS_FILE = "/nfs/array_settings.lua";
 #else
 static const char* SETTINGS_FILE = "settings.lua";
 #endif
@@ -136,7 +136,6 @@ bool shl__get_array_conf(const char *array_name, int feature, bool def)
 void shl__lua_init(void)
 {
     lua_timer.start();
-#ifndef BARRELFISH
     L = luaL_newstate();
     if (L) {
         luaL_openlibs(L);
@@ -151,7 +150,6 @@ void shl__lua_init(void)
     }
 
     // luaL_loadbuffer(L, program, strlen(program), "line")
-#endif
     lua_timer.stop();
 }
 
