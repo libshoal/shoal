@@ -60,6 +60,7 @@ double Timer::stop(void)
     }
 
     t_end = shl__timer_get_timestamp();
+    running = false;
 
     return get();
 }
