@@ -279,7 +279,7 @@ void shl__init(size_t num_threads, bool partitioned_support)
            VERSION, num_threads);
     assert(num_threads>0);
 
-    printf("LUA init .. ");
+    printf("LUA init ..\n ");
     Timer t; t.start();
     shl__lua_init();
     printf("done (%f) .. ", t.stop());
@@ -343,10 +343,11 @@ void shl__init(size_t num_threads, bool partitioned_support)
         }
     }
 
-#endif
-
     // Prevent numa_alloc_onnode fall back to allocating memory elsewhere
     shl__set_strict_mode (true);
+#endif
+
+
 
 #ifdef DEBUG
     printf(ANSI_COLOR_RED "WARNING:" ANSI_COLOR_RESET " debug enabled in #define\n");
