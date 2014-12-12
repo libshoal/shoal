@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <barrelfish/barrelfish.h>
 #include <bench/bench.h>
+#include <vfs/vfs.h>
 
 #include <xomp/xomp.h>
 
@@ -40,7 +41,11 @@ int shl__barrelfish_init(size_t num_threads)
 #endif
 #endif
 
+    // initialize bench library
     bench_init();
+
+    // initialize vfs
+    vfs_init();
 
     return 0;
 }
