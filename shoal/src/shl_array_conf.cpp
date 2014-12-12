@@ -29,6 +29,8 @@ const char* shl__arr_feature_table[] = {
     "hugepage"
 };
 
+static uint8_t lua_settings_loaded = 0;
+
 #ifdef BARRELFISH
 static const char* SETTINGS_FILE = "/nfs/array_settings.lua";
 #else
@@ -113,6 +115,9 @@ static int shl__lua_boolexpr(lua_State* lua, const char* expr, bool def_val)
  */
 bool shl__get_array_conf(const char *array_name, int feature, bool def)
 {
+    if (!lua_settings_loaded) {
+        return 1;
+    }
     lua_timer.start();
     assert(strlen(array_name) < SHL__ARRAY_NAME_LEN_MAX);
     assert(strncmp(array_name, "shl__", 5) == 0);
@@ -144,9 +149,11 @@ void shl__lua_init(void)
     }
 
     // Load settings file
-    if ( luaL_dofile( L, SETTINGS_FILE ) == 1) {
+    if ( luaL_dofile( L, SETTINGS_FILE ) == 0) {
+        lua_settings_loaded = 1;
+        printf("Lua settings loaded successfully %s\n", SETTINGS_FILE);
+    } else {
         printf("Error loading %s\n", SETTINGS_FILE);
-        assert(!"Error loading settings-file. Check it's syntax.");
     }
 
     // luaL_loadbuffer(L, program, strlen(program), "line")
