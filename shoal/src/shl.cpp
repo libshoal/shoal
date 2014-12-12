@@ -279,11 +279,18 @@ void shl__init(size_t num_threads, bool partitioned_support)
            VERSION, num_threads);
     assert(num_threads>0);
 
+#ifdef BARRELFISH
+    if (shl__barrelfish_init(num_threads)) {
+        printf(ANSI_COLOR_RED "ERROR: Could not initialize Barrelfish backend\n"
+               ANSI_COLOR_RESET);
+        exit(EXIT_FAILURE);
+    }
+#endif
+
     printf("LUA init ..\n ");
     Timer t; t.start();
     shl__lua_init();
-    printf("done (%f) .. ", t.stop());
-
+    printf("done (%f). \n ", t.stop());
     Configuration *conf = get_conf();
     assert (shl__check_numa_availability()>=0);
 
@@ -309,13 +316,7 @@ void shl__init(size_t num_threads, bool partitioned_support)
         }
     }
 
-#ifdef BARRELFISH
-    if (shl__barrelfish_init(num_threads)) {
-        printf(ANSI_COLOR_RED "ERROR: Could not initialize Barrelfish backend\n"
-               ANSI_COLOR_RESET);
-        exit(EXIT_FAILURE);
-    }
-#else
+#ifndef BARRELFISH
     affinity_conf = parse_affinity (false);
 
     for (int i=0; i<MAXCORES; i++)
