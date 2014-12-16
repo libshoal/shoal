@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <barrelfish/barrelfish.h>
-
+#include <numa.h>
 #include "shl_internal.h"
 
 /*
@@ -12,9 +12,7 @@
  * machine specifier. We apply static machine information here
  * TODO: obtain this from SKB / libnuma
  */
-#define SHL_MACHINE_BABYBEL 1
-#define SHL_MACHINE_QEMU    2
-#define SHL_MACHINE SHL_MACHINE_BABYBEL
+
 
 
 /**
@@ -26,18 +24,7 @@
  */
 int shl__node_from_cpu(int core_id)
 {
-#if SHL_MACHINE == SHL_MACHINE_BABYBEL
-    if (core_id < 10) {
-        return 0;   // assume that cores 0..9 are NUMA 0
-    } else {
-        return 1;
-    }
-#elif SHL_MACHINE == SHL_MACHINE_QEMU
-    return core_id;
-#else
-#error unknown machine
-#endif
-
+    return numa_node_of_cpu((coreid_t)core_id);
 }
 
 /**
@@ -48,7 +35,7 @@ int shl__node_from_cpu(int core_id)
  */
 int shl__check_numa_availability(void)
 {
-    return 0;
+    return numa_available();
 }
 
 /**
@@ -57,7 +44,7 @@ int shl__check_numa_availability(void)
  */
 void shl__set_strict_mode(int id)
 {
-    /* no-op */
+    numa_set_strict(id);
 }
 
 /**
@@ -75,41 +62,23 @@ int shl__node_get_range(int node,
                         uintptr_t *max_limit)
 {
     uintptr_t mb, ml;
-#if SHL_MACHINE == SHL_MACHINE_BABYBEL
-    /*
-     * Linux dmesg:
-     * [    0.000000] Initmem setup node 0 [mem 0x00000000-0x203fffffff]
-     * [    0.000000] Initmem setup node 1 [mem 0x2040000000-0x403fffffff]
-     */
-    if (node == 0) {
-        mb = 0x00000000UL;
-        ml = 0x203fffffffUL;
-    } else if (node == 1) {
-        mb = 0x2040000000UL;
-        ml = 0x403fffffffUL;
-    } else {
+
+    mb = numa_node_base(node);
+    if (mb == NUMA_NODE_INVALID) {
         return -1;
     }
-#elif SHL_MACHINE == SHL_MACHINE_QEMU
-    if (node == 0) {
-        mb = 0;
-        ml = 512UL * 1024 * 1014;
-    } else if (node == 1){
-        mb = 512UL * 1024 * 1014;
-        ml = 1024UL * 1024 * 1014 - 1;
-    } else {
+
+    ml = numa_node_size(node, NULL);
+    if (ml == NUMA_NODE_INVALID) {
         return -1;
     }
-#else
-#error unknown machine
-#endif
 
     if (min_base) {
         *min_base = mb;
     }
 
     if (max_limit) {
-        *max_limit = ml;
+        *max_limit = (mb + ml);
     }
 
     return 0;
@@ -127,14 +96,7 @@ int shl__node_get_range(int node,
  */
 long shl__node_size(int node, long  *freep)
 {
-#if SHL_MACHINE == SHL_MACHINE_BABYBEL
-    return 0x203fffffffUL; // from Linux dmesg
-#elif SHL_MACHINE == SHL_MACHINE_QEMU
-    return (1UL << 29); // setting 212MB for QEMU
-#else
-#error unknown machine
-#endif
-
+    return numa_node_size(node, (uintptr_t *)freep);
 }
 
 /**
@@ -146,13 +108,7 @@ long shl__node_size(int node, long  *freep)
  */
 int shl__max_node(void)
 {
-#if SHL_MACHINE == SHL_MACHINE_BABYBEL
-    return 1; // babybel has two nodes
-#elif SHL_MACHINE == SHL_MACHINE_QEMU
-    return 1;   // qemu emulates 2 nodess
-#else
-#error unknown machine
-#endif
+    return numa_max_node();
 }
 
 /**

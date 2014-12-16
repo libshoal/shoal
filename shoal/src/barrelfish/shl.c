@@ -2,6 +2,8 @@
 #include <barrelfish/barrelfish.h>
 #include <bench/bench.h>
 #include <vfs/vfs.h>
+#include <numa.h>
+
 
 #include <xomp/xomp.h>
 
@@ -40,12 +42,19 @@ int shl__barrelfish_init(size_t num_threads)
     omp_set_num_threads(num_threads);
 #endif
 #endif
+    errval_t err;
 
     // initialize bench library
     bench_init();
 
     // initialize vfs
     vfs_init();
+
+    // initialize libnuma
+    err = numa_available();
+    if (err_is_fail(err)) {
+        return -1;
+    }
 
     return 0;
 }
