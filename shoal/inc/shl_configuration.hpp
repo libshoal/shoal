@@ -52,6 +52,12 @@ class Configuration {
     // Use this to instruct the runtime to not replica on all n NUMA nodes,
     // but only n/trim_factor ones.
     int numa_trim;
+
+    // stride for mapping distributed
+    size_t stride;
+
+    // use a static schedule for OpenMP
+    bool static_schedule;
 };
 
 Configuration* get_conf(void);
