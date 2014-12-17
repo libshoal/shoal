@@ -28,13 +28,13 @@ static int EventSet;
 
 Configuration::Configuration(void) {
 #ifdef BARRELFISH
-    use_hugepage = shl__get_global_conf("settings.global.hugepage", SHL_HUGEPAGE);
-    use_replication = shl__get_global_conf("settings.global.replication", SHL_REPLICATION);
-    use_distribution = shl__get_global_conf("settings.global.distribution", SHL_DISTRIBUTION);
-    use_partition = shl__get_global_conf("settings.global.partition", SHL_PARTITION);
-    numa_trim = shl__get_global_conf("settings.global.trim", SHL_NUMA_TRIM);
-    stride = shl__get_global_conf("settings.global.stride", PAGESIZE);
-    static_schedule = shl__get_global_conf("settings.global.stride", SHL_STATIC);
+    use_hugepage = shl__get_global_conf("hugepage", SHL_HUGEPAGE);
+    use_replication = shl__get_global_conf("replication", SHL_REPLICATION);
+    use_distribution = shl__get_global_conf("distribution", SHL_DISTRIBUTION);
+    use_partition = shl__get_global_conf("partitioning", SHL_PARTITION);
+    numa_trim = shl__get_global_conf("trim", SHL_NUMA_TRIM);
+    stride = shl__get_global_conf("stride", PAGESIZE);
+    static_schedule = shl__get_global_conf("static", SHL_STATIC);
 #else
     // Configuration based on environemnt
     use_hugepage = shl__get_global_conf("settings.global.hugepage", get_env_int("SHL_HUGEPAGE", 1));
@@ -289,7 +289,7 @@ void shl__init(size_t num_threads, bool partitioned_support)
     printf("LUA init ..\n ");
     Timer t; t.start();
     shl__lua_init();
-    printf("done (%f). \n ", t.stop());
+    printf("done (%f).\n", t.stop());
     Configuration *conf = get_conf();
 
     if (shl__check_numa_availability() < 0) {

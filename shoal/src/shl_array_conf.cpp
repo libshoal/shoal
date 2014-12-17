@@ -110,7 +110,6 @@ static int shl__lua_boolexpr(lua_State* lua, const char* expr, bool def_val)
 
 }
 
-#if 0
 /**
  * \brief returns a global setting parameter
  *
@@ -126,24 +125,12 @@ int shl__get_global_conf(const char *setting, int def)
         return 1;
     }
 
-    char buf[128];
-    snprintf(buf, sizeof(buf), "evalExpr=%s", setting);
-
     lua_timer.start();
 
     /* load the settings table */
-    lua_getglobal(L, "settings");
+    lua_getglobal(L, "global");
     if (!lua_istable(L, -1)) {
         printf("error: settings is not a table\n");
-        return 0;
-    }
-
-    /* load the settings.global table */
-    lua_pushstring(L, "global");
-    lua_gettable(L, -2);
-
-    if (!lua_istable(L, -1)) {
-        printf("error: settings.global is not a table\n");
         return 0;
     }
 
@@ -154,19 +141,19 @@ int shl__get_global_conf(const char *setting, int def)
     if (!lua_isnumber(L, -1)) {
         printf("error: settings.global.%s is not a number\n", setting);
     } else {
-        printf("settings.global.hugepate=%u\n", (int)lua_tonumber(L, -1));
+        retval = (int)lua_tonumber(L, -1);
+        printf("settings.global.%s=%u\n", setting, retval);
     }
 
     /* pop the pusehd values */
-    lua_pop(L, 1);
     lua_pop(L, 1);
 
     lua_timer.stop();
 
     return retval;
 }
-#endif
 
+#if 0
 /**
  * \brief returns a global setting parameter
  *
@@ -205,6 +192,7 @@ int shl__get_global_conf(const char *setting, int def)
 
     return retval;
 }
+#endif
 
 /**
  * \brief Return array feature configuration for given array
