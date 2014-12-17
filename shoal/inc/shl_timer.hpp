@@ -64,10 +64,10 @@ class Timer {
     void print(char *label);
 
  private:
-    bool running;          ///< flag indicating that the timer is running
+    bool running;            ///< flag indicating that the timer is running
 
-    unsigned long t_start; ///< timestamp of the start in msec
-    unsigned long t_end;   ///< time elapes since start [msec]
+    unsigned long t_start;   ///< timestamp of the start in msec
+    unsigned long t_elapsed; ///< time elapes since start [msec]
 };
 
 #endif /* __SHL_TIMER */

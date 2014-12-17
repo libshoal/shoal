@@ -32,19 +32,24 @@ void Timer::start(void)
 
 double Timer::get(void)
 {
-    unsigned long t_diff;
-    if (t_end < t_start) {
-        t_diff = ((ULONG_MAX - t_start) + t_end);
-    } else {
-        t_diff = t_end - t_start;
+    if (!running) {
+        return t_elapsed;
     }
-    return (double)t_diff / 1000.0;
+
+    unsigned long t_current = shl__timer_get_timestamp();
+
+    if (t_current < t_start) {
+        t_current = ((ULONG_MAX - t_start) + t_current);
+    } else {
+        t_current = t_current - t_start;
+    }
+    return (double)t_elapsed + (double)t_current / 1000.0;
 }
 
 void Timer::reset(void)
 {
     running = false;
-    t_end = 0;
+    t_elapsed = 0;
     t_start = 0;
 }
 
@@ -59,10 +64,19 @@ double Timer::stop(void)
         return 0;
     }
 
-    t_end = shl__timer_get_timestamp();
     running = false;
 
-    return get();
+    unsigned long t_current = shl__timer_get_timestamp();
+
+    if (t_current < t_start) {
+        t_current = ((ULONG_MAX - t_start) + t_current);
+    } else {
+        t_current = t_current - t_start;
+    }
+
+    t_elapsed += t_current;
+
+    return t_elapsed;
 }
 
 /**
