@@ -20,6 +20,6 @@ void aff_set_oncpu(unsigned int cpu);
 void shl__lua_init(void);
 void shl__lua_deinit(void);
 bool shl__get_array_conf(const char* array_name, int feature, bool def);
-
+int shl__get_global_conf(const char *setting, int is_bool);
 
 #endif /* __SHL_INTERNAL_H */

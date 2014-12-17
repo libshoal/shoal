@@ -6,4 +6,6 @@
 #include <numa.h>
 #include <omp.h>
 
+#define PRIuCOREID "zu"
+
 #endif

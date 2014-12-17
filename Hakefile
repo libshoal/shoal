@@ -43,7 +43,8 @@
     addLibraries = libDeps [
  --       "bomp",
         "bench",
-        "lua"
+        "lua",
+        "numa"
     ],
     architectures = [
       "x86_64",

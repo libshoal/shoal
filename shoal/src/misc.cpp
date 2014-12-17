@@ -49,10 +49,13 @@ int get_env_int(const char *envname, int defaultvalue)
     return atoi(env);
 }
 
-Configuration conf;
+static Configuration *conf = NULL;
 Configuration* get_conf(void)
 {
-    return &conf;
+    if (conf == NULL) {
+        conf = new Configuration();
+    }
+    return conf;
 }
 
 /**
