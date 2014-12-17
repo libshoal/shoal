@@ -32,7 +32,7 @@ const char* shl__arr_feature_table[] = {
 static uint8_t lua_settings_loaded = 0;
 
 #ifdef BARRELFISH
-static const char* SETTINGS_FILE = "/nfs/array_settings.lua";
+static const char* SETTINGS_FILE = "array_settings.lua";
 #else
 static const char* SETTINGS_FILE = "settings.lua";
 #endif
@@ -108,6 +108,102 @@ static int shl__lua_boolexpr(lua_State* lua, const char* expr, bool def_val)
 
     return ok;
 
+}
+
+#if 0
+/**
+ * \brief returns a global setting parameter
+ *
+ * \param setting the setting to obtain
+ *
+ * \returns
+ */
+int shl__get_global_conf(const char *setting, int def)
+{
+    int retval = 0;
+
+    if (!lua_settings_loaded) {
+        return 1;
+    }
+
+    char buf[128];
+    snprintf(buf, sizeof(buf), "evalExpr=%s", setting);
+
+    lua_timer.start();
+
+    /* load the settings table */
+    lua_getglobal(L, "settings");
+    if (!lua_istable(L, -1)) {
+        printf("error: settings is not a table\n");
+        return 0;
+    }
+
+    /* load the settings.global table */
+    lua_pushstring(L, "global");
+    lua_gettable(L, -2);
+
+    if (!lua_istable(L, -1)) {
+        printf("error: settings.global is not a table\n");
+        return 0;
+    }
+
+    /* load the field */
+    lua_pushstring(L, setting);
+    lua_gettable(L, -2);
+
+    if (!lua_isnumber(L, -1)) {
+        printf("error: settings.global.%s is not a number\n", setting);
+    } else {
+        printf("settings.global.hugepate=%u\n", (int)lua_tonumber(L, -1));
+    }
+
+    /* pop the pusehd values */
+    lua_pop(L, 1);
+    lua_pop(L, 1);
+
+    lua_timer.stop();
+
+    return retval;
+}
+#endif
+
+/**
+ * \brief returns a global setting parameter
+ *
+ * \param setting the setting to obtain
+ *
+ * \returns
+ */
+int shl__get_global_conf(const char *setting, int def)
+{
+    int retval = def;
+
+    if (!lua_settings_loaded) {
+        return def;
+    }
+
+    char buf[128];
+    snprintf(buf, sizeof(buf), "evalExpr=%s", setting);
+
+    lua_timer.start();
+
+    if (!luaL_dostring(L, buf)) {
+
+        /* Get the value of the global varibable */
+
+        lua_getglobal(L, "evalExpr");
+
+        if (lua_isnumber(L, -1)) {
+            retval = lua_tonumber(L, -1);
+        }
+
+        /* remove lua_getglobal value */
+        lua_pop(L, 1);
+    }
+
+    lua_timer.stop();
+
+    return retval;
 }
 
 /**

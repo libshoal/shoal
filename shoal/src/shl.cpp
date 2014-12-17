@@ -28,18 +28,22 @@ static int EventSet;
 
 Configuration::Configuration(void) {
 #ifdef BARRELFISH
-    use_hugepage = SHL_HUGEPAGE;
-    use_replication = SHL_REPLICATION;
-    use_distribution = SHL_DISTRIBUTION;
-    use_partition = SHL_PARTITION;
-    numa_trim = SHL_NUMA_TRIM;
+    use_hugepage = shl__get_global_conf("settings.global.hugepage", SHL_HUGEPAGE);
+    use_replication = shl__get_global_conf("settings.global.replication", SHL_REPLICATION);
+    use_distribution = shl__get_global_conf("settings.global.distribution", SHL_DISTRIBUTION);
+    use_partition = shl__get_global_conf("settings.global.partition", SHL_PARTITION);
+    numa_trim = shl__get_global_conf("settings.global.trim", SHL_NUMA_TRIM);
+    stride = shl__get_global_conf("settings.global.stride", PAGESIZE);
+    static_schedule = shl__get_global_conf("settings.global.stride", SHL_STATIC);
 #else
     // Configuration based on environemnt
-    use_hugepage = get_env_int("SHL_HUGEPAGE", 1);
-    use_replication = get_env_int("SHL_REPLICATION", 1);
-    use_distribution = get_env_int("SHL_DISTRIBUTION", 1);
-    use_partition = get_env_int("SHL_PARTITION", 1);
-    numa_trim = get_env_int("SHL_NUMA_TRIM", 1);
+    use_hugepage = shl__get_global_conf("settings.global.hugepage", get_env_int("SHL_HUGEPAGE", 1));
+    use_replication = shl__get_global_conf("settings.global.replication", get_env_int("SHL_REPLICATION", 1));
+    use_distribution = shl__get_global_conf("settings.global.distribution", get_env_int("SHL_DISTRIBUTION", 1));
+    use_partition = shl__get_global_conf("settings.global.partition", get_env_int("SHL_PARTITION", 1));
+    numa_trim = shl__get_global_conf("settings.global.trim", get_env_int("SHL_NUMA_TRIM", 1));
+    stride = shl__get_global_conf("settings.global.stride", BASE_PAGE_SIZE);
+    static_schedule = shl__get_global_conf("settings.global.stride", SHL_STATIC);
 #endif
     // NUMA information
     num_nodes = shl__max_node();
@@ -287,9 +291,18 @@ void shl__init(size_t num_threads, bool partitioned_support)
     shl__lua_init();
     printf("done (%f). \n ", t.stop());
     Configuration *conf = get_conf();
+
+    if (shl__check_numa_availability() < 0) {
+        printf(" \n .. " ANSI_COLOR_RED "FAILURE:" ANSI_COLOR_RESET \
+               " NUMA not available .. \n");
+        exit(1);
+    }
+
     assert (shl__check_numa_availability()>=0);
 
     conf->num_threads = num_threads;
+
+#ifndef BARRELFISH
 
 #ifdef PAPI
     printf(ANSI_COLOR_BLUE "PAPI .. " ANSI_COLOR_RESET);
@@ -311,8 +324,10 @@ void shl__init(size_t num_threads, bool partitioned_support)
         }
     }
 
-#ifndef BARRELFISH
     affinity_conf = parse_affinity (false);
+#else
+    affinity_conf = (coreid_t *)-1;
+#endif
 
     for (int i=0; i<MAXCORES; i++)
         replica_lookup[i] = -1;
@@ -324,25 +339,31 @@ void shl__init(size_t num_threads, bool partitioned_support)
         conf->use_replication = false;
         assert (!"Do we really want to support runs without affinity?");
     }
-    else {
-        for (size_t i=0; i<num_threads; i++) {
-            replica_lookup[i] = shl__node_from_cpu(affinity_conf[i]);
 
-            if (conf->use_replication) {
-                printf("replication: CPU %03zu is on node % 2d\n",
-                       affinity_conf[i], shl__lookup_rep_id(i));
-            }
-        }
-        for (int i=0; i<shl__get_num_replicas(); i++) {
+    for (coreid_t i=0; i<num_threads; i++) {
+#ifdef BARRELFISH
+        // XXX: assume we are using cores 0..n-1
+        replica_lookup[i] = shl__node_from_cpu(i);
+#else
+        replica_lookup[i] = shl__node_from_cpu(affinity_conf[i]);
+#endif
 
-            printf("replica %d - coordinator %d\n", i, shl__rep_coordinator(i));
+        if (conf->use_replication) {
+            printf("replication: CPU %03" PRIuCOREID " is on node % 2d\n",
+#ifdef BARRELFISH
+                   i,
+#else
+                   affinity_conf[i],
+#endif
+                   shl__lookup_rep_id(i));
         }
+    }
+    for (int i=0; i<shl__get_num_replicas(); i++) {
+        printf("replica %d - coordinator %d\n", i, shl__rep_coordinator(i));
     }
 
     // Prevent numa_alloc_onnode fall back to allocating memory elsewhere
     shl__set_strict_mode (true);
-#endif
-
 
 
 #ifdef DEBUG
