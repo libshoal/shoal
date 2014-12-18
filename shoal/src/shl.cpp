@@ -16,6 +16,7 @@ extern "C" {
 #include "shl.h"
 #include "shl_internal.h"
 #include "shl_timer.hpp"
+#include "shl_multitimer.hpp"
 #include "shl_configuration.hpp"
 
 #ifndef BARRELFISH
@@ -56,8 +57,11 @@ Configuration::Configuration(void) {
     }
 }
 
+static MultiTimer CTimer(1);
+
 void shl__start(void)
 {
+    CTimer.start();
 #ifdef PAPI
     papi_start();
 #endif
@@ -76,10 +80,10 @@ void shl__end(void)
 #ifdef PAPI
     papi_stop();
 #endif
+    CTimer.stop("SOAL_Computation");
+    CTimer.print();
 
     shl__lua_deinit();
-
-    printf("Time for copy: %.6f\n", shl__get_timer());
 #ifdef DEBUG
     printf("Number of lookups: %ld\n", num_lookup);
 #endif

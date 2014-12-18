@@ -25,11 +25,11 @@ class MultiTimer {
      */
     MultiTimer(int steps)
     {
-        times = vector<double>();
+        //times = new vector<double>();
         times.reserve(steps);
-        step_times = vector<double>();
+        //step_times = new vector<double>();
         step_times.reserve(steps);
-        labels = vector<string>();\
+        //labels = new vector<string>();
         labels.reserve(steps);
         running = false;
 

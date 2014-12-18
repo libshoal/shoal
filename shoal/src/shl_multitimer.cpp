@@ -11,6 +11,8 @@
 #include "shl_multitimer.hpp"
 #include "shl_configuration.hpp"
 
+using namespace std;
+
 static MultiTimer *shl_default_mtimer = NULL;
 
 /*
@@ -63,6 +65,10 @@ void MultiTimer::reset(int nsteps)
 
 double MultiTimer::get(void)
 {
+    if (t_current == 0) {
+        return time_diff(t_start, shl__timer_get_timestamp());
+    }
+
     return time_diff(t_start, t_current);
 }
 
@@ -72,9 +78,9 @@ void MultiTimer::step(string name)
 
     times.push_back((double)(time_diff(t_start, t_current)));
     if (running == false) {
-        step_times.push_back(time_diff(t_prev, t_current));
-    } else {
         step_times.push_back(time_diff(t_start, t_current));
+    } else {
+        step_times.push_back(time_diff(t_prev, t_current));
     }
     labels.push_back(name);
 
