@@ -15,34 +15,7 @@
  */
 int shl__barrelfish_init(size_t num_threads)
 {
-#if 0
-#if SHL_BARRELFISH_USE_SHARED
-    bomp_bomp_init(num_threads);
-    return 0;
-#else
-    errval_t err;
-
-    printf("Starting as XOMP Master\n");
-    struct xomp_args args;
-    args.type = XOMP_ARG_TYPE_UNIFORM;
-    args.args.uniform.nthreads = num_threads;
-    args.core_stride = 2;
-    args.args.uniform.nphi = 2;
-    /*
-    args.args.uniform.argc = argcount;
-    args.args.uniform.argv = argvals;
-    */
-    args.args.uniform.worker_loc = XOMP_WORKER_LOC_MIXED;
-
-    err = bomp_xomp_init(&args);
-    if (err_is_fail(err)) {
-        USER_PANIC("XOMP master initialization failed.\n");
-    }
-
-    omp_set_num_threads(num_threads);
-#endif
-#endif
-    errval_t err;
+     errval_t err;
 
     // initialize bench library
     bench_init();

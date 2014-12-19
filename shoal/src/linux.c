@@ -447,3 +447,9 @@ unsigned long shl__timer_get_timestamp()
     gettimeofday(&TV1, NULL);
     return (TV1.tv_sec * 1000 + TV1.tv_usec/1000);
 }
+
+int shl__memcpy_init(struct shl__memcpy_setup *setup)
+{
+    /* no  op */
+    return 0;
+}

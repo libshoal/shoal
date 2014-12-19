@@ -58,6 +58,9 @@ class Configuration {
 
     // use a static schedule for OpenMP
     bool static_schedule;
+
+    /* DMA device related settings */
+    struct shl__memcpy_setup memcpy_setup;
 };
 
 Configuration* get_conf(void);

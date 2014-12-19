@@ -37,6 +37,28 @@ int shl_array_replicated<T>::alloc(void)
     return 0;
 }
 
+template<class T>
+void shl_array_replicated<T>::copy_from(T* src)
+{
+    if (!shl_array<T>::do_copy_in())
+        return;
+
+    assert(shl_array<T>::alloc_done);
+
+    printf("shl_array_replicated[%s]: Copying to %d replicas\n",
+           shl_base_array::name, num_replicas);
+
+#if 0
+    shl__memcpy_dma(src, this->meminfo, 0, sizeof(T) * this->size);
+#else
+    for (int j = 0; j < num_replicas; j++) {
+        for (unsigned int i = 0; i < shl_array<T>::size; i++) {
+            rep_array[j][i] = src[i];
+        }
+    }
+#endif
+}
+
 
 
 

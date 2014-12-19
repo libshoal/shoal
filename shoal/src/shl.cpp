@@ -23,28 +23,48 @@ extern "C" {
 #include "numa.h"
 #endif
 
+#ifdef BARRELFISH
+#include <pci/devids.h>
+
+// for debugging purposes
+#define MEMCPY_DMA_DEVICE 0x0e20
+#define MEMCPY_DMA_VENDOR PCI_VENDOR_INTEL
+#define MEMCPY_DMA_COUNT 8
+
+#endif
+
 #ifdef PAPI
 static int EventSet;
 #endif
 
+
 Configuration::Configuration(void) {
 #ifdef BARRELFISH
-    use_hugepage = shl__get_global_conf("hugepage", SHL_HUGEPAGE);
-    use_replication = shl__get_global_conf("replication", SHL_REPLICATION);
-    use_distribution = shl__get_global_conf("distribution", SHL_DISTRIBUTION);
-    use_partition = shl__get_global_conf("partitioning", SHL_PARTITION);
-    numa_trim = shl__get_global_conf("trim", SHL_NUMA_TRIM);
-    stride = shl__get_global_conf("stride", PAGESIZE);
-    static_schedule = shl__get_global_conf("static", SHL_STATIC);
+    use_hugepage = shl__get_global_conf("global", "hugepage", SHL_HUGEPAGE);
+    use_replication = shl__get_global_conf("global", "replication", SHL_REPLICATION);
+    use_distribution = shl__get_global_conf("global", "distribution", SHL_DISTRIBUTION);
+    use_partition = shl__get_global_conf("global", "partitioning", SHL_PARTITION);
+    numa_trim = shl__get_global_conf("global", "trim", SHL_NUMA_TRIM);
+    stride = shl__get_global_conf("global", "stride", PAGESIZE);
+    static_schedule = shl__get_global_conf("global", "static", SHL_STATIC);
+
+    memcpy_setup.count = shl__get_global_conf("dma", "count", MEMCPY_DMA_COUNT);
+    memcpy_setup.device.id = shl__get_global_conf("dma", "count", MEMCPY_DMA_DEVICE);
+    memcpy_setup.device.vendor = shl__get_global_conf("dma", "count", MEMCPY_DMA_VENDOR);
+    memcpy_setup.pci.bus = shl__get_global_conf("dma", "count", PCI_DONT_CARE);
+    memcpy_setup.pci.device = shl__get_global_conf("dma", "count", PCI_DONT_CARE);
+    memcpy_setup.pci.function = shl__get_global_conf("dma", "count", PCI_DONT_CARE);
+
+
 #else
     // Configuration based on environemnt
-    use_hugepage = shl__get_global_conf("settings.global.hugepage", get_env_int("SHL_HUGEPAGE", 1));
-    use_replication = shl__get_global_conf("settings.global.replication", get_env_int("SHL_REPLICATION", 1));
-    use_distribution = shl__get_global_conf("settings.global.distribution", get_env_int("SHL_DISTRIBUTION", 1));
-    use_partition = shl__get_global_conf("settings.global.partition", get_env_int("SHL_PARTITION", 1));
-    numa_trim = shl__get_global_conf("settings.global.trim", get_env_int("SHL_NUMA_TRIM", 1));
-    stride = shl__get_global_conf("settings.global.stride", BASE_PAGE_SIZE);
-    static_schedule = shl__get_global_conf("settings.global.stride", SHL_STATIC);
+    use_hugepage = shl__get_global_conf("global", "hugepage", get_env_int("SHL_HUGEPAGE", 1));
+    use_replication = shl__get_global_conf("global", "hugepage", get_env_int("SHL_REPLICATION", 1));
+    use_distribution = shl__get_global_conf("global", "hugepage", get_env_int("SHL_DISTRIBUTION", 1));
+    use_partition = shl__get_global_conf("global", "hugepage", get_env_int("SHL_PARTITION", 1));
+    numa_trim = shl__get_global_conf("global", "hugepage", get_env_int("SHL_NUMA_TRIM", 1));
+    stride = shl__get_global_conf("global", "hugepage", BASE_PAGE_SIZE);
+    static_schedule = shl__get_global_conf("global", "hugepage", SHL_STATIC);
 #endif
     // NUMA information
     num_nodes = shl__max_node();
@@ -305,6 +325,16 @@ void shl__init(size_t num_threads, bool partitioned_support)
     assert (shl__check_numa_availability()>=0);
 
     conf->num_threads = num_threads;
+
+    if (conf->memcpy_setup.count) {
+        if (shl__memcpy_init(&conf->memcpy_setup)) {
+            printf(ANSI_COLOR_YELLOW "\n .. WARNING: " ANSI_COLOR_RESET
+                   "Could not initialize the DMA engine\n");
+        }
+    } else {
+        printf(ANSI_COLOR_YELLOW "\n .. WARNING: " ANSI_COLOR_RESET
+                           "NO DMA Device Specified\n");
+    }
 
 #ifndef BARRELFISH
 

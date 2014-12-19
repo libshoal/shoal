@@ -29,15 +29,15 @@ class shl_array_single_node : public shl_array<T> {
                     shl_array<T>(s, _name)
     {
     }
-    ;
+
 
     shl_array_single_node(size_t s, const char *_name, void *mem, void *data) :
                     shl_array<T>(s, _name, mem, data)
     {
     }
-    ;
 
-    virtual int alloc(void)
+
+    int alloc(void)
     {
         assert (shl_array<T>::alloc()==0);
 
@@ -46,7 +46,6 @@ class shl_array_single_node : public shl_array<T> {
             // Map everything on single node
             printf("Forcing single-node allocation .. %p\n", shl_array<T>::array);
             for (unsigned int i=0; i<shl_array<T>::size; i++) {
-
                 shl_array<T>::array[i] = 0;
             }
         }
@@ -54,13 +53,13 @@ class shl_array_single_node : public shl_array<T> {
         return 0;
     }
 
-    virtual int get_options(void)
+    int get_options(void)
     {
         return shl_array<T>::get_options() | SHL_MALLOC_PARTITION;
     }
 
  protected:
-    virtual void print_options(void)
+    void print_options(void)
     {
         shl_array<T>::print_options();
         printf("single-node=[X]");

@@ -24,10 +24,14 @@ struct shl_mi_data {
 
 struct shl_mi_header {
     size_t num;
+    size_t stride;
     struct memobj_numa memobj;
     struct vregion vregion;
     struct shl_mi_data *data;
 };
+
+#include <dma/dma.h>
+
 
 
 #endif /* SHL__BACKEND_BARRELFISH_MEMINFO_H */

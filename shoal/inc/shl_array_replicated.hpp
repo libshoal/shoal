@@ -86,23 +86,7 @@ private:
      */
     virtual int alloc(void);
 
-    virtual void copy_from(T* src)
-    {
-        if (!shl_array<T>::do_copy_in())
-            return;
-
-        assert(shl_array<T>::alloc_done);
-
-        printf("shl_array_replicated[%s]: Copying to %d replicas\n",
-               shl_base_array::name, num_replicas);
-
-        for (int j = 0; j < num_replicas; j++) {
-            for (unsigned int i = 0; i < shl_array<T>::size; i++) {
-
-                rep_array[j][i] = src[i];
-            }
-        }
-    }
+    virtual void copy_from(T* src);
 
     virtual void copy_back(T* a)
     {

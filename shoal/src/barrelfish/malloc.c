@@ -86,6 +86,7 @@ void* shl__malloc(size_t size,
 
     mi->num = 1;
     mi->data = (struct shl_mi_data *)(mi+1);
+    mi->stride = 0;
 
     size_t pg_size = (opts & SHL_MALLOC_HUGEPAGE) ? PAGESIZE_HUGE : PAGESIZE;
 
@@ -179,6 +180,8 @@ static void *shl__malloc_numa(size_t size,
     if (stride == SHL_ALLOC_NUMA_PARTITION) {
         stride = ((size / num_nodes) + pg_size - 1) & ~(pg_size - 1);
     }
+
+    mi->stride = stride;
 
     err = memobj_create_numa(&mi->memobj, size, 0, num_nodes, stride);
     if (err_is_fail(err)) {
@@ -309,6 +312,7 @@ void** shl__malloc_replicated(size_t size,
 
     mi->num = num_nodes;
     mi->data = (struct shl_mi_data *)(mi+1);
+    mi->stride = 0;
 
     size_t pg_size = (options & SHL_MALLOC_HUGEPAGE) ? PAGESIZE_HUGE : PAGESIZE;
 

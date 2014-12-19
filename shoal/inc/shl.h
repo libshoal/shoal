@@ -27,8 +27,42 @@ extern "C" {
 #include "linux.h"
 #endif
 
+
+/*
+ * -------------------------------------------------------------------------------
+ * Configuration Switches
+ * -------------------------------------------------------------------------------
+ */
+
+///< enables the DMA engine
+#define SHL_DMA_ENABLE 1
+
+///< Whether or not to use replication (needs: indirection OR copy)
+#define REPLICATION 1
+
+///< Use NUMA aware memory allocation for replication
+#define NUMA 1
+
+///< which timer version to use
+#define SHL_TIMER_USE_MULTI 1
+
+///< Size of a cacheline (bytes)
+#define CACHELINE 8
+
+///< size of a huge page (2 MB)
+#define PAGESIZE_HUGE (2*1024*1024)
+
+///< size of a page (4 kB)
+#define PAGESIZE (4*1024)
+
+///< enabling and disabling debug output
 #define SHL_DEBUG_ENABLED 1
 
+/*
+ * -------------------------------------------------------------------------------
+ * Debugging Facilities
+ * -------------------------------------------------------------------------------
+ */
 #if SHL_DEBUG_ENABLED
 #define SHL_DEBUG_PRINT(x...) printf("SHL: " x);
 #else
@@ -40,24 +74,21 @@ extern "C" {
 #define SHL_DEBUG_ALLOC(x...) SHL_DEBUG_PRINT(x)
 #define SHL_DEBUG_ARRAY(x...) SHL_DEBUG_PRINT(x)
 
-#define SHL_TIMER_USE_MULTI 1
-
 #define noprintf(x,...) void(0)
 
+
+/*
+ * -------------------------------------------------------------------------------
+ * Base Units
+ * -------------------------------------------------------------------------------
+ */
 #define BASE_UNIT 1000
 #define KILO BASE_UNIT
 #define MEGA (KILO*BASE_UNIT)
 #define GIGA (MEGA*BASE_UNIT)
 #define MAXCORES 100
 
-// Size of a cacheline (bytes)
-#define CACHELINE 8
 
-// --------------------------------------------------
-// Hardcoded page sizes
-// --------------------------------------------------
-#define PAGESIZE_HUGE (2*1024*1024)
-#define PAGESIZE (4*1024)
 
 #ifdef BARRELFISH
 #define VERSION "1.0"
@@ -74,33 +105,11 @@ typedef enum shl__arr_feature {
     SHL_ARR_FEAT_HUGEPAGE
 } shl_arr_feature_t;
 
+
+///< pointer to the array feature table
 extern const char *shl__arr_feature_table[];
 
-/*
-static enum shl__arr_feature_t {
 
-
-
-} __attribute__ ((unused)) shl__arr_feature;
-
-
-static const char* __attribute__ ((unused)) shl__arr_feature_table[] = {
-    "partitioning",
-    "replication",
-    "distribution",
-    "hugepage"
-};
-*/
-
-// --------------------------------------------------
-// Configuration
-// --------------------------------------------------
-
-// Whether or not to use replication (needs: indirection OR copy)
-#define REPLICATION
-
-// Use NUMA aware memory allocation for replication
-#define NUMA
 
 // --------------------------------------------------
 // Typedefs
