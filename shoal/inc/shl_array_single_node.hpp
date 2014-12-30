@@ -36,22 +36,12 @@ class shl_array_single_node : public shl_array<T> {
     {
     }
 
-
-    int alloc(void)
-    {
-        assert (shl_array<T>::alloc()==0);
-
-        if (this->is_used) {
-
-            // Map everything on single node
-            printf("Forcing single-node allocation .. %p\n", shl_array<T>::array);
-            for (unsigned int i=0; i<shl_array<T>::size; i++) {
-                shl_array<T>::array[i] = 0;
-            }
-        }
-
-        return 0;
-    }
+    /* backend specific functions */
+    int alloc(void);
+    int copy_from_array(shl_array<T> *src);
+    int init_from_value(T value);
+    void copy_from(T* src);
+    void copy_back(T* dest);
 
     int get_options(void)
     {
@@ -66,5 +56,13 @@ class shl_array_single_node : public shl_array<T> {
     }
 
 };
+
+#if defined(BARRELFISH)
+#include <backend/barrelfish/shl_array_single_node_backend.hpp>
+#elif defined(__linux)
+#include <backend/linux/shl_array_single_node_backend.hpp>
+#else
+#error Unknown Operating System
+#endif
 
 #endif
