@@ -21,7 +21,7 @@
 /**
  * use replicated arrays
  */
-#define SHL_REPLICATION 1
+#define SHL_REPLICATION 0
 
 /**
  * use distributed arrays
