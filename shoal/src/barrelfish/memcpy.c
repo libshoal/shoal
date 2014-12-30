@@ -15,12 +15,22 @@
 #include "shl_internal.h"
 #include <backend/barrelfish/meminfo.h>
 
+/* generic DMA */
 #include <dma/dma.h>
 #include <dma/dma_device.h>
+#include <dma/dma_request.h>
+
+/* for initializing IOAT DMA device */
 #include <dma/ioat/ioat_dma.h>
 #include <dma/ioat/ioat_dma_device.h>
-#include <dma/dma_request.h>
-#include <dma/ioat/ioat_dma_request.h>
+
+/* for Xeon Phi Devices */
+#include <dma/xeon_phi/xeon_phi_dma.h>
+#include <dma/xeon_phi/xeon_phi_dma_device.h>
+
+/* for DMA Service Clients */
+#include <dma/client/dma_client.h>
+#include <dma/client/dma_client_device.h>
 
 
 static uint8_t dma_device_count = 0;
@@ -67,7 +77,7 @@ static int ioat_init(struct shl__memcpy_setup *setup)
 {
     errval_t err;
 
-    debug_printf("initializing DMA device...\n");
+    SHL_DEBUG_MEMCPY("initializing IOAT DMA device...\n");
 
     err = pci_client_connect();
     if (err_is_fail(err)) {
@@ -93,7 +103,7 @@ static int ioat_init(struct shl__memcpy_setup *setup)
         }
     }
 
-    debug_printf("DMA device initialized... %u\n", dma_device_count);
+    SHL_DEBUG_MEMCPY("IOAT DMA device initialized... %u\n", dma_device_count);
 
     return 0;
 }
@@ -256,9 +266,7 @@ static errval_t shl__get_physical_address(lvaddr_t vaddr,
 }
 
 
-#define STRIDE_DIVIDER (2UL*1024*1024);
-
-#define DMA_TRANSFER_STRIDE (512*1024)
+#define DMA_TRANSFER_STRIDE (1024UL*1024)
 
 #define DMA_MINTRANSFER 64
 
@@ -273,6 +281,10 @@ static int do_dma_cpy(lpaddr_t to, lpaddr_t from, size_t bytes, void *counter)
 {
     errval_t err;
 
+#if 0
+    SHL_DEBUG_MEMCPY("executing DMA: 0x%016" PRIxLPADDR " -> 0x%016" PRIxLPADDR
+                     " of size %" PRIu64 " bytes\n", from, to, bytes);
+#endif
     /* must be a multiple of chache lines */
     assert(!(bytes & (64 -1 )));
 
@@ -280,11 +292,12 @@ static int do_dma_cpy(lpaddr_t to, lpaddr_t from, size_t bytes, void *counter)
         return -1;
     }
 
-    struct dma_device *dev = dma_devices[dma_device_next];
-
     if (dma_device_next == dma_device_count) {
         dma_device_next = 0;
     }
+
+    struct dma_device *dev = dma_devices[dma_device_next];
+    assert(dev);
 
     struct dma_req_setup setup = {
         .type = DMA_REQ_TYPE_MEMCPY,
@@ -299,12 +312,12 @@ static int do_dma_cpy(lpaddr_t to, lpaddr_t from, size_t bytes, void *counter)
         }
     };
 
+    dma_device_next++;
+
     err = dma_request_memcpy(dev, &setup, NULL);
     if (err_is_fail(err)) {
         return -1;
     }
-
-    dma_device_next++;
 
 
     return 0;
@@ -313,18 +326,20 @@ static int do_dma_cpy(lpaddr_t to, lpaddr_t from, size_t bytes, void *counter)
 static int do_dma_poll(void)
 {
     errval_t err;
-    struct dma_device *dev = dma_devices[dma_device_next];
 
-    if (dma_device_next < dma_device_count) {
-        dma_device_next++;
-    } else {
+    if (dma_device_next == dma_device_count) {
         dma_device_next = 0;
     }
 
+    struct dma_device *dev = dma_devices[dma_device_next];
+
     err = dma_device_poll_channels(dev);
     if (err_is_fail(err)) {
-
+        SHL_DEBUG_MEMCPY("polling device failed: %s\n", err_getstring(err));
+        return -1;
     }
+
+    dma_device_next++;
 
     return 0;
 }
@@ -339,25 +354,36 @@ size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t offset, size_t si
 
     err = shl__get_physical_address((lvaddr_t)va_src, &paddr, &framesize);
     if (err_is_fail(err)) {
+        SHL_DEBUG_MEMCPY("preparing dma transfer failed: %s\n", err_getstring(err));
         return 0; // return 0 bytes
     }
 
     struct shl_mi_header *mihdr = mi_dst;
 
+    SHL_DEBUG_MEMCPY("preparing dma transfer: 0x%016" PRIxLPADDR " of size %"
+                     PRIu64 " bytes\n", paddr, size);
+
+
     assert(framesize < offset + size);
 
-    size_t prependcpy = DMA_MINTRANSFER - (offset & (DMA_MINTRANSFER - 1));
+
+
+    size_t prependcpy = ((paddr + offset) & (DMA_MINTRANSFER - 1));
     if (prependcpy) {
-        debug_printf("offset prependcopy: %lu\n", prependcpy);
+        prependcpy = DMA_MINTRANSFER - prependcpy;
+        SHL_DEBUG_MEMCPY("offset prependcopy: %" PRIu64 " bytes\n", prependcpy);
         size -= prependcpy;
         offset += prependcpy;
     }
 
     size_t remainder = (size & (DMA_MINTRANSFER - 1));
     if (remainder) {
-        debug_printf("remainder cpy: %lu\n", remainder);
+        SHL_DEBUG_MEMCPY("remainder cpy: %" PRIu64 " bytes\n", remainder);
         size -= remainder;
     }
+
+    assert(prependcpy < DMA_MINTRANSFER);
+    assert(remainder < DMA_MINTRANSFER);
 
 
     size_t transfer_done = 0;
@@ -433,29 +459,50 @@ size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t offset, size_t si
     /* copy remainder */
 
     if (prependcpy) {
-        /* copy beginning */
-        for (int i = 0; i < mihdr->num; ++i) {
-            void *to = (void *)(mihdr->data[i].vaddr + offset);
+        SHL_DEBUG_MEMCPY("copying unaligned start: %" PRIu64 " bytes\n", prependcpy);
+        if (mihdr->vaddr) {
+            void *to = (void *)(mihdr->vaddr + offset);
             void *src = va_src + offset;
             memcpy(to, src, prependcpy);
+        } else {
+            /* copy beginning */
+            for (int i = 0; i < mihdr->num; ++i) {
+                void *to = (void *)(mihdr->data[i].vaddr + offset);
+                void *src = va_src + offset;
+                memcpy(to, src, prependcpy);
+            }
         }
     }
 
     if (remainder) {
-        for (int i = 0; i < mihdr->num; ++i) {
-            void *to = (void *)(mihdr->data[i].vaddr + offset + size);
+        SHL_DEBUG_MEMCPY("copying remainder: %" PRIu64 " bytes\n", remainder);
+        if (mihdr->vaddr) {
+            void *to = (void *)(mihdr->vaddr + offset + size);
             void *src = va_src + (offset + size);
             memcpy(to, src, remainder);
+        } else {
+            for (int i = 0; i < mihdr->num; ++i) {
+                void *to = (void *)(mihdr->data[i].vaddr + offset + size);
+                void *src = va_src + (offset + size);
+                memcpy(to, src, remainder);
+            }
         }
     }
 
+    SHL_DEBUG_MEMCPY("waiting for DMA to complete...\n");
+    size_t current_done = transfer_done;
     while(transfer_done < transfer_count) {
+        if (current_done != transfer_done) {
+            SHL_DEBUG_MEMCPY("waiting for DMA to complete... %" PRIu64 " of %"
+                             PRIu64 "\n", transfer_done, transfer_count);
+            current_done = transfer_done;
+        }
         do_dma_poll();
     }
 
-    /* wait until DMA finished */
+    SHL_DEBUG_MEMCPY("DMA done.\n");
 
-    return 0;
+    return size;
 }
 
 
