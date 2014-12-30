@@ -48,15 +48,21 @@ void shl_array_replicated<T>::copy_from(T* src)
     printf("shl_array_replicated[%s]: Copying to %d replicas\n",
            shl_base_array::name, num_replicas);
 
-#if 0
-    shl__memcpy_dma(src, this->meminfo, 0, sizeof(T) * this->size);
-#else
-    for (int j = 0; j < num_replicas; j++) {
-        for (unsigned int i = 0; i < shl_array<T>::size; i++) {
-            rep_array[j][i] = src[i];
+    int copied = 0;
+
+    if (this->meminfo) {
+        copied = shl__memcpy_dma_from(src, this->meminfo, 0, sizeof(T)*this->size);
+    }
+
+    if (copied == 0) {
+        printf("shl_array_replicated[%s]: falling back to manual copy\n",
+               this->name);
+        for (int j = 0; j < num_replicas; j++) {
+            for (unsigned int i = 0; i < shl_array<T>::size; i++) {
+                rep_array[j][i] = src[i];
+            }
         }
     }
-#endif
 }
 
 
