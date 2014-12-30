@@ -227,12 +227,12 @@ static void *shl__malloc_numa(size_t size,
                         "of size %lu bytes\n", i, mb_new, ml_new, bytes_per_node);
 
         struct frame_identity fi;
-        err = frame_alloc(&mi->data[0].frame, bytes_per_node, &size);
+        err = frame_alloc(&mi->data[i].frame, bytes_per_node, &size);
         if (err_is_fail(err)) {
             USER_PANIC_ERR(err, "allocating frame");
         }
 
-        err = invoke_frame_identify(mi->data[0].frame, &fi);
+        err = invoke_frame_identify(mi->data[i].frame, &fi);
         assert(err_is_ok(err));
 
         mi->data[i].paddr = fi.base;
@@ -353,12 +353,12 @@ void** shl__malloc_replicated(size_t size,
         ram_set_affinity(mb_new, ml_new);
 
         struct frame_identity fi;
-        err = frame_alloc(&mi->data[0].frame, size, &size);
+        err = frame_alloc(&mi->data[i].frame, size, &size);
         if (err_is_fail(err)) {
             USER_PANIC_ERR(err, "failed to allocate memory\n");
         }
 
-        err = invoke_frame_identify(mi->data[0].frame,  &fi);
+        err = invoke_frame_identify(mi->data[i].frame,  &fi);
         assert(err_is_ok(err));
 
         mi->data[i].size = size;
@@ -374,7 +374,7 @@ void** shl__malloc_replicated(size_t size,
             USER_PANIC_ERR(err, "failed to vspace_map_one_frame_fixed\n");
         }
 
-        arrays[i] = (void *)malloc_next;
+        arrays[i] = (void *)mi->data[i].vaddr;
 
         malloc_next += size;
     }
