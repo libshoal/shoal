@@ -54,13 +54,13 @@ int shl_array_single_node<T>::init_from_value(T value)
  * Assumption: sizeof(src) == this->size
  */
 template<class T>
-shl_array_single_node<T>::copy_from(T* src)
+void shl_array_single_node<T>::copy_from(T* src)
 {
     return shl_array<T>::copy_from(src);
 }
 
 template<class T>
-shl_array_single_node<T>::copy_back(T* dest)
+void shl_array_single_node<T>::copy_back(T* dest)
 {
     return shl_array<T>::copy_back(dest);
 }
