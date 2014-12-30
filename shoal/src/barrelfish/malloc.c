@@ -227,7 +227,7 @@ static void *shl__malloc_numa(size_t size,
                         "of size %lu bytes\n", i, mb_new, ml_new, bytes_per_node);
 
         struct frame_identity fi;
-        err = frame_alloc(&mi->data[i].frame, bytes_per_node, &size);
+        err = frame_alloc(&mi->data[i].frame, bytes_per_node, NULL);
         if (err_is_fail(err)) {
             USER_PANIC_ERR(err, "allocating frame");
         }
@@ -236,7 +236,7 @@ static void *shl__malloc_numa(size_t size,
         assert(err_is_ok(err));
 
         mi->data[i].paddr = fi.base;
-        mi->data[i].size = bytes_per_node;
+        mi->data[i].size = (1UL << fi.bits);
         mi->data[i].opts = opts;
 
         err = memobj->f.fill(memobj, i, mi->data[i].frame, 0);
@@ -245,17 +245,18 @@ static void *shl__malloc_numa(size_t size,
         }
     }
 
+    SHL_DEBUG_ALLOC("mapping array @[0x%016"PRIx64"-0x%016"PRIx64"]\n",
+                    malloc_next, malloc_next+size);
+
     err = vregion_map_fixed(&mi->vregion, get_current_vspace(), memobj, 0, size,
                             malloc_next, VREGION_FLAGS_READ_WRITE);
     if (err_is_fail(err)) {
         USER_PANIC_ERR(err, "mapping memobj");
     }
 
-    SHL_DEBUG_ALLOC("mapping array @[0x%016"PRIx64"-0x%016"PRIx64"]\n",
-                                mi->data[0].vaddr, mi->data[0].vaddr+size);
-
     err = memobj->f.pagefault(memobj, &mi->vregion, 0, 0);
     if (err_is_fail(err)) {
+        vspace_unmap((void *)malloc_next);
         USER_PANIC_ERR(err, "pagefaulting");
     }
 
@@ -272,7 +273,7 @@ static void *shl__malloc_numa(size_t size,
         *ret_mi = (void *) mi;
     }
 
-    return (void *)(mi->data[0].vaddr);
+    return (void *)(mi->vaddr);
 }
 
 void* shl__malloc_distributed(size_t size,
