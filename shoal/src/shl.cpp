@@ -217,12 +217,7 @@ void papi_start(void)
 
 int shl__get_rep_id(void)
 {
-#ifndef BARRELFISH
     return shl__lookup_rep_id(omp_get_thread_num());
-#else
-    return 0;
-#endif
-
 }
 
 /**
