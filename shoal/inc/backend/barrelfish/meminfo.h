@@ -25,6 +25,7 @@ struct shl_mi_data {
 struct shl_mi_header {
     size_t num;
     size_t stride;
+    lvaddr_t vaddr;         ///<
     struct memobj_numa memobj;
     struct vregion vregion;
     struct shl_mi_data *data;

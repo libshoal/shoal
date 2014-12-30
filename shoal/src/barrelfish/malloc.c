@@ -95,9 +95,10 @@ void* shl__malloc(size_t size,
 
     malloc_next = (malloc_next + pg_size - 1) & ~(pg_size - 1);
 
-    mi->data[0].size = size;
     mi->data[0].opts = opts;
     mi->data[0].vaddr = malloc_next;
+    mi->data[0].size = size;
+    mi->vaddr = malloc_next;
 
     uintptr_t min_base, max_limit;
     if (node != SHL_NUMA_IGNORE) {
@@ -111,15 +112,21 @@ void* shl__malloc(size_t size,
         }
     }
 
+    struct frame_identity fi;
     err = frame_alloc(&mi->data[0].frame, size, &size);
     if (err_is_fail(err)) {
         goto err_alloc;
     }
 
+    err = invoke_frame_identify(mi->data[0].frame,  &fi);
+    assert(err_is_ok(err));
+
+    mi->data[0].paddr = fi.base;
+
     SHL_DEBUG_ALLOC("mapping array @[0x%016"PRIx64"-0x%016"PRIx64"]\n",
                             mi->data[0].vaddr, mi->data[0].vaddr+size);
 
-    err = vspace_map_one_frame_fixed(mi->data[0].vaddr, size, mi->data[0].frame, NULL, NULL);
+    err = vspace_map_one_frame_fixed(mi->vaddr, size, mi->data[0].frame, NULL, NULL);
     if (err_is_fail(err)) {
         goto err_map;
     }
@@ -173,6 +180,7 @@ static void *shl__malloc_numa(size_t size,
     mi->num = num_nodes;
     mi->data = (struct shl_mi_data *)(mi+1);
 
+
     /* round up stride and size*/
     stride = (stride + pg_size - 1) & ~(pg_size - 1);
     size = (size + pg_size - 1) & ~(pg_size - 1);
@@ -202,6 +210,8 @@ static void *shl__malloc_numa(size_t size,
     /* round up malloc next vaddr */
     malloc_next = (malloc_next + pg_size - 1) & ~(pg_size - 1);
 
+    mi->vaddr = malloc_next;
+
     /* the new memory ranges */
     uint64_t mb_new, ml_new;
 
@@ -216,14 +226,18 @@ static void *shl__malloc_numa(size_t size,
         SHL_DEBUG_ALLOC("allocating frame: node=%u, [%016"PRIx64", %016"PRIx64"] "
                         "of size %lu bytes\n", i, mb_new, ml_new, bytes_per_node);
 
-        err = frame_alloc(&mi->data[i].frame, bytes_per_node, NULL);
+        struct frame_identity fi;
+        err = frame_alloc(&mi->data[0].frame, bytes_per_node, &size);
         if (err_is_fail(err)) {
             USER_PANIC_ERR(err, "allocating frame");
         }
 
+        err = invoke_frame_identify(mi->data[0].frame, &fi);
+        assert(err_is_ok(err));
+
+        mi->data[i].paddr = fi.base;
         mi->data[i].size = bytes_per_node;
         mi->data[i].opts = opts;
-        mi->data[i].vaddr = malloc_next;
 
         err = memobj->f.fill(memobj, i, mi->data[i].frame, 0);
         if (err_is_fail(err)) {
@@ -313,6 +327,7 @@ void** shl__malloc_replicated(size_t size,
     mi->num = num_nodes;
     mi->data = (struct shl_mi_data *)(mi+1);
     mi->stride = 0;
+    mi->vaddr = 0;
 
     size_t pg_size = (options & SHL_MALLOC_HUGEPAGE) ? PAGESIZE_HUGE : PAGESIZE;
 
@@ -337,13 +352,18 @@ void** shl__malloc_replicated(size_t size,
                         mb_new, ml_new);
         ram_set_affinity(mb_new, ml_new);
 
-        err = frame_alloc(&mi->data[i].frame, size, &size);
+        struct frame_identity fi;
+        err = frame_alloc(&mi->data[0].frame, size, &size);
         if (err_is_fail(err)) {
             USER_PANIC_ERR(err, "failed to allocate memory\n");
         }
 
+        err = invoke_frame_identify(mi->data[0].frame,  &fi);
+        assert(err_is_ok(err));
+
         mi->data[i].size = size;
         mi->data[i].opts = options;
+        mi->data[i].paddr = fi.base;
         mi->data[i].vaddr = malloc_next;
 
         SHL_DEBUG_ALLOC("mapping replicate @[0x%016"PRIx64"-0x%016"PRIx64"]\n",
