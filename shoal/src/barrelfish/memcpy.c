@@ -281,10 +281,8 @@ static int do_dma_cpy(lpaddr_t to, lpaddr_t from, size_t bytes, void *counter)
 {
     errval_t err;
 
-#if 0
     SHL_DEBUG_MEMCPY("executing DMA: 0x%016" PRIxLPADDR " -> 0x%016" PRIxLPADDR
                      " of size %" PRIu64 " bytes\n", from, to, bytes);
-#endif
     /* must be a multiple of chache lines */
     assert(!(bytes & (64 -1 )));
 
@@ -354,13 +352,12 @@ size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t offset, size_t si
 
     err = shl__get_physical_address((lvaddr_t)va_src, &paddr, &framesize);
     if (err_is_fail(err)) {
-        SHL_DEBUG_MEMCPY("preparing dma transfer failed: %s\n", err_getstring(err));
         return 0; // return 0 bytes
     }
 
     struct shl_mi_header *mihdr = mi_dst;
 
-    SHL_DEBUG_MEMCPY("preparing dma transfer: 0x%016" PRIxLPADDR " of size %"
+    debug_printf("preparing dma transfer: 0x%016" PRIxLPADDR " of size %"
                      PRIu64 " bytes\n", paddr, size);
 
 
@@ -389,6 +386,8 @@ size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t offset, size_t si
     size_t transfer_done = 0;
     size_t transfer_count = 0;
 
+    void *counter = (&transfer_done);
+
     if (mihdr->stride) {
         /* this means we have a partitioned or distributed array */
         /* stride is a multiple of page size */
@@ -410,7 +409,7 @@ size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t offset, size_t si
 
             lpaddr_t dma_to = mihdr->data[current].paddr + stride_offset;
 
-            do_dma_cpy(dma_to, dma_from, mihdr->stride, &transfer_done);
+            do_dma_cpy(dma_to, dma_from, mihdr->stride, counter);
             transfer_count++;
 
             dma_from += mihdr->stride;
@@ -426,7 +425,7 @@ size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t offset, size_t si
 
             lpaddr_t dma_to = mihdr->data[current].paddr + stride_offset;
 
-            do_dma_cpy(dma_to, dma_from, (size-copied), &transfer_done);
+            do_dma_cpy(dma_to, dma_from, (size-copied), counter);
             transfer_count++;
         }
 
@@ -439,7 +438,7 @@ size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t offset, size_t si
         for (size_t k = 0; k < iterations; ++k) {
             for (int i = 0; i < mihdr->num; ++i) {
                 lpaddr_t dma_to = mihdr->data[i].paddr + offset + copied;
-                do_dma_cpy(dma_to, dma_from, DMA_TRANSFER_STRIDE, &transfer_done);
+                do_dma_cpy(dma_to, dma_from, DMA_TRANSFER_STRIDE, counter);
                 transfer_count++;
             }
             dma_from += DMA_TRANSFER_STRIDE;
@@ -450,7 +449,7 @@ size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t offset, size_t si
             /* copy remainder */
             for (int i = 0; i < mihdr->num; ++i) {
                 lpaddr_t dma_to = mihdr->data[i].paddr + offset + copied;
-                do_dma_cpy(dma_to, dma_from, size - copied, &transfer_done);
+                do_dma_cpy(dma_to, dma_from, size - copied, counter);
                 transfer_count++;
             }
         }
@@ -489,9 +488,12 @@ size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t offset, size_t si
         }
     }
 
-    SHL_DEBUG_MEMCPY("waiting for DMA to complete...\n");
     size_t current_done = transfer_done;
-    while(transfer_done < transfer_count) {
+
+    volatile size_t *v_tx_done = counter;
+
+    debug_printf("waiting for DMA to complete...\n");
+    while(*v_tx_done < transfer_count) {
         if (current_done != transfer_done) {
             SHL_DEBUG_MEMCPY("waiting for DMA to complete... %" PRIu64 " of %"
                              PRIu64 "\n", transfer_done, transfer_count);
