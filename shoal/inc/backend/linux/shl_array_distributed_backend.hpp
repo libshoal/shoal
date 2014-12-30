@@ -16,4 +16,11 @@ int shl_array_distributed<T>::alloc(void)
     return shl_array<T>::alloc();
 }
 
+
+template<class T>
+void shl_array_distributed<T>::copy_from(T* src)
+{
+    shl_array<T>::copy_from(src);
+}
+
 #endif /* __SHL_ARRAY_DISTRIBUTED_BACKEND */

@@ -61,7 +61,8 @@ class shl_array_distributed : public shl_array<T> {
 
     }
 
-    virtual int alloc(void);
+    int alloc(void);
+    void copy_from(T* src);
 
     /**
      * \brief

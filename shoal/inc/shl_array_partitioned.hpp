@@ -47,15 +47,16 @@ class shl_array_partitioned : public shl_array<T> {
     {
     }
 
-    virtual int alloc(void);
+    int alloc(void);
+    void copy_from(T* src);
 
-    virtual int get_options(void)
+    int get_options(void)
     {
         return shl_array<T>::get_options() | SHL_MALLOC_PARTITION;
     }
 
  protected:
-    virtual void print_options(void)
+    void print_options(void)
     {
         shl_array<T>::print_options();
         printf("partition=[X]");

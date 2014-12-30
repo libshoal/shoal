@@ -37,5 +37,27 @@ int shl_array_partitioned<T>::alloc(void)
     return 0;
 }
 
+template<class T>
+void shl_array_partitioned<T>::copy_from(T* src)
+{
+    if (!shl_array<T>::do_copy_in())
+        return;
+
+    assert(shl_array<T>::alloc_done);
+
+    int copied = 0;
+
+    if (this->meminfo) {
+        copied = shl__memcpy_dma_from(src, this->meminfo, 0, sizeof(T)*this->size);
+    }
+
+    if (copied == 0) {
+
+        printf("shl_array_partitioned[%s]: falling back to manual copy\n",
+               this->name);
+        shl_array<T>::copy_from(src);
+    }
+}
+
 
 #endif /* __SHL_ARRAY_PARTITIONED */
