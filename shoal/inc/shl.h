@@ -71,9 +71,11 @@ extern "C" {
 #define SHL_DEBUG_NOPRINT(x...);
 
 #define SHL_DEBUG_INIT(x...) SHL_DEBUG_PRINT(x)
-#define SHL_DEBUG_ALLOC(x...) SHL_DEBUG_PRINT(x)
+//#define SHL_DEBUG_ALLOC(x...) SHL_DEBUG_PRINT(x)
+#define SHL_DEBUG_ALLOC(x...)
 #define SHL_DEBUG_ARRAY(x...) SHL_DEBUG_PRINT(x)
-#define SHL_DEBUG_MEMCPY(x...) SHL_DEBUG_PRINT(x)
+#define SHL_DEBUG_MEMCPY(x...)
+//#define SHL_DEBUG_MEMCPY(x...) SHL_DEBUG_PRINT(x)
 #define noprintf(x,...) void(0)
 
 

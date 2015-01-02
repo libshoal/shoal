@@ -365,6 +365,11 @@ class shl_array : public shl_base_array {
         return size;
     }
 
+    void *get_meminfo(void)
+    {
+        return meminfo;
+    }
+
     /*
      * ---------------------------------------------------------------------------
      * Array Debug Helpers
@@ -462,20 +467,26 @@ class shl_array : public shl_base_array {
      * This is useful for example for "double-buffering" for parallel
      * OpenMP loops.
      */
-    virtual int copy_from_array(shl_array<T> *src)
+    virtual int copy_from_array(shl_array<T> *src_array)
     {
-        assert(!"Not yet implemented");
-        if (!array || !src->get_array()) {
+        printf("shl_array<T>::copy_from_array\n");
+        void *src = src_array->get_array();
+        if (!array || src) {
             return -1;
         }
 
-        if (size != src->get_size()) {
+        if (size != src_array->get_size()) {
             return -1;
         }
 
-        memcpy(array, src->get_array(), size * sizeof(T));
+        memcpy(array, src, size * sizeof(T));
 
         return 0;
+    }
+
+    virtual int swap(shl_array<T> *other)
+    {
+        assert(!"Must be implemented by the concrete class");
     }
 
     /**

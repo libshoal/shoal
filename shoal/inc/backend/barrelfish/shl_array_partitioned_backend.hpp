@@ -47,7 +47,7 @@ void shl_array_partitioned<T>::copy_from(T* src)
 
     int copied = 0;
 
-    if (this->meminfo) {
+    if (get_conf()->use_dma && this->meminfo) {
         copied = shl__memcpy_dma_from(src, this->meminfo, 0, sizeof(T)*this->size);
     }
 
@@ -59,5 +59,55 @@ void shl_array_partitioned<T>::copy_from(T* src)
     }
 }
 
+template<class T>
+int shl_array_partitioned<T>::copy_from_array(shl_array<T> *src)
+{
+    int copied = 0;
+
+    if (get_conf()->use_dma && this->meminfo) {
+        size_t elements = (src->get_size() > this->size) ? this->size : src->get_size();
+        copied = shl__memcpy_dma_array(src->get_meminfo(), this->meminfo, sizeof(T) * elements);
+    }
+
+    if (copied == 0) {
+        printf("shl_array_partitioned<T>::copy_from_array copied == 0\n");
+        return shl_array<T>::copy_from_array(src);
+    }
+
+    return 0;
+}
+
+template<class T>
+int shl_array_partitioned<T>::init_from_value(T value)
+{
+    int written = 0;
+
+    assert(this->alloc_done);
+    if (get_conf()->use_dma && this->meminfo) {
+        uint64_t val = 0;
+        if (sizeof(T) < sizeof(uint64_t)) {
+            uint8_t *ptr = (uint8_t *)&val;
+            uint8_t *psrc = (uint8_t*)&value;
+            for (unsigned i = 0; i < sizeof(uint64_t) / sizeof(T); ++i) {
+                memcpy(ptr, psrc, sizeof(T));
+                ptr += sizeof(T);
+            }
+        } else {
+            memcpy(&val, &value, sizeof(uint64_t));
+
+        }
+
+        size_t bytes = sizeof(T) * this->size;
+        bytes = (bytes + sizeof(uint64_t) - 1)& ~(sizeof(uint64_t)  - 1);
+
+        written = shl__memset_dma(this->meminfo, val, bytes);
+    }
+
+    if (written == 0) {
+        return shl_array<T>::init_from_value(value);
+    }
+
+    return 0;
+}
 
 #endif /* __SHL_ARRAY_PARTITIONED */

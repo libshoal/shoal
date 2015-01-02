@@ -182,12 +182,17 @@ static void *shl__malloc_numa(size_t size,
 
 
     /* round up stride and size*/
-    stride = (stride + pg_size - 1) & ~(pg_size - 1);
+
     size = (size + pg_size - 1) & ~(pg_size - 1);
 
     if (stride == SHL_ALLOC_NUMA_PARTITION) {
         stride = ((size / num_nodes) + pg_size - 1) & ~(pg_size - 1);
+    } else {
+        stride = (stride + pg_size - 1) & ~(pg_size - 1);
     }
+
+    SHL_DEBUG_ALLOC("memory stride: %lu bytes \n", stride);
+
 
     mi->stride = stride;
 
@@ -279,9 +284,10 @@ static void *shl__malloc_numa(size_t size,
 void* shl__malloc_distributed(size_t size,
                               int opts,
                               int *pagesize,
+                              size_t stride,
                               void **ret_mi)
 {
-    return shl__malloc_numa(size, opts, pagesize, ret_mi, SHL_DISTRIBUTION_STRIDE);
+    return shl__malloc_numa(size, opts, pagesize, ret_mi, stride);
 }
 
 
@@ -370,7 +376,7 @@ void** shl__malloc_replicated(size_t size,
         SHL_DEBUG_ALLOC("mapping replicate @[0x%016"PRIx64"-0x%016"PRIx64"]\n",
                         mi->data[i].vaddr, mi->data[i].vaddr+size);
 
-        err = vspace_map_one_frame_fixed(mi->data[i].vaddr, size, mi->data[i].frame, NULL, NULL);
+        err = vspace_map_one_frame_fixed(mi->data[i].vaddr, mi->data[i].size, mi->data[i].frame, NULL, NULL);
         if (err_is_fail(err)) {
             USER_PANIC_ERR(err, "failed to vspace_map_one_frame_fixed\n");
         }

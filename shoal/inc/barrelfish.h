@@ -21,7 +21,7 @@
 /**
  * use replicated arrays
  */
-#define SHL_REPLICATION 0
+#define SHL_REPLICATION 1
 
 /**
  * use distributed arrays
@@ -31,7 +31,7 @@
 /**
  * use partitioned arrays
  */
-#define SHL_PARTITION 0
+#define SHL_PARTITION 1
 
 /**
  * enable the numa trim feature
@@ -47,6 +47,11 @@
  * allocation stride for distributed arrays
  */
 #define SHL_DISTRIBUTION_STRIDE PAGESIZE
+
+/**
+ * threshold for DMA copies
+ */
+#define SHL_DMA_COPY_THRESHOLD (64 * 1024)
 
 /**
  * map the DMA device directly into our own address space
@@ -79,7 +84,7 @@ int shl__barrelfish_init(size_t num_threads);
 int shl__barrelfish_share_frame(struct shl_mi_data *mi);
 
 /* additional allocation functions */
-void* shl__malloc_distributed(size_t size, int opts, int *pagesize, void **ret_mi);
+void* shl__malloc_distributed(size_t size, int opts, int *pagesize, size_t stride, void **ret_mi);
 void *shl__malloc_partitioned(size_t size, int opts, int *pagesize, void **ret_mi);
 
 

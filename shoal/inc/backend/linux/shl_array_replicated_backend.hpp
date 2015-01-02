@@ -57,4 +57,16 @@ void shl_array_replicated<T>::copy_from(T* src)
     }
 }
 
+template<class T>
+int shl_array_replicated<T>::init_from_value(T value)
+{
+    return shl_array<T>::init_from_value(src);
+}
+
+template<class T>
+int shl_array_replicated<T>::copy_from_array(shl_array<T> *src)
+{
+   return shl_array<T>::copy_from_array(src);
+}
+
 #endif /* __SHL_ARRAY */

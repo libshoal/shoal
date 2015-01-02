@@ -32,7 +32,6 @@
 #include <dma/client/dma_client.h>
 #include <dma/client/dma_client_device.h>
 
-
 static uint8_t dma_device_count = 0;
 struct dma_device **dma_devices;
 static uint8_t dma_device_next = 0;
@@ -53,8 +52,7 @@ static uint8_t dma_device_next = 0;
  */
 
 #ifndef __k1om__
-static void ioat_device_init(struct device_mem *bar_info,
-                             int nr_mapped_bars)
+static void ioat_device_init(struct device_mem *bar_info, int nr_mapped_bars)
 {
     errval_t err;
 
@@ -63,8 +61,9 @@ static void ioat_device_init(struct device_mem *bar_info,
     }
 
     /* initialize the device */
-    err = ioat_dma_device_init(*bar_info->frame_cap,
-                               (struct ioat_dma_device**)&dma_devices[dma_device_count]);
+    err = ioat_dma_device_init(
+                    *bar_info->frame_cap,
+                    (struct ioat_dma_device**) &dma_devices[dma_device_count]);
     if (err_is_fail(err)) {
         DEBUG_ERR(err, "Could not initialize the device.\n");
         return;
@@ -93,7 +92,7 @@ static int ioat_init(struct shl__memcpy_setup *setup)
     for (uint32_t i = 0; i < setup->count; ++i) {
         err = pci_register_driver_noirq(ioat_device_init, PCI_DONT_CARE,
                                         PCI_DONT_CARE, PCI_DONT_CARE,
-                                        setup->device.vendor,setup->device.id + i,
+                                        setup->device.vendor, setup->device.id + i,
                                         setup->pci.bus, setup->pci.device, i);
         if (err_is_fail(err)) {
             if (dma_device_count == 0) {
@@ -128,108 +127,8 @@ static int client_init(struct shl__memcpy_setup *setup)
     return -2;
 }
 
-#if 0
-
-/*
- * -------------------------------------------------------------------------------
- * DMA copy
- * -------------------------------------------------------------------------------
- */
-
-
-
-
-
-
-int shl__memcpy_dma(void *va_src, void *mi_dst, size_t size)
-{
-    unsigned long paddr = (unsigned long)shl__get_physical_address(va_src);
-
-    struct shl_mi_header *mihdr = mi_dst;
-
-    unsigned long *dst = calloc(mihdr->num, sizeof(unsigned long));
-    for (int j = 0; j < mihdr->num; j++) {
-        dst[j] = mihdr->data[j].paddr;
-    }
-
-
-
-
-    size_t done_counter = 0;
-    size_t counter = 0;
-    size_t offset = 0;
-
-
-    while(bytes > 0) {
-        if (bytes < STRIDE_DIVIDER * sizeof(T)) {
-            for (int j = 0; j < num_replicas; j++) {
-                for (unsigned int i = offset; i < shl_array<T>::size; i++) {
-                    rep_array[j][i] = src[i];
-                }
-            }
-            bytes = 0;
-            break;
-        } else {
-            counter++;
-            for (int j = 0; j < num_replicas; j++) {
-                shl__memcpy_dma_async((unsigned long)paddr, dst[j], STRIDE_DIVIDER * sizeof(T), &done_counter);
-                counter++;
-            }
-            offset += STRIDE_DIVIDER;
-            bytes -= STRIDE_DIVIDER * sizeof(T);
-            paddr += STRIDE_DIVIDER * sizeof(T);
-        }
-    }
-
-    while(done_counter != counter) {
-        shl__memcpy_dma_poll();
-    }
-}
-
-int shl__memcpy_dma_array(void *mi_src, void *mi_dst, size_t size)
-{
-    return 0;
-}
-
-int shl__memcpy_dma_async(lpaddr_t src, lpaddr_t dst, size_t bytes, void *arg)
-{
-
-}
-
-int shl__memcpy_dma(lpaddr_t src, lpaddr_t dst, size_t bytes)
-{
-    errval_t err;
-
-    size_t transfer_done = 0;
-    size_t transfer_count = (bytes / DMA_CHANNEL_STRIDE) + 1;
-
-    for (size_t i = 0; i < transfer_count; ++i) {
-        shl__memcpy_dma_async(src, dst, bytes, &transfer_done);
-    }
-
-
-    while(transfer_done != transfer_count) {
-        struct dma_device *dev = dma_devices[dma_device_next];
-
-        if (dma_device_next < dma_device_count) {
-            dma_device_next++;
-        } else {
-            dma_device_next = 0;
-        }
-
-        err = dma_device_poll_channels(dev);
-        if (err_is_fail(err)) {
-
-        }
-    }
-
-    return 0;
-}
-
-#endif
-
-static errval_t shl__get_physical_address(lvaddr_t vaddr,
-                                          lpaddr_t *retaddr, size_t *retsize)
+static errval_t shl__get_physical_address(lvaddr_t vaddr, lpaddr_t *retaddr,
+                                          size_t *retsize)
 {
     errval_t err;
 
@@ -265,11 +164,9 @@ static errval_t shl__get_physical_address(lvaddr_t vaddr,
     return SYS_ERR_OK;
 }
 
-
-#define DMA_TRANSFER_STRIDE (1024UL*1024)
+#define DMA_TRANSFER_STRIDE (2UL * 1024*1024)
 
 #define DMA_MINTRANSFER 64
-
 
 static void memcpy_req_cb(errval_t err, dma_req_id_t id, void *st)
 {
@@ -282,9 +179,9 @@ static int do_dma_cpy(lpaddr_t to, lpaddr_t from, size_t bytes, void *counter)
     errval_t err;
 
     SHL_DEBUG_MEMCPY("executing DMA: 0x%016" PRIxLPADDR " -> 0x%016" PRIxLPADDR
-                     " of size %" PRIu64 " bytes\n", from, to, bytes);
+                    " of size %" PRIu64 " bytes\n", from, to, bytes);
     /* must be a multiple of chache lines */
-    assert(!(bytes & (64 -1 )));
+    assert(!(bytes & (64 - 1)));
 
     if (dma_devices == NULL) {
         return -1;
@@ -317,6 +214,49 @@ static int do_dma_cpy(lpaddr_t to, lpaddr_t from, size_t bytes, void *counter)
         return -1;
     }
 
+    return 0;
+}
+
+static int do_dma_set(lpaddr_t to, uint64_t value, size_t bytes, void *counter)
+{
+    errval_t err;
+
+    SHL_DEBUG_MEMCPY("executing DMA: 0x%016" PRIxLPADDR " -> 0x%016" PRIxLPADDR
+                    " of size %" PRIu64 " bytes\n", from, to, bytes);
+
+    /* must be a multiple of chache lines */
+    assert(!(bytes & (64 - 1)));
+
+    if (dma_devices == NULL) {
+        return -1;
+    }
+
+    if (dma_device_next == dma_device_count) {
+        dma_device_next = 0;
+    }
+
+    struct dma_device *dev = dma_devices[dma_device_next];
+    assert(dev);
+
+    struct dma_req_setup setup = {
+        .type = DMA_REQ_TYPE_MEMSET,
+        .done_cb = memcpy_req_cb,
+        .cb_arg = counter,
+        .args = {
+            .memset = {
+                .val = value,
+                .dst = to,
+                .bytes = bytes
+            }
+        }
+    };
+
+    dma_device_next++;
+
+    err = dma_request_memset(dev, &setup, NULL);
+    if (err_is_fail(err)) {
+        return -1;
+    }
 
     return 0;
 }
@@ -325,45 +265,136 @@ static int do_dma_poll(void)
 {
     errval_t err;
 
-    if (dma_device_next == dma_device_count) {
-        dma_device_next = 0;
+    for (int i = 0; i < dma_device_count; ++i) {
+        struct dma_device *dev = dma_devices[i];
+        err = dma_device_poll_channels(dev);
+        switch (err_no(err)) {
+            case SYS_ERR_OK:
+            case DMA_ERR_DEVICE_IDLE:
+                continue;
+                break;
+            default:
+                /* no-op */
+                break;
+        }
     }
-
-    struct dma_device *dev = dma_devices[dma_device_next];
-
-    err = dma_device_poll_channels(dev);
-    if (err_is_fail(err)) {
-        SHL_DEBUG_MEMCPY("polling device failed: %s\n", err_getstring(err));
-        return -1;
-    }
-
-    dma_device_next++;
 
     return 0;
+}
+
+size_t shl__memset_dma(void *mi_dst, uint64_t value, size_t size)
+{
+
+    size_t remainder = (size & (DMA_MINTRANSFER - 1));
+    if (remainder) {
+        SHL_DEBUG_MEMCPY("remainder cpy: %" PRIu64 " bytes\n", remainder);
+        size -= remainder;
+    }
+
+    struct shl_mi_header *mihdr = mi_dst;
+
+    size_t transfer_count = mihdr->num;
+    size_t transfer_completed = 0;
+
+    for (int i = 0; i < mihdr->num; ++i) {
+        lpaddr_t dst = mihdr->data[i].paddr;
+
+        size_t bytes = size;
+        if (mihdr->stride) {
+            bytes = mihdr->stride;
+        }
+
+        while (bytes > (2 * DMA_TRANSFER_STRIDE)) {
+            if (do_dma_set(dst, value, DMA_TRANSFER_STRIDE, &transfer_completed)) {
+                //return 0;
+            }
+            transfer_count++;
+            dst += DMA_TRANSFER_STRIDE;
+            bytes -= DMA_TRANSFER_STRIDE;
+        }
+        if (do_dma_set(dst, value, bytes, &transfer_completed)) {
+            //return 0;
+        }
+    }
+
+    if (remainder) {
+        SHL_DEBUG_MEMCPY("memset remainder: %" PRIu64 " bytes\n", remainder);
+
+        uint64_t *to;
+        if (mihdr->vaddr) {
+            to = (uint64_t *) (mihdr->vaddr + size);
+            for (int i = 0; i < remainder / sizeof(uint64_t); ++i) {
+                to[i] = value;
+            }
+        } else {
+            for (int i = 0; i < mihdr->num; ++i) {
+                to = (uint64_t *) (mihdr->data[i].vaddr + size);
+                for (int j = 0; j < remainder / sizeof(uint64_t); ++j) {
+                    to[j] = value;
+                }
+            }
+        }
+    }
+
+    do {
+        do_dma_poll();
+    } while (transfer_completed < transfer_count);
+
+    SHL_DEBUG_MEMCPY("DMA done.\n");
+
+    return size;
+}
+
+static size_t shl__memcpy_dma_phys(lpaddr_t dst, lpaddr_t src, size_t bytes,
+                                   size_t *counter)
+{
+    size_t transfer_count = 1;
+
+    //debug_printf("shl__memcpy_dma_phys: %lu bytes\n", bytes);
+
+    while (bytes > (2 * DMA_TRANSFER_STRIDE)) {
+        do_dma_cpy(dst, src, DMA_TRANSFER_STRIDE, counter);
+        transfer_count++;
+        dst += DMA_TRANSFER_STRIDE;
+        src += DMA_TRANSFER_STRIDE;
+        bytes -= DMA_TRANSFER_STRIDE;
+    }
+
+    do_dma_cpy(dst, src, bytes, counter);
+
+    return transfer_count;
 }
 
 size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t offset, size_t size)
 {
     errval_t err;
 
+    struct shl_mi_header *mihdr = mi_dst;
+
+    /*
+     * heuristical check if it makes sense to do a DMA copy.
+     * There is a certain overhead in DMA transfers. We have to have at
+     * least a minimum trasnfers size of SHL_DMA_COPY_THRESHOLD
+     */
+    if (((mihdr->stride != 0) && (mihdr->stride < SHL_DMA_COPY_THRESHOLD)) || size
+                    < SHL_DMA_COPY_THRESHOLD) {
+        debug_printf("shl__memcpy_dma_from error: not copying in...\n");
+        return 0;
+    }
+
     lpaddr_t paddr = 0;
 
     size_t framesize = 0;
 
-    err = shl__get_physical_address((lvaddr_t)va_src, &paddr, &framesize);
+    err = shl__get_physical_address((lvaddr_t) va_src, &paddr, &framesize);
     if (err_is_fail(err)) {
-        return 0; // return 0 bytes
+        return 0;  // return 0 bytes
     }
 
-    struct shl_mi_header *mihdr = mi_dst;
-
-    debug_printf("preparing dma transfer: 0x%016" PRIxLPADDR " of size %"
-                     PRIu64 " bytes\n", paddr, size);
-
+    SHL_DEBUG_MEMCPY("preparing dma transfer: 0x%016" PRIxLPADDR " of size %"
+                    PRIu64 " bytes\n", paddr, size);
 
     assert(framesize < offset + size);
-
-
 
     size_t prependcpy = ((paddr + offset) & (DMA_MINTRANSFER - 1));
     if (prependcpy) {
@@ -381,7 +412,6 @@ size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t offset, size_t si
 
     assert(prependcpy < DMA_MINTRANSFER);
     assert(remainder < DMA_MINTRANSFER);
-
 
     size_t transfer_done = 0;
     size_t transfer_count = 0;
@@ -425,10 +455,9 @@ size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t offset, size_t si
 
             lpaddr_t dma_to = mihdr->data[current].paddr + stride_offset;
 
-            do_dma_cpy(dma_to, dma_from, (size-copied), counter);
+            do_dma_cpy(dma_to, dma_from, (size - copied), counter);
             transfer_count++;
         }
-
 
     } else {
         /* also do strided way */
@@ -460,13 +489,13 @@ size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t offset, size_t si
     if (prependcpy) {
         SHL_DEBUG_MEMCPY("copying unaligned start: %" PRIu64 " bytes\n", prependcpy);
         if (mihdr->vaddr) {
-            void *to = (void *)(mihdr->vaddr + offset);
+            void *to = (void *) (mihdr->vaddr + offset);
             void *src = va_src + offset;
             memcpy(to, src, prependcpy);
         } else {
             /* copy beginning */
             for (int i = 0; i < mihdr->num; ++i) {
-                void *to = (void *)(mihdr->data[i].vaddr + offset);
+                void *to = (void *) (mihdr->data[i].vaddr + offset);
                 void *src = va_src + offset;
                 memcpy(to, src, prependcpy);
             }
@@ -476,56 +505,190 @@ size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t offset, size_t si
     if (remainder) {
         SHL_DEBUG_MEMCPY("copying remainder: %" PRIu64 " bytes\n", remainder);
         if (mihdr->vaddr) {
-            void *to = (void *)(mihdr->vaddr + offset + size);
+            void *to = (void *) (mihdr->vaddr + offset + size);
             void *src = va_src + (offset + size);
             memcpy(to, src, remainder);
         } else {
             for (int i = 0; i < mihdr->num; ++i) {
-                void *to = (void *)(mihdr->data[i].vaddr + offset + size);
+                void *to = (void *) (mihdr->data[i].vaddr + offset + size);
                 void *src = va_src + (offset + size);
                 memcpy(to, src, remainder);
             }
         }
     }
 
-    size_t current_done = transfer_done;
-
-    volatile size_t *v_tx_done = counter;
-
-    debug_printf("waiting for DMA to complete...\n");
-    while(*v_tx_done < transfer_count) {
-        if (current_done != transfer_done) {
-            SHL_DEBUG_MEMCPY("waiting for DMA to complete... %" PRIu64 " of %"
-                             PRIu64 "\n", transfer_done, transfer_count);
-            current_done = transfer_done;
-        }
+    do {
         do_dma_poll();
-    }
+    } while (transfer_done < transfer_count);
 
     SHL_DEBUG_MEMCPY("DMA done.\n");
 
     return size;
 }
 
-
-size_t shl__memcpy_dma_to(void *mi_src, void *va_dst, size_t offst, size_t size)
+size_t shl__memcpy_dma_to(void *mi_src, void *va_dst, size_t offset, size_t size)
 {
     return 0;
 }
 
 /* copying between arrays */
-size_t shl__memcpy_dma_array(void *mi_src, void *mi_dst, size_t offst, size_t size)
+size_t shl__memcpy_dma_array(void *mi_src, void *mi_dst, size_t size)
+{
+    /* check if the DMA transfer is big enough */
+    if (size < SHL_DMA_COPY_THRESHOLD) {
+        return 0;
+    }
+
+    struct shl_mi_header *mi_hdr_dst = mi_dst;
+    struct shl_mi_header *mi_hdr_src = mi_src;
+
+    SHL_DEBUG_MEMCPY("shl__memcpy_dma_array: %lx, %lx, %lu, %lu\n", mi_hdr_dst->stride,
+                    mi_hdr_src->stride, mi_hdr_dst->num, mi_hdr_src->num);
+
+    /*
+     * doing DMA transfers is actually possible between Arrays of the same type
+     * if their memory configuration matches (i.e. stride size for distributed arrays)
+     */
+
+    if (mi_hdr_dst->stride != mi_hdr_src->stride) {
+        /* the strides do not match, we have different types of arrays */
+
+        if (mi_hdr_dst->stride > 0 && mi_hdr_dst->stride < SHL_DMA_COPY_THRESHOLD) {
+            /* destination array is a distributed array, not supported */
+            debug_printf("destination is distribution. not supported");
+            return 0;
+        }
+
+        if (mi_hdr_src->stride > 0 && mi_hdr_src->stride < SHL_DMA_COPY_THRESHOLD) {
+            /* source array is a distributed array, not supported */
+            debug_printf("source is distribution. not supported");
+            return 0;
+        }
+    }
+
+    // assuming that the start is aligned for now
+    // and strides are aligned
+    size_t remainder = (size & (DMA_MINTRANSFER - 1));
+    if (remainder) {
+        SHL_DEBUG_MEMCPY("remainder cpy: %" PRIu64 " bytes\n", remainder);
+        size -= remainder;
+    }
+
+    assert(remainder < DMA_MINTRANSFER);
+
+    /*
+     * at this point the arrays are of the same type or one of the supported
+     * inter-types transfers:
+     * SN<->REP, PART<->SN, PART<->REP
+     */
+
+    size_t transfers_completed = 0;
+    size_t transfer_count = 0;
+
+    if (mi_hdr_dst->stride) {
+        /* destination array is partitioned or distributed */
+        assert(mi_hdr_dst->stride > SHL_DMA_COPY_THRESHOLD);
+
+        if (mi_hdr_src->stride) {
+            /*
+             * src array is partitioned or distributed and hence both arrays
+             * share the same underlying data structure. Simpy copy the frames
+             */
+            assert(mi_hdr_dst->stride == mi_hdr_src->stride);
+            assert(mi_hdr_dst->num == mi_hdr_src->num);
+
+            /* we can simply copy the contents of all the frames */
+            for (int i = 0; i < mi_hdr_dst->num; ++i) {
+                /*
+                 * issue the transfers. Note that the frames are all well aligned
+                 * and the stride is already a multiple of the page size
+                 */
+                transfer_count += shl__memcpy_dma_phys(mi_hdr_dst->data[i].paddr,
+                                                       mi_hdr_src->data[i].paddr,
+                                                       mi_hdr_dst->stride,
+                                                       &transfers_completed);
+            }
+        } else {
+            /* stride should be size/num nodes i.e. a partitioned array */
+            assert(mi_hdr_dst->stride >= (size / mi_hdr_dst->num));
+
+            lpaddr_t src = mi_hdr_src->data[0].paddr;
+
+            for (int i = 0; i < mi_hdr_dst->num; ++i) {
+                transfer_count += shl__memcpy_dma_phys(mi_hdr_dst->data[i].paddr,
+                                                       src, mi_hdr_dst->stride,
+                                                       &transfers_completed);
+                src += mi_hdr_dst->stride;
+            }
+        }
+
+    } else {
+        /* destination array is single node or replicated */
+
+        if (mi_hdr_src->stride) {
+            /* src array is partitioned */
+            assert(mi_hdr_src->stride >= (size / mi_hdr_src->num));
+
+            size_t transfer_size = mi_hdr_src->stride;
+            lpaddr_t offset = 0;
+
+            for (int j = 0; j < mi_hdr_src->num; ++j) {
+                lpaddr_t src = mi_hdr_src->data[j].paddr;
+
+                for (int i = 0; i < mi_hdr_dst->num; ++i) {
+                    transfer_count += shl__memcpy_dma_phys(
+                                    mi_hdr_dst->data[i].paddr + offset, src,
+                                    transfer_size, &transfers_completed);
+                }
+                offset += transfer_size;
+            }
+        } else {
+            /* source array is single node or replicated */
+            for (int i = 0; i < mi_hdr_dst->num; ++i) {
+                for (int j = 0; j < mi_hdr_src->num; ++j) {
+                    transfer_count += shl__memcpy_dma_phys(mi_hdr_dst->data[i].paddr,
+                                                           mi_hdr_src->data[j].paddr,
+                                                           size,
+                                                           &transfers_completed);
+                }
+            }
+        }
+    }
+
+    if (remainder) {
+        SHL_DEBUG_MEMCPY("copying remainder: %" PRIu64 " bytes\n", remainder);
+
+        void *va_src;
+        if (mi_hdr_src->vaddr) {
+            va_src = (void *) (mi_hdr_src->vaddr + size);
+        } else {
+            va_src = (void*) (mi_hdr_src->data[0].vaddr + size);
+        }
+
+        if (mi_hdr_dst->vaddr) {
+            void *to = (void *) (mi_hdr_dst->vaddr + size);
+            memcpy(to, va_src, remainder);
+        } else {
+            for (int i = 0; i < mi_hdr_dst->num; ++i) {
+                void *to = (void *) (mi_hdr_dst->data[i].vaddr + size);
+                memcpy(to, va_src, remainder);
+            }
+        }
+    }
+
+    do {
+        do_dma_poll();
+    } while (transfers_completed < transfer_count)
+
+    SHL_DEBUG_MEMCPY    ("DMA done.\n");
+
+    return size;
+}
+
+size_t shl__memcpy_dma_async(void *mi_src, void *mi_dst, size_t size, uint32_t *done)
 {
     return 0;
 }
-
-size_t shl__memcpy_dma_async(void *mi_src, void *mi_dst, size_t offst, size_t size, uint32_t *done)
-{
-    return 0;
-}
-
-
-
 
 /**
  * \brief initializes the copy infrastructure
@@ -537,15 +700,15 @@ int shl__memcpy_init(struct shl__memcpy_setup *setup)
 {
     // we use memcpy()
     if (setup == NULL) {
-        return 0;
+        return -1;
     }
 
     debug_printf("shl__memcpy_init\n");
 
     switch (setup->device.vendor) {
-        case PCI_VENDOR_INTEL :
-            if (((uint16_t)setup->device.id & 0xFFF0) == PCI_DEVICE_IOAT_IVB0
-                 || ((uint16_t)setup->device.id & 0xFFF0) == PCI_DEVICE_IOAT_HSW0){
+        case PCI_VENDOR_INTEL:
+            if (((uint16_t) setup->device.id & 0xFFF0) == PCI_DEVICE_IOAT_IVB0
+                            || ((uint16_t) setup->device.id & 0xFFF0)  == PCI_DEVICE_IOAT_HSW0) {
                 return ioat_init(setup);
             } else if (setup->device.id == 0x0000) {
                 /* TODO:
@@ -554,9 +717,9 @@ int shl__memcpy_init(struct shl__memcpy_setup *setup)
                 return xeon_phi_init(setup);
             }
             break;
-        case 0x1234 :
+        case 0x1234:
             return client_init(setup);
-        default :
+        default:
             return -1;
             break;
     }
@@ -565,39 +728,22 @@ int shl__memcpy_init(struct shl__memcpy_setup *setup)
     return -1;
 }
 
-
-
-
-void** shl__copy_array(void *src,
-                       size_t size,
-                       bool is_used,
-                       bool is_ro,
+void** shl__copy_array(void *src, size_t size, bool is_used, bool is_ro,
                        const char* array_name)
 {
-
 
     assert(!"NYI");
     return 0;
 }
 
-void shl__copy_back_array(void **src,
-                          void *dest,
-                          size_t size,
-                          bool is_copied,
-                          bool is_ro,
-                          bool is_dynamic,
-                          const char* array_name)
+void shl__copy_back_array(void **src, void *dest, size_t size, bool is_copied,
+                          bool is_ro, bool is_dynamic, const char* array_name)
 {
     assert(!"NYI");
 }
 
-void shl__copy_back_array_single(void *src,
-                                 void *dest,
-                                 size_t size,
-                                 bool is_copied,
-                                 bool is_ro,
-                                 bool is_dynamic,
-                                 const char* array_name)
+void shl__copy_back_array_single(void *src, void *dest, size_t size, bool is_copied,
+                                 bool is_ro, bool is_dynamic, const char* array_name)
 {
     assert(!"NYI");
 }
