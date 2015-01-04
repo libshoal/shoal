@@ -68,6 +68,7 @@ Configuration::Configuration(void) {
 
     // NUMA information
     num_nodes = shl__max_node();
+    num_nodes_active = 0;
     node_mem_avail = new long[num_nodes];
     mem_avail = 0;
     use_dma = 0;
@@ -243,6 +244,9 @@ int shl__lookup_rep_id(int core)
 
 int shl__get_num_replicas(void)
 {
+#ifdef BARRELFISH
+    return get_conf()->num_nodes_active;
+#else
     int trim = get_conf()->numa_trim;
     int num_nodes = shl__max_node()+1;
 
@@ -250,6 +254,7 @@ int shl__get_num_replicas(void)
     assert (num_nodes>=trim);
 
     return num_nodes/trim;
+#endif
 }
 
 void shl__repl_sync(void* src, void **dest, size_t num_dest, size_t size)
@@ -372,24 +377,28 @@ void shl__init(size_t num_threads, bool partitioned_support)
         assert (!"Do we really want to support runs without affinity?");
     }
 
-    for (coreid_t i=0; i<num_threads; i++) {
 #ifdef BARRELFISH
-        // XXX: assume we are using cores 0..n-1
-        replica_lookup[i] = shl__node_from_cpu(i);
+#define CPU_AFF_CONF i
 #else
-        replica_lookup[i] = shl__node_from_cpu(affinity_conf[i]);
+#define CPU_AFF_CONF affinity_conf[i]
 #endif
+
+    int max_node = 0;
+    int node_id = 0;
+    for (coreid_t i=0; i<num_threads; i++) {
+        node_id = shl__node_from_cpu(CPU_AFF_CONF);
+        replica_lookup[i] = node_id;
+        if (max_node < node_id) {
+            max_node = node_id;
+        }
 
         if (conf->use_replication) {
             printf("replication: CPU %03" PRIuCOREID " is on node % 2d\n",
-#ifdef BARRELFISH
-                   i,
-#else
-                   affinity_conf[i],
-#endif
-                   shl__lookup_rep_id(i));
+                   CPU_AFF_CONF, shl__lookup_rep_id(i));
         }
     }
+    get_conf()->num_nodes_active = max_node + 1;
+
     for (int i=0; i<shl__get_num_replicas(); i++) {
         printf("replica %d - coordinator %d\n", i, shl__rep_coordinator(i));
     }

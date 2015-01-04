@@ -39,6 +39,8 @@ class Configuration {
     // Number of NUMA nodes
     int num_nodes;
 
+    int num_nodes_active;
+
     // How much memory is available on the machine
     long mem_avail;
 
