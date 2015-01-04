@@ -511,7 +511,9 @@ class shl_array : public shl_base_array {
     virtual int init_from_value(T value)
     {
         if (array) {
-            memset(array, value, size);
+            for (size_t i = 0; i < size; ++i) {
+                array[i] = value;
+            }
             return 0;
         }
         return -1;
