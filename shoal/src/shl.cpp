@@ -331,7 +331,7 @@ void shl__init(size_t num_threads, bool partitioned_support)
         }
 
     } else {
-        printf("DMA Copying: " ANSI_COLOR_YELLOW "\n Disabled. "ANSI_COLOR_RESET "\n");
+        printf("DMA Copying: " ANSI_COLOR_YELLOW "\n Disabled. " ANSI_COLOR_RESET "\n");
     }
 
 #ifndef BARRELFISH
