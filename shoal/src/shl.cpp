@@ -29,7 +29,7 @@ extern "C" {
 // for debugging purposes
 #define MEMCPY_DMA_DEVICE 0x0e20
 #define MEMCPY_DMA_VENDOR PCI_VENDOR_INTEL
-#define MEMCPY_DMA_COUNT 8
+#define MEMCPY_DMA_COUNT 0
 
 #endif
 
@@ -323,16 +323,15 @@ void shl__init(size_t num_threads, bool partitioned_support)
 
     if (conf->memcpy_setup.count) {
         if (shl__memcpy_init(&conf->memcpy_setup)) {
-            printf(ANSI_COLOR_YELLOW "\n .. WARNING: " ANSI_COLOR_RESET
-                   "Could not initialize the DMA engine\n");
+            printf("DMA Copying: " ANSI_COLOR_RED "\n Disabled (Error in initializing). "
+                            ANSI_COLOR_RESET "\n");
         } else {
-            printf(ANSI_COLOR_GREEN "\n .. DMA Enabled: " ANSI_COLOR_RESET "\n");
+            printf("DMA Copying: " ANSI_COLOR_GREEN "\n Enabled. " ANSI_COLOR_RESET "\n");
             conf->use_dma = 1;
         }
 
     } else {
-        printf(ANSI_COLOR_YELLOW "\n .. WARNING: " ANSI_COLOR_RESET
-                           "NO DMA Device Specified\n");
+        printf("DMA Copying: " ANSI_COLOR_YELLOW "\n Disabled. "ANSI_COLOR_RESET "\n");
     }
 
 #ifndef BARRELFISH
