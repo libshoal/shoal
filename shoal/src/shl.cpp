@@ -425,6 +425,7 @@ void shl__init(size_t num_threads, bool partitioned_support)
     printf("[%c] Partition\n", conf->use_partition ? 'x' : ' ');
     printf("[%c] Hugepage\n", conf->use_hugepage ? 'x' : ' ');
     printf("[%d] NUMA trim\n", conf->numa_trim);
+    printf("[%d] DMA enabled\n", conf->use_dma ? 'x' : ' ');
 }
 
 int shl__num_threads(void)
