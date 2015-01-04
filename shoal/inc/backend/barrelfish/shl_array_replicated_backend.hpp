@@ -55,8 +55,6 @@ void shl_array_replicated<T>::copy_from(T* src)
     }
 
     if (copied == 0) {
-        printf("shl_array_replicated[%s]: falling back to manual copy\n",
-               this->name);
         for (int j = 0; j < num_replicas; j++) {
             for (unsigned int i = 0; i < shl_array<T>::size; i++) {
                 rep_array[j][i] = src[i];
@@ -76,8 +74,12 @@ int shl_array_replicated<T>::copy_from_array(shl_array<T> *src)
     }
 
     if (copied == 0) {
-        printf("shl_array_single_node<T>::copy_from_array copied == 0\n");
-        return shl_array<T>::copy_from_array(src);
+        T *src_array = src->get_array();
+        for (int j = 0; j < num_replicas; j++) {
+            for (unsigned int i = 0; i < shl_array<T>::size; i++) {
+                rep_array[j][i] = src_array[i];
+            }
+        }
     }
 
     return 0;

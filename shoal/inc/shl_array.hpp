@@ -469,9 +469,8 @@ class shl_array : public shl_base_array {
      */
     virtual int copy_from_array(shl_array<T> *src_array)
     {
-
         void *src = src_array->get_array();
-        if (!array || src) {
+        if (!array || !src) {
             printf("shl_array<T>::copy_from_array: Failed no pointers\n");
             return -1;
         }
