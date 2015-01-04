@@ -556,7 +556,7 @@ size_t shl__memcpy_dma_array(void *mi_src, void *mi_dst, size_t size)
         printf("shl__memcpy_dma_array: %lx, %lx, %lu, %lu\n", mi_hdr_dst->stride,
                             mi_hdr_src->stride, mi_hdr_dst->num, mi_hdr_src->num);
 
-        if (mi_hdr_dst->stride && mi_hdr_src->stride) {
+        if (mi_hdr_dst->stride > 0 && mi_hdr_src->stride > 0) {
             return 0;
         }
 
@@ -594,9 +594,11 @@ size_t shl__memcpy_dma_array(void *mi_src, void *mi_dst, size_t size)
 
     if (mi_hdr_dst->stride) {
         /* destination array is partitioned or distributed */
-        assert(mi_hdr_dst->stride > SHL_DMA_COPY_THRESHOLD);
+
 
         if (mi_hdr_src->stride) {
+            assert(mi_hdr_dst->stride == mi_hdr_src->stride);
+
             /*
              * src array is partitioned or distributed and hence both arrays
              * share the same underlying data structure. Simpy copy the frames
@@ -616,6 +618,8 @@ size_t shl__memcpy_dma_array(void *mi_src, void *mi_dst, size_t size)
                                                        &transfers_completed);
             }
         } else {
+            assert(mi_hdr_dst->stride > SHL_DMA_COPY_THRESHOLD);
+
             /* stride should be size/num nodes i.e. a partitioned array */
             assert(mi_hdr_dst->stride >= (size / mi_hdr_dst->num));
 
@@ -635,6 +639,7 @@ size_t shl__memcpy_dma_array(void *mi_src, void *mi_dst, size_t size)
         if (mi_hdr_src->stride) {
             /* src array is partitioned */
             assert(mi_hdr_src->stride >= (size / mi_hdr_src->num));
+            assert(mi_hdr_dst->stride > SHL_DMA_COPY_THRESHOLD);
 
             size_t transfer_size = mi_hdr_src->stride;
             lpaddr_t offset = 0;
