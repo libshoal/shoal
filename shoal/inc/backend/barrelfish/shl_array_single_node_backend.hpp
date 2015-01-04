@@ -46,7 +46,6 @@ int shl_array_single_node<T>::copy_from_array(shl_array<T> *src)
     }
 
     if (copied == 0) {
-        printf("shl_array_single_node<T>::copy_from_array copied == 0\n");
         return shl_array<T>::copy_from_array(src);
     }
 

@@ -469,13 +469,15 @@ class shl_array : public shl_base_array {
      */
     virtual int copy_from_array(shl_array<T> *src_array)
     {
-        printf("shl_array<T>::copy_from_array\n");
+
         void *src = src_array->get_array();
         if (!array || src) {
+            printf("shl_array<T>::copy_from_array: Failed no pointers\n");
             return -1;
         }
 
         if (size != src_array->get_size()) {
+            printf("shl_array<T>::copy_from_array: not matching sizes\n");
             return -1;
         }
 
