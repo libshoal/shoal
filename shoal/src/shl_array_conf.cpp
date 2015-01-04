@@ -83,8 +83,6 @@ static int shl__lua_boolexpr(lua_State* lua, const char* expr, bool def_val)
 
     /* Assign the Lua expression to a Lua global variable. */
 
-    printf("Querying [%s] ..", expr);
-
     sprintf(buf, "evalExpr=%s", expr);
 
     if (!luaL_dostring(lua, buf)) {
@@ -135,7 +133,6 @@ int shl__get_global_conf(const char *table, const char *field, int def)
         printf("error: settings.%s.%s is not a number\n", table, field);
     } else {
         retval = (int)lua_tonumber(L, -1);
-        printf("settings.%s.%s=%u\n", table, field, retval);
     }
 
     /* pop the pusehd values */
