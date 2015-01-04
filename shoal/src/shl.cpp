@@ -49,11 +49,11 @@ Configuration::Configuration(void) {
     static_schedule = shl__get_global_conf("global", "static", SHL_STATIC);
 
     memcpy_setup.count = shl__get_global_conf("dma", "count", MEMCPY_DMA_COUNT);
-    memcpy_setup.device.id = shl__get_global_conf("dma", "count", MEMCPY_DMA_DEVICE);
-    memcpy_setup.device.vendor = shl__get_global_conf("dma", "count", MEMCPY_DMA_VENDOR);
-    memcpy_setup.pci.bus = shl__get_global_conf("dma", "count", PCI_DONT_CARE);
-    memcpy_setup.pci.device = shl__get_global_conf("dma", "count", PCI_DONT_CARE);
-    memcpy_setup.pci.function = shl__get_global_conf("dma", "count", PCI_DONT_CARE);
+    memcpy_setup.device.id = shl__get_global_conf("dma", "device", MEMCPY_DMA_DEVICE);
+    memcpy_setup.device.vendor = shl__get_global_conf("dma", "vendor", MEMCPY_DMA_VENDOR);
+    memcpy_setup.pci.bus = shl__get_global_conf("dma", "pcibus", PCI_DONT_CARE);
+    memcpy_setup.pci.device = shl__get_global_conf("dma", "pcidev", PCI_DONT_CARE);
+    memcpy_setup.pci.function = shl__get_global_conf("dma", "pcifun", PCI_DONT_CARE);
 
 #else
     // Configuration based on environemnt
