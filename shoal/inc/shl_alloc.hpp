@@ -101,6 +101,7 @@ shl_array<T>* shl__malloc_array(size_t size, const char *name,
     // copy-out of source arrays are required
     res->set_dynamic(is_dynamic);
     res->set_used(is_used);
+    res->set_read_only(is_ro);
 
     return res;
 }

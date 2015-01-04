@@ -26,7 +26,6 @@ int shl_array_single_node<T>::alloc(void)
     if (this->is_used) {
 
         // Map everything on single node
-        printf("Forcing single-node allocation .. %p\n", shl_array<T>::array);
         for (unsigned int i = 0; i < shl_array<T>::size; i++) {
             shl_array<T>::array[i] = 0;
         }
@@ -94,7 +93,6 @@ int shl_array_single_node<T>::init_from_value(T value)
             }
         } else {
             memcpy(&val, &value, sizeof(uint64_t));
-
         }
 
         size_t bytes = sizeof(T) * this->size;

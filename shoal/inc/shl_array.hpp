@@ -305,6 +305,16 @@ class shl_array : public shl_base_array {
         shl_array<T>::is_dynamic = dynamic;
     }
 
+    /**
+     * \brief modifies the dynamic state of the array
+     *
+     * \param dynamic   new value for the used flag
+     */
+    void set_read_only(bool ro)
+    {
+        shl_array<T>::read_only = ro;
+    }
+
     /*
      * ---------------------------------------------------------------------------
      * Array Access Methods

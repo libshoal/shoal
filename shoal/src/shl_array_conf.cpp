@@ -102,8 +102,6 @@ static int shl__lua_boolexpr(lua_State* lua, const char* expr, bool def_val)
 
     }
 
-    printf(" .. result %d\n", ok);
-
     return ok;
 
 }
