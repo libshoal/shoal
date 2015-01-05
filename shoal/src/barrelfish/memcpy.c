@@ -553,9 +553,6 @@ size_t shl__memcpy_dma_array(void *mi_src, void *mi_dst, size_t size)
     if (mi_hdr_dst->stride != mi_hdr_src->stride) {
         /* the strides do not match, we have different types of arrays */
 
-        printf("shl__memcpy_dma_array: %lx, %lx, %lu, %lu\n", mi_hdr_dst->stride,
-                            mi_hdr_src->stride, mi_hdr_dst->num, mi_hdr_src->num);
-
         if (mi_hdr_dst->stride > 0 && mi_hdr_src->stride > 0) {
             return 0;
         }
