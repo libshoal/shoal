@@ -292,7 +292,7 @@ class shl_array : public shl_base_array {
      */
     void set_used(bool used)
     {
-        shl_array<T>::is_used = used;
+        is_used = used;
     }
 
     /**
@@ -302,7 +302,7 @@ class shl_array : public shl_base_array {
      */
     void set_dynamic(bool dynamic)
     {
-        shl_array<T>::is_dynamic = dynamic;
+        is_dynamic = dynamic;
     }
 
     /**
@@ -312,7 +312,7 @@ class shl_array : public shl_base_array {
      */
     void set_read_only(bool ro)
     {
-        shl_array<T>::read_only = ro;
+        read_only = ro;
     }
 
     /*
@@ -479,7 +479,7 @@ class shl_array : public shl_base_array {
      */
     virtual int copy_from_array(shl_array<T> *src_array)
     {
-        void *src = src_array->get_array();
+        T *src = src_array->get_array();
         if (!array || !src) {
             printf("shl_array<T>::copy_from_array: Failed no pointers\n");
             return -1;
@@ -490,14 +490,9 @@ class shl_array : public shl_base_array {
             return -1;
         }
 
-        memcpy(array, src, size * sizeof(T));
+        shl__memcpy_openmp(array, src, sizeof(T), size);
 
         return 0;
-    }
-
-    virtual int swap(shl_array<T> *other)
-    {
-        assert(!"Must be implemented by the concrete class");
     }
 
     /**
@@ -511,10 +506,7 @@ class shl_array : public shl_base_array {
     virtual int init_from_value(T value)
     {
         if (array) {
-            for (size_t i = 0; i < size; ++i) {
-                array[i] = value;
-            }
-            return 0;
+            return shl__memset_openmp(array, &value, sizeof(T), size);
         }
         return -1;
     }
@@ -537,12 +529,7 @@ class shl_array : public shl_base_array {
         printf("Copying array %s\n", shl_base_array::name);
 #endif
 
-        printf("shl_array[%s]: copy_from\n", shl_array<T>::name);
-
-        for (unsigned int i = 0; i < size; i++) {
-            /* XXX: does this also work with complex types ?*/
-            array[i] = src[i];
-        }
+        shl__memcpy_openmp(array, src, sizeof(T), size);
     }
 
     /**
@@ -561,8 +548,7 @@ class shl_array : public shl_base_array {
 
         assert(alloc_done);
 
-        printf("shl_array[%s]: Copying back\n", shl_base_array::name);
-        for (unsigned int i = 0; i < size; i++) {
+        shl__memcpy_openmp(dest, array, sizeof(T), size);
 
 #ifdef SHL_DBG_ARRAY
             if( i<5 ) {
@@ -570,8 +556,7 @@ class shl_array : public shl_base_array {
             }
 #endif
 
-            dest[i] = array[i];
-        }
+
     }
 
  protected:
