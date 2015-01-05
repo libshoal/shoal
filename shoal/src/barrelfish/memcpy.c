@@ -639,7 +639,6 @@ size_t shl__memcpy_dma_array(void *mi_src, void *mi_dst, size_t size)
         if (mi_hdr_src->stride) {
             /* src array is partitioned */
             assert(mi_hdr_src->stride >= (size / mi_hdr_src->num));
-            assert(mi_hdr_dst->stride > SHL_DMA_COPY_THRESHOLD);
 
             size_t transfer_size = mi_hdr_src->stride;
             lpaddr_t offset = 0;
