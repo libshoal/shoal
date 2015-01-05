@@ -698,6 +698,126 @@ size_t shl__memcpy_dma_async(void *mi_src, void *mi_dst, size_t size, uint32_t *
     return 0;
 }
 
+static inline int shl__memcpy_openmp1(uint8_t *dst, uint8_t *src, size_t elements)
+{
+#pragma omp parallel for
+    for (size_t i = 0; i < elements; ++i) {
+        dst[i] = src[i];
+    }
+    return elements;
+}
+static inline int shl__memcpy_openmp2(uint16_t *dst, uint16_t *src, size_t elements)
+{
+#pragma omp parallel for
+    for (size_t i = 0; i < elements; ++i) {
+        dst[i] = src[i];
+    }
+    return elements;
+}
+static inline int shl__memcpy_openmp4(uint32_t *dst, uint32_t *src, size_t elements)
+{
+#pragma omp parallel for
+    for (size_t i = 0; i < elements; ++i) {
+        dst[i] = src[i];
+    }
+    return elements;
+}
+static inline int shl__memcpy_openmp8(uint64_t *dst, uint64_t *src, size_t elements)
+{
+#pragma omp parallel for
+    for (size_t i = 0; i < elements; ++i) {
+        dst[i] = src[i];
+    }
+    return elements;
+}
+
+int shl__memcpy_openmp(void *dst, void *src, size_t element_size, size_t elements)
+{
+    switch(element_size) {
+        case 1:
+            return shl__memcpy_openmp1(dst, src, elements);
+        case 2:
+            return shl__memcpy_openmp2(dst, src, elements);
+        case 4:
+            return shl__memcpy_openmp4(dst, src, elements);
+        case 8:
+            return shl__memcpy_openmp8(dst, src, elements);
+        default:
+            memcpy(dst, src, element_size * elements);
+            return 0;
+    }
+}
+
+
+
+static inline int shl__memset_openmp1(uint8_t *dst, uint8_t *value, size_t elements)
+{
+    #pragma omp parallel
+    {
+        uint8_t val = *value;
+        #pragma omp parallel for
+        for (size_t i = 0; i < elements; ++i) {
+            dst[i] = val;
+        }
+    }
+    return elements;
+}
+static inline int shl__memset_openmp2(uint16_t *dst, uint16_t *value, size_t elements)
+{
+    #pragma omp parallel
+    {
+        uint32_t val = *value;
+        #pragma omp parallel for
+        for (size_t i = 0; i < elements; ++i) {
+            dst[i] = val;
+        }
+    }
+    return elements;
+}
+static inline int shl__memset_openmp4(uint32_t *dst, uint32_t *value, size_t elements)
+{
+    #pragma omp parallel
+    {
+        uint32_t val = *value;
+        #pragma omp parallel for
+        for (size_t i = 0; i < elements; ++i) {
+            dst[i] = val;
+        }
+    }
+    return elements;
+}
+static inline int shl__memset_openmp8(uint64_t *dst, uint64_t *value, size_t elements)
+{
+    #pragma omp parallel
+    {
+        uint64_t val = *value;
+        #pragma omp parallel for
+        for (size_t i = 0; i < elements; ++i) {
+            dst[i] = val;
+        }
+    }
+    return elements;
+}
+
+int shl__memset_openmp(void *dst, void *value, size_t element_size, size_t elements)
+{
+    switch(element_size) {
+        case 1:
+            return shl__memset_openmp1(dst, value, elements);
+        case 2:
+            return shl__memset_openmp2(dst, value, elements);
+        case 4:
+            return shl__memset_openmp4(dst, value, elements);
+        case 8:
+            return shl__memset_openmp8(dst, value, elements);
+        default:
+            assert(!"wrong size");
+            return 0;
+    }
+}
+
+
+
 /**
  * \brief initializes the copy infrastructure
  *
