@@ -48,6 +48,8 @@ void shl_array_distributed<T>::copy_from(T* src)
 template<class T>
 int shl_array_distributed<T>::copy_from_array(shl_array<T> *src)
 {
+    size_t copied = 0;
+
     if (get_conf()->use_dma && this->meminfo) {
         size_t elements = (src->get_size() > this->size) ? this->size : src->get_size();
         copied = shl__memcpy_dma_array(src->get_meminfo(), this->meminfo, sizeof(T) * elements);
@@ -56,6 +58,8 @@ int shl_array_distributed<T>::copy_from_array(shl_array<T> *src)
     if (copied == 0) {
         return shl_array<T>::copy_from_array(src);
     }
+
+    return 0;
 }
 
 template<class T>
