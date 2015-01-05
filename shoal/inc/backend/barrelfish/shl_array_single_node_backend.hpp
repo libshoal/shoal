@@ -18,20 +18,11 @@
 /*
  * \brief Array implementing single-node replication
  */
+
 template<class T>
 int shl_array_single_node<T>::alloc(void)
 {
-    assert(shl_array<T>::alloc() == 0);
-
-    if (this->is_used) {
-
-        // Map everything on single node
-        for (unsigned int i = 0; i < shl_array<T>::size; i++) {
-            shl_array<T>::array[i] = 0;
-        }
-    }
-
-    return 0;
+    return shl_array<T>::alloc();
 }
 
 template<class T>
