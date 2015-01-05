@@ -29,19 +29,19 @@
         "shoal/src/shl_multitimer.cpp",
         "shoal/src/shl_array_wr-rep.cpp"
     ],
- --   addCFlags = [
- --     "-fopenmp"
- --   ],
- --   addCxxFlags = [
- --     "-fopenmp"
- --   ],
+    addCFlags = [
+      "-fopenmp"
+    ],
+    addCxxFlags = [
+      "-fopenmp"
+    ],
     addIncludes = [
         "shoal/inc/backend/barrelfish",
         "shoal/inc",
         "contrib/pycrc"
     ],
     addLibraries = libDeps [
- --       "bomp",
+        "bomp",
         "bench",
         "lua",
         "numa",
@@ -72,19 +72,19 @@
         "shoal/src/shl_multitimer.cpp",
         "shoal/src/shl_array_wr-rep.cpp"
     ],
- --   addCFlags = [
- --     "-fopenmp"
- --   ],
- --   addCxxFlags = [
- --     "-fopenmp"
- --   ],
+    addCFlags = [
+      "-fopenmp"
+    ],
+    addCxxFlags = [
+      "-fopenmp"
+    ],
     addIncludes = [
         "shoal/inc/backend/barrelfish",
         "shoal/inc",
         "contrib/pycrc"
     ],
     addLibraries = libDeps [
- --       "bomp",
+        "bomp",
         "bench",
         "lua",
         "numa",
