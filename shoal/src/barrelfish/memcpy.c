@@ -65,9 +65,10 @@ static void ioat_device_init(struct device_mem *bar_info, int nr_mapped_bars)
         return;
     }
 
+    struct ioat_dma_device **ioat_dev = (struct ioat_dma_device**)dma_devices[dma_node_count];
+
     /* initialize the device */
-    err = ioat_dma_device_init(*bar_info->frame_cap,
-        (struct ioat_dma_device**) &dma_devices[dma_node_count][dma_device_count[dma_node_count]]);
+    err = ioat_dma_device_init(*bar_info->frame_cap, &ioat_dev[dma_device_count[dma_node_count]]);
     if (err_is_fail(err)) {
         DEBUG_ERR(err, "Could not initialize the device.\n");
         return;
@@ -129,6 +130,9 @@ static int ioat_init(struct shl__memcpy_setup *setup)
         dma_node_count++;
     }
 
+    for (int i = 0; i < dma_node_count; ++i) {
+        debug_printf("DMA[%u]: %u devices\n", i, dma_device_count[i]);
+    }
 
     SHL_DEBUG_MEMCPY("IOAT DMA device initialized... %u\n", dbg_device_count);
 
@@ -219,7 +223,8 @@ static int do_dma_cpy(uint8_t dma_node, lpaddr_t to, lpaddr_t from, size_t bytes
         dma_device_next[dma_node] = 0;
     }
 
-    struct dma_device *dev = dma_devices[dma_node][dma_device_next[dma_node]];
+    struct dma_device **devices = dma_devices[dma_node];
+    struct dma_device *dev = devices[dma_device_next[dma_node]];
     assert(dev);
 
     struct dma_req_setup setup = {
@@ -263,7 +268,8 @@ static int do_dma_set(uint8_t dma_node, lpaddr_t to, uint64_t value, size_t byte
         dma_device_next[dma_node] = 0;
     }
 
-    struct dma_device *dev = dma_devices[dma_node][dma_device_next[dma_node]];
+    struct dma_device **devices = dma_devices[dma_node];
+    struct dma_device *dev = devices[dma_device_next[dma_node]];
     assert(dev);
 
     struct dma_req_setup setup = {
