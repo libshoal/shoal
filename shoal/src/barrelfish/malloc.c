@@ -101,8 +101,8 @@ void* shl__malloc(size_t size,
     mi->vaddr = malloc_next;
 
     uintptr_t min_base, max_limit;
-    if (node != SHL_NUMA_IGNORE) {
-        node = 0;
+    if (node == SHL_NUMA_IGNORE) {
+        node = numa_current_node();
     }
     uint64_t mb_new, ml_new;
     if (!shl__node_get_range(node, &mb_new, &ml_new)) {
