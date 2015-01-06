@@ -672,13 +672,14 @@ size_t shl__memcpy_dma_array(void *mi_src, void *mi_dst, size_t size)
 
             /* we can simply copy the contents of all the frames */
             for (int i = 0; i < mi_hdr_dst->num; ++i) {
+
                 /*
                  * issue the transfers. Note that the frames are all well aligned
                  * and the stride is already a multiple of the page size
                  */
                 transfer_count += shl__memcpy_dma_phys(i, mi_hdr_dst->data[i].paddr,
                                                        mi_hdr_src->data[i].paddr,
-                                                       mi_hdr_dst->stride,
+                                                       mi_hdr_dst->data[i].size,
                                                        &transfers_completed);
             }
         } else {

@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <barrelfish/barrelfish.h>
 #include <backend/barrelfish/meminfo.h>
-
+#include <numa.h>
 #include "shl_internal.h"
 
 #define SHL_ALLOC_NUMA_PARTITION 0
@@ -243,7 +243,7 @@ static void *shl__malloc_numa(size_t size,
         assert(err_is_ok(err));
 
         mi->data[i].paddr = fi.base;
-        mi->data[i].size = (1UL << fi.bits);
+        mi->data[i].size = bytes_per_node;
         mi->data[i].opts = opts;
 
         err = memobj->f.fill(memobj, i, mi->data[i].frame, 0);
