@@ -102,15 +102,17 @@ void* shl__malloc(size_t size,
 
     uintptr_t min_base, max_limit;
     if (node != SHL_NUMA_IGNORE) {
-        uint64_t mb_new, ml_new;
-        if (!shl__node_get_range(node, &mb_new, &ml_new)) {
-            printf("Setting range to: 0x%016lx-0x%016lx\n", mb_new, ml_new);
-            ram_get_affinity(&min_base, &max_limit);
-            ram_set_affinity(mb_new, ml_new);
-        } else {
-            goto err_alloc;
-        }
+        node = 0;
     }
+    uint64_t mb_new, ml_new;
+    if (!shl__node_get_range(node, &mb_new, &ml_new)) {
+        printf("Setting range to: 0x%016lx-0x%016lx\n", mb_new, ml_new);
+        ram_get_affinity(&min_base, &max_limit);
+        ram_set_affinity(mb_new, ml_new);
+    } else {
+        goto err_alloc;
+    }
+
 
     struct frame_identity fi;
     err = frame_alloc(&mi->data[0].frame, size, &size);
@@ -131,9 +133,9 @@ void* shl__malloc(size_t size,
         goto err_map;
     }
 
-    if (node != SHL_NUMA_IGNORE) {
-        ram_set_affinity(min_base, max_limit);
-    }
+
+    ram_set_affinity(min_base, max_limit);
+
 
     malloc_next += size;
 

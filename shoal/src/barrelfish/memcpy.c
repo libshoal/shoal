@@ -127,7 +127,9 @@ static int ioat_init(struct shl__memcpy_setup *setup)
             }
         }
 
-        dma_node_count++;
+        if (dma_device_count[0]) {
+            dma_node_count++;
+        }
     }
 
     for (int i = 0; i < dma_node_count; ++i) {
@@ -219,9 +221,14 @@ static int do_dma_cpy(uint8_t dma_node, lpaddr_t to, lpaddr_t from, size_t bytes
         return -1;
     }
 
+    if (dma_node_count <= dma_node) {
+        dma_node = 0;
+    }
+
     if (dma_device_next[dma_node] == dma_device_count[dma_node]) {
         dma_device_next[dma_node] = 0;
     }
+
 
     struct dma_device **devices = dma_devices[dma_node];
     struct dma_device *dev = devices[dma_device_next[dma_node]];
@@ -262,6 +269,10 @@ static int do_dma_set(uint8_t dma_node, lpaddr_t to, uint64_t value, size_t byte
 
     if (dma_devices == NULL) {
         return -1;
+    }
+
+    if (dma_node_count <= dma_node) {
+        dma_node = 0;
     }
 
     if (dma_device_next[dma_node] == dma_device_count[dma_node]) {
