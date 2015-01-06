@@ -57,8 +57,8 @@ Configuration::Configuration(void) {
         memcpy_setup.pci = (struct shl__pci_address *)calloc(memcpy_setup.count, sizeof(struct shl__pci_address));
         assert(memcpy_setup.pci);
         for (uint32_t i = 0; i < memcpy_setup.count; ++i) {
-            char buf[5];
-            snprintf(buf, 5, "dma_device_%u", i);
+            char buf[15];
+            snprintf(buf, 15, "dma_device_%u", i);
             memcpy_setup.pci[i].bus = shl__get_global_conf(buf, "bus", PCI_DONT_CARE);
             memcpy_setup.pci[i].device = shl__get_global_conf(buf, "dev", PCI_DONT_CARE);
             memcpy_setup.pci[i].function = shl__get_global_conf(buf, "fun", PCI_DONT_CARE);

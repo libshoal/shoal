@@ -749,7 +749,7 @@ size_t shl__memcpy_dma_async(void *mi_src, void *mi_dst, size_t size, uint32_t *
 
 static inline int shl__memcpy_openmp1(uint8_t *dst, uint8_t *src, size_t elements)
 {
-#pragma omp parallel for
+//#pragma omp parallel for
     for (size_t i = 0; i < elements; ++i) {
         dst[i] = src[i];
     }
@@ -757,7 +757,7 @@ static inline int shl__memcpy_openmp1(uint8_t *dst, uint8_t *src, size_t element
 }
 static inline int shl__memcpy_openmp2(uint16_t *dst, uint16_t *src, size_t elements)
 {
-#pragma omp parallel for
+//#pragma omp parallel for
     for (size_t i = 0; i < elements; ++i) {
         dst[i] = src[i];
     }
@@ -765,7 +765,7 @@ static inline int shl__memcpy_openmp2(uint16_t *dst, uint16_t *src, size_t eleme
 }
 static inline int shl__memcpy_openmp4(uint32_t *dst, uint32_t *src, size_t elements)
 {
-#pragma omp parallel for
+//#pragma omp parallel for
     for (size_t i = 0; i < elements; ++i) {
         dst[i] = src[i];
     }
@@ -773,7 +773,7 @@ static inline int shl__memcpy_openmp4(uint32_t *dst, uint32_t *src, size_t eleme
 }
 static inline int shl__memcpy_openmp8(uint64_t *dst, uint64_t *src, size_t elements)
 {
-#pragma omp parallel for
+//#pragma omp parallel for
     for (size_t i = 0; i < elements; ++i) {
         dst[i] = src[i];
     }
@@ -801,10 +801,10 @@ int shl__memcpy_openmp(void *dst, void *src, size_t element_size, size_t element
 
 static inline int shl__memset_openmp1(uint8_t *dst, uint8_t *value, size_t elements)
 {
-    #pragma omp parallel
+ //   #pragma omp parallel
     {
         uint8_t val = *value;
-        #pragma omp parallel for
+  //      #pragma omp parallel for
         for (size_t i = 0; i < elements; ++i) {
             dst[i] = val;
         }
@@ -813,10 +813,10 @@ static inline int shl__memset_openmp1(uint8_t *dst, uint8_t *value, size_t eleme
 }
 static inline int shl__memset_openmp2(uint16_t *dst, uint16_t *value, size_t elements)
 {
-    #pragma omp parallel
+  //  #pragma omp parallel
     {
         uint32_t val = *value;
-        #pragma omp parallel for
+   //     #pragma omp parallel for
         for (size_t i = 0; i < elements; ++i) {
             dst[i] = val;
         }
@@ -825,10 +825,10 @@ static inline int shl__memset_openmp2(uint16_t *dst, uint16_t *value, size_t ele
 }
 static inline int shl__memset_openmp4(uint32_t *dst, uint32_t *value, size_t elements)
 {
-    #pragma omp parallel
+ //   #pragma omp parallel
     {
         uint32_t val = *value;
-        #pragma omp parallel for
+   //     #pragma omp parallel for
         for (size_t i = 0; i < elements; ++i) {
             dst[i] = val;
         }
@@ -837,10 +837,10 @@ static inline int shl__memset_openmp4(uint32_t *dst, uint32_t *value, size_t ele
 }
 static inline int shl__memset_openmp8(uint64_t *dst, uint64_t *value, size_t elements)
 {
-    #pragma omp parallel
+ //   #pragma omp parallel
     {
         uint64_t val = *value;
-        #pragma omp parallel for
+   //     #pragma omp parallel for
         for (size_t i = 0; i < elements; ++i) {
             dst[i] = val;
         }
