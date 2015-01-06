@@ -677,7 +677,8 @@ size_t shl__memcpy_dma_array(void *mi_src, void *mi_dst, size_t size)
                  * issue the transfers. Note that the frames are all well aligned
                  * and the stride is already a multiple of the page size
                  */
-                transfer_count += shl__memcpy_dma_phys(i, mi_hdr_dst->data[i].paddr,
+                transfer_count += shl__memcpy_dma_phys(DMA_NODE_DONT_CARE,
+                                                       mi_hdr_dst->data[i].paddr,
                                                        mi_hdr_src->data[i].paddr,
                                                        mi_hdr_dst->data[i].size,
                                                        &transfers_completed);
@@ -691,7 +692,8 @@ size_t shl__memcpy_dma_array(void *mi_src, void *mi_dst, size_t size)
             lpaddr_t src = mi_hdr_src->data[0].paddr;
 
             for (int i = 0; i < mi_hdr_dst->num; ++i) {
-                transfer_count += shl__memcpy_dma_phys(i, mi_hdr_dst->data[i].paddr,
+                transfer_count += shl__memcpy_dma_phys(DMA_NODE_DONT_CARE,
+                                                       mi_hdr_dst->data[i].paddr,
                                                        src, mi_hdr_dst->stride,
                                                        &transfers_completed);
                 src += mi_hdr_dst->stride;
