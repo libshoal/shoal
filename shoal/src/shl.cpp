@@ -48,19 +48,26 @@ Configuration::Configuration(void) {
     stride = shl__get_global_conf("global", "stride", SHL_DISTRIBUTION_STRIDE);
     static_schedule = shl__get_global_conf("global", "static", SHL_STATIC);
 
-    memcpy_setup.count = shl__get_global_conf("dma", "count", MEMCPY_DMA_COUNT);
-    if (memcpy_setup.count) {
+    int dma_enable = shl__get_global_conf("dma", "enable", 0);
+    if (dma_enable) {
         memcpy_setup.device.id = shl__get_global_conf("dma", "device", MEMCPY_DMA_DEVICE);
         memcpy_setup.device.vendor = shl__get_global_conf("dma", "vendor", MEMCPY_DMA_VENDOR);
-        memcpy_setup.pci.bus = shl__get_global_conf("dma", "pcibus", PCI_DONT_CARE);
-        memcpy_setup.pci.device = shl__get_global_conf("dma", "pcidev", PCI_DONT_CARE);
-        memcpy_setup.pci.function = shl__get_global_conf("dma", "pcifun", PCI_DONT_CARE);
+        memcpy_setup.count = shl__get_global_conf("dma", "device_count", MEMCPY_DMA_COUNT);
+        assert(memcpy_setup.count);
+        memcpy_setup.pci = (struct shl__pci_address *)calloc(memcpy_setup.count, sizeof(struct shl__pci_address));
+        assert(memcpy_setup.pci);
+        for (uint32_t i = 0; i < memcpy_setup.count; ++i) {
+            char buf[5];
+            snprintf(buf, 5, "dma_device_%u", i);
+            memcpy_setup.pci[i].bus = shl__get_global_conf(buf, "bus", PCI_DONT_CARE);
+            memcpy_setup.pci[i].device = shl__get_global_conf(buf, "dev", PCI_DONT_CARE);
+            memcpy_setup.pci[i].function = shl__get_global_conf(buf, "fun", PCI_DONT_CARE);
+            memcpy_setup.pci[i].count = shl__get_global_conf(buf, "count", 0);
+        }
+
+
     } else {
-        memcpy_setup.device.id = 0;
-        memcpy_setup.device.vendor = 0;
-        memcpy_setup.pci.bus = 0;
-        memcpy_setup.pci.device = 0;
-        memcpy_setup.pci.function = 0;
+        memset(&memcpy_setup, 0, sizeof(struct shl__memcpy_setup));
     }
 
 #else
@@ -226,7 +233,11 @@ void papi_start(void)
 
 int shl__get_rep_id(void)
 {
+#ifdef BARRELFISH
     return shl__lookup_rep_id(omp_get_thread_num());
+#else
+    return shl__lookup_rep_id(omp_get_thread_num());
+#endif
 }
 
 /**

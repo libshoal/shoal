@@ -6,16 +6,19 @@
 
 #include "shl.h"
 
+struct shl__pci_address {
+    uint32_t bus;       ///< the PCI bus the device is located on
+    uint32_t device;    ///< device number
+    uint32_t function;  ///< which function to use
+    uint32_t count;     ///< number of functions this device has
+};
+
 /**
  * \brief setup information structure for initializing the memcpy facility
  */
 struct shl__memcpy_setup {
     uint32_t count;             ///< the number of devices
-    struct {
-        uint32_t bus;       ///< the PCI bus the device is located on
-        uint32_t device;    ///< device number
-        uint32_t function;  ///< which function to use
-    } pci;
+    struct shl__pci_address *pci;
     struct {
         uint32_t vendor;    ///< the vendor of the device
         uint32_t id;        ///< the device id

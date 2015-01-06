@@ -32,18 +32,23 @@
 #include <dma/client/dma_client.h>
 #include <dma/client/dma_client_device.h>
 
-static uint8_t dma_device_count = 0;
-struct dma_device **dma_devices;
-static uint8_t dma_device_next = 0;
+static uint8_t dma_node_count = 0;
+struct dma_device ***dma_devices = NULL;
+static uint8_t *dma_device_next = NULL;
+static uint8_t *dma_device_count = NULL;
+
 
 ///< how much data is transferred per channel
 #define DMA_CHANNEL_STRIDE (1024 * 1024)
-
+#define DMA_NODE_DONT_CARE 0xff
 // DMA devices
 #define PCI_DEVICE_IOAT_HSW0    0x2f20
 #define PCI_DEVICE_IOAT_HSW_CNT 8
 #define PCI_DEVICE_IOAT_IVB0    0x0e20
 #define PCI_DEVICE_IOAT_IVB_CNT 8
+
+
+#define MIN(a,b) ((a) < (b) ? (a) : (b))
 
 /*
  * -------------------------------------------------------------------------------
@@ -61,15 +66,14 @@ static void ioat_device_init(struct device_mem *bar_info, int nr_mapped_bars)
     }
 
     /* initialize the device */
-    err = ioat_dma_device_init(
-                    *bar_info->frame_cap,
-                    (struct ioat_dma_device**) &dma_devices[dma_device_count]);
+    err = ioat_dma_device_init(*bar_info->frame_cap,
+        (struct ioat_dma_device**) &dma_devices[dma_node_count][dma_device_count[dma_node_count]]);
     if (err_is_fail(err)) {
         DEBUG_ERR(err, "Could not initialize the device.\n");
         return;
     }
 
-    dma_device_count++;
+    dma_device_count[dma_node_count]++;
 }
 
 static int ioat_init(struct shl__memcpy_setup *setup)
@@ -85,24 +89,48 @@ static int ioat_init(struct shl__memcpy_setup *setup)
     }
 
     dma_devices = calloc(setup->count, sizeof(void *));
-    if (dma_devices == NULL) {
+    dma_device_count = calloc(2 * setup->count, sizeof(uint8_t));
+    if (dma_devices == NULL || dma_device_count == NULL) {
         return -1;
     }
 
-    for (uint32_t i = 0; i < setup->count; ++i) {
-        err = pci_register_driver_noirq(ioat_device_init, PCI_DONT_CARE,
-                                        PCI_DONT_CARE, PCI_DONT_CARE,
-                                        setup->device.vendor, setup->device.id + i,
-                                        setup->pci.bus, setup->pci.device, i);
+    dma_device_next = dma_device_count + setup->count;
+
+    for (int i = 0; i < setup->count; ++i) {
+        dma_devices[i] = calloc(setup->pci->count, sizeof(void *));
+    }
+
+    uint32_t dbg_device_count = 0;
+
+    for (int node = 0; node < setup->count; ++node) {
+        for (int dev = 0; dev < setup->pci[node].count; ++dev) {
+            err = pci_register_driver_noirq(ioat_device_init, PCI_DONT_CARE,
+                                            PCI_DONT_CARE, PCI_DONT_CARE,
+                                            setup->device.vendor,
+                                            setup->device.id + dev,
+                                            setup->pci[node].bus,
+                                            setup->pci[node].device, dev);
+            if (err_is_fail(err)) {
+                if (dma_device_count[dma_node_count] == 0) {
+                    DEBUG_ERR(err, "initializing the device skipping node");
+                    break;
+                }
+            }
+            dbg_device_count++;
+        }
+
         if (err_is_fail(err)) {
-            if (dma_device_count == 0) {
-                DEBUG_ERR(err, "initializing the device");
+            if (dma_node_count == 0 && dma_device_count[0] == 0) {
+                DEBUG_ERR(err, "initializing the device no nodes");
                 return -3;
             }
         }
+
+        dma_node_count++;
     }
 
-    SHL_DEBUG_MEMCPY("IOAT DMA device initialized... %u\n", dma_device_count);
+
+    SHL_DEBUG_MEMCPY("IOAT DMA device initialized... %u\n", dbg_device_count);
 
     return 0;
 }
@@ -174,7 +202,7 @@ static void memcpy_req_cb(errval_t err, dma_req_id_t id, void *st)
     (*tx_done) = (*tx_done) + 1;
 }
 
-static int do_dma_cpy(lpaddr_t to, lpaddr_t from, size_t bytes, void *counter)
+static int do_dma_cpy(uint8_t dma_node, lpaddr_t to, lpaddr_t from, size_t bytes, void *counter)
 {
     errval_t err;
 
@@ -187,11 +215,11 @@ static int do_dma_cpy(lpaddr_t to, lpaddr_t from, size_t bytes, void *counter)
         return -1;
     }
 
-    if (dma_device_next == dma_device_count) {
-        dma_device_next = 0;
+    if (dma_device_next[dma_node] == dma_device_count[dma_node]) {
+        dma_device_next[dma_node] = 0;
     }
 
-    struct dma_device *dev = dma_devices[dma_device_next];
+    struct dma_device *dev = dma_devices[dma_node][dma_device_next[dma_node]];
     assert(dev);
 
     struct dma_req_setup setup = {
@@ -207,7 +235,7 @@ static int do_dma_cpy(lpaddr_t to, lpaddr_t from, size_t bytes, void *counter)
         }
     };
 
-    dma_device_next++;
+    dma_device_next[dma_node]++;
 
     err = dma_request_memcpy(dev, &setup, NULL);
     if (err_is_fail(err)) {
@@ -217,7 +245,7 @@ static int do_dma_cpy(lpaddr_t to, lpaddr_t from, size_t bytes, void *counter)
     return 0;
 }
 
-static int do_dma_set(lpaddr_t to, uint64_t value, size_t bytes, void *counter)
+static int do_dma_set(uint8_t dma_node, lpaddr_t to, uint64_t value, size_t bytes, void *counter)
 {
     errval_t err;
 
@@ -231,11 +259,11 @@ static int do_dma_set(lpaddr_t to, uint64_t value, size_t bytes, void *counter)
         return -1;
     }
 
-    if (dma_device_next == dma_device_count) {
-        dma_device_next = 0;
+    if (dma_device_next[dma_node] == dma_device_count[dma_node]) {
+        dma_device_next[dma_node] = 0;
     }
 
-    struct dma_device *dev = dma_devices[dma_device_next];
+    struct dma_device *dev = dma_devices[dma_node][dma_device_next[dma_node]];
     assert(dev);
 
     struct dma_req_setup setup = {
@@ -251,7 +279,7 @@ static int do_dma_set(lpaddr_t to, uint64_t value, size_t bytes, void *counter)
         }
     };
 
-    dma_device_next++;
+    dma_device_next[dma_node]++;
 
     err = dma_request_memset(dev, &setup, NULL);
     if (err_is_fail(err)) {
@@ -265,18 +293,21 @@ static int do_dma_poll(void)
 {
     errval_t err;
 
-    for (int i = 0; i < dma_device_count; ++i) {
-        struct dma_device *dev = dma_devices[i];
-        err = dma_device_poll_channels(dev);
-        switch (err_no(err)) {
-            case SYS_ERR_OK:
-            case DMA_ERR_DEVICE_IDLE:
-                continue;
-                break;
-            default:
-                /* no-op */
-                break;
-        }
+    for (int node = 0; node < dma_node_count; ++node) {
+        struct dma_device **devices = dma_devices[node];
+        for (int i = 0; i < dma_device_count[node]; ++i) {
+            struct dma_device *dev = devices[i];
+            err = dma_device_poll_channels(dev);
+            switch (err_no(err)) {
+                case SYS_ERR_OK:
+                case DMA_ERR_DEVICE_IDLE:
+                    continue;
+                    break;
+                default:
+                    /* no-op */
+                    break;
+            }
+    }
     }
 
     return 0;
@@ -305,14 +336,14 @@ size_t shl__memset_dma(void *mi_dst, uint64_t value, size_t size)
         }
 
         while (bytes > (2 * DMA_TRANSFER_STRIDE)) {
-            if (do_dma_set(dst, value, DMA_TRANSFER_STRIDE, &transfer_completed)) {
+            if (do_dma_set(i, dst, value, DMA_TRANSFER_STRIDE, &transfer_completed)) {
                 //return 0;
             }
             transfer_count++;
             dst += DMA_TRANSFER_STRIDE;
             bytes -= DMA_TRANSFER_STRIDE;
         }
-        if (do_dma_set(dst, value, bytes, &transfer_completed)) {
+        if (do_dma_set(i, dst, value, bytes, &transfer_completed)) {
             //return 0;
         }
     }
@@ -345,22 +376,41 @@ size_t shl__memset_dma(void *mi_dst, uint64_t value, size_t size)
     return size;
 }
 
-static size_t shl__memcpy_dma_phys(lpaddr_t dst, lpaddr_t src, size_t bytes,
+static size_t shl__memcpy_dma_phys(uint8_t node, lpaddr_t dst, lpaddr_t src, size_t bytes,
                                    size_t *counter)
 {
     size_t transfer_count = 1;
+    uint8_t target_node = 0;
+    if (node != DMA_NODE_DONT_CARE) {
+        target_node = MIN(node, dma_node_count);
+    }
 
     //debug_printf("shl__memcpy_dma_phys: %lu bytes\n", bytes);
 
-    while (bytes > (2 * DMA_TRANSFER_STRIDE)) {
-        do_dma_cpy(dst, src, DMA_TRANSFER_STRIDE, counter);
-        transfer_count++;
-        dst += DMA_TRANSFER_STRIDE;
-        src += DMA_TRANSFER_STRIDE;
-        bytes -= DMA_TRANSFER_STRIDE;
+    if (node == DMA_NODE_DONT_CARE) {
+        while (bytes > (2 * DMA_TRANSFER_STRIDE)) {\
+            do_dma_cpy(target_node, dst, src, DMA_TRANSFER_STRIDE, counter);
+            transfer_count++;
+            target_node++;
+            dst += DMA_TRANSFER_STRIDE;
+            src += DMA_TRANSFER_STRIDE;
+            bytes -= DMA_TRANSFER_STRIDE;
+            if (target_node == dma_node_count) {
+                target_node = 0;
+            }
+        }
+    } else {
+        while (bytes > (2 * DMA_TRANSFER_STRIDE)) {
+            do_dma_cpy(target_node, dst, src, DMA_TRANSFER_STRIDE, counter);
+            transfer_count++;
+            dst += DMA_TRANSFER_STRIDE;
+            src += DMA_TRANSFER_STRIDE;
+            bytes -= DMA_TRANSFER_STRIDE;
+        }
+
     }
 
-    do_dma_cpy(dst, src, bytes, counter);
+    do_dma_cpy(target_node, dst, src, bytes, counter);
 
     return transfer_count;
 }
@@ -439,7 +489,7 @@ size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t offset, size_t si
 
             lpaddr_t dma_to = mihdr->data[current].paddr + stride_offset;
 
-            do_dma_cpy(dma_to, dma_from, mihdr->stride, counter);
+            do_dma_cpy(current, dma_to, dma_from, mihdr->stride, counter);
             transfer_count++;
 
             dma_from += mihdr->stride;
@@ -455,19 +505,19 @@ size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t offset, size_t si
 
             lpaddr_t dma_to = mihdr->data[current].paddr + stride_offset;
 
-            do_dma_cpy(dma_to, dma_from, (size - copied), counter);
+            do_dma_cpy(current, dma_to, dma_from, (size - copied), counter);
             transfer_count++;
         }
 
     } else {
-        /* also do strided way */
+        /* also do replicated/single way */
         size_t copied = 0;
         lpaddr_t dma_from = paddr + offset;
         size_t iterations = size / DMA_TRANSFER_STRIDE;
         for (size_t k = 0; k < iterations; ++k) {
             for (int i = 0; i < mihdr->num; ++i) {
                 lpaddr_t dma_to = mihdr->data[i].paddr + offset + copied;
-                do_dma_cpy(dma_to, dma_from, DMA_TRANSFER_STRIDE, counter);
+                do_dma_cpy(i, dma_to, dma_from, DMA_TRANSFER_STRIDE, counter);
                 transfer_count++;
             }
             dma_from += DMA_TRANSFER_STRIDE;
@@ -478,7 +528,7 @@ size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t offset, size_t si
             /* copy remainder */
             for (int i = 0; i < mihdr->num; ++i) {
                 lpaddr_t dma_to = mihdr->data[i].paddr + offset + copied;
-                do_dma_cpy(dma_to, dma_from, size - copied, counter);
+                do_dma_cpy(i, dma_to, dma_from, size - copied, counter);
                 transfer_count++;
             }
         }
@@ -609,7 +659,7 @@ size_t shl__memcpy_dma_array(void *mi_src, void *mi_dst, size_t size)
                  * issue the transfers. Note that the frames are all well aligned
                  * and the stride is already a multiple of the page size
                  */
-                transfer_count += shl__memcpy_dma_phys(mi_hdr_dst->data[i].paddr,
+                transfer_count += shl__memcpy_dma_phys(i, mi_hdr_dst->data[i].paddr,
                                                        mi_hdr_src->data[i].paddr,
                                                        mi_hdr_dst->stride,
                                                        &transfers_completed);
@@ -623,7 +673,7 @@ size_t shl__memcpy_dma_array(void *mi_src, void *mi_dst, size_t size)
             lpaddr_t src = mi_hdr_src->data[0].paddr;
 
             for (int i = 0; i < mi_hdr_dst->num; ++i) {
-                transfer_count += shl__memcpy_dma_phys(mi_hdr_dst->data[i].paddr,
+                transfer_count += shl__memcpy_dma_phys(i, mi_hdr_dst->data[i].paddr,
                                                        src, mi_hdr_dst->stride,
                                                        &transfers_completed);
                 src += mi_hdr_dst->stride;
@@ -639,12 +689,10 @@ size_t shl__memcpy_dma_array(void *mi_src, void *mi_dst, size_t size)
 
             size_t transfer_size = mi_hdr_src->stride;
             lpaddr_t offset = 0;
-
             for (int j = 0; j < mi_hdr_src->num; ++j) {
                 lpaddr_t src = mi_hdr_src->data[j].paddr;
-
                 for (int i = 0; i < mi_hdr_dst->num; ++i) {
-                    transfer_count += shl__memcpy_dma_phys(
+                    transfer_count += shl__memcpy_dma_phys(DMA_NODE_DONT_CARE,
                                     mi_hdr_dst->data[i].paddr + offset, src,
                                     transfer_size, &transfers_completed);
                 }
@@ -654,7 +702,8 @@ size_t shl__memcpy_dma_array(void *mi_src, void *mi_dst, size_t size)
             /* source array is single node or replicated */
             for (int i = 0; i < mi_hdr_dst->num; ++i) {
                 for (int j = 0; j < mi_hdr_src->num; ++j) {
-                    transfer_count += shl__memcpy_dma_phys(mi_hdr_dst->data[i].paddr,
+                    transfer_count += shl__memcpy_dma_phys(DMA_NODE_DONT_CARE,
+                                                           mi_hdr_dst->data[i].paddr,
                                                            mi_hdr_src->data[j].paddr,
                                                            size,
                                                            &transfers_completed);
