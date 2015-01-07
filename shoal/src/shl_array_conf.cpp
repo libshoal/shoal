@@ -119,7 +119,7 @@ int shl__get_global_conf(const char *table, const char *field, int def)
     /* load the settings table */
     lua_getglobal(L, table);
     if (!lua_istable(L, -1)) {
-        printf("error: settings is not a table\n");
+        printf("error: settings is not a table %s.%s]\n", table, field);
         return def;
     }
 

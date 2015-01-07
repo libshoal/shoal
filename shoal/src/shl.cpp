@@ -315,14 +315,17 @@ coreid_t *affinity_conf = NULL;
  * \brief Initialize shoal library
  *
  */
-void shl__init(size_t num_threads, bool partitioned_support)
+size_t shl__init(uint32_t num_threads, bool partitioned_support)
 {
-    printf("SHOAL (v %s) initialization .. %zu threads .. ",
+    printf("SHOAL (v %s) initialization .. %u threads .. ",
            VERSION, num_threads);
     assert(num_threads>0);
 
 #ifdef BARRELFISH
-    if (shl__barrelfish_init(num_threads)) {
+    /* initializing Barrelfish specific stuff. This also resets num_threads to
+     * the number of available cores if num_thread > max_cores;
+     */
+    if (shl__barrelfish_init(&num_threads)) {
         printf(ANSI_COLOR_RED "ERROR: Could not initialize Barrelfish backend\n"
                ANSI_COLOR_RESET);
         exit(EXIT_FAILURE);
@@ -347,15 +350,15 @@ void shl__init(size_t num_threads, bool partitioned_support)
 
     if (conf->memcpy_setup.count) {
         if (shl__memcpy_init(&conf->memcpy_setup)) {
-            printf("DMA Copying: " ANSI_COLOR_RED "\n Disabled (Error in initializing). "
+            printf("DMA Copying: " ANSI_COLOR_RED " Disabled (Error in initializing). "
                             ANSI_COLOR_RESET "\n");
         } else {
-            printf("DMA Copying: " ANSI_COLOR_GREEN "\n Enabled. " ANSI_COLOR_RESET "\n");
+            printf("DMA Copying: " ANSI_COLOR_GREEN " Enabled. " ANSI_COLOR_RESET "\n");
             conf->use_dma = 1;
         }
 
     } else {
-        printf("DMA Copying: " ANSI_COLOR_YELLOW "\n Disabled. " ANSI_COLOR_RESET "\n");
+        printf("DMA Copying: " ANSI_COLOR_YELLOW " Disabled. " ANSI_COLOR_RESET "\n");
     }
 
 #ifndef BARRELFISH
@@ -445,6 +448,8 @@ void shl__init(size_t num_threads, bool partitioned_support)
     printf("[%c] Hugepage\n", conf->use_hugepage ? 'x' : ' ');
     printf("[%d] NUMA trim\n", conf->numa_trim);
     printf("[%c] DMA enabled\n", conf->use_dma ? 'x' : ' ');
+
+    return num_threads;
 }
 
 int shl__num_threads(void)

@@ -81,7 +81,7 @@ struct shl_mi_data;
 int shl__node_get_range(int node, uintptr_t *min_base, uintptr_t *max_limit);
 
 
-int shl__barrelfish_init(size_t num_threads);
+int shl__barrelfish_init(uint32_t *num_threads);
 
 int shl__barrelfish_share_frame(struct shl_mi_data *mi);
 
