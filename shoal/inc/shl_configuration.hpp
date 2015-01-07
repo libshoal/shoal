@@ -21,7 +21,7 @@ class Configuration {
 
     ~Configuration(void) {
 
-        //        delete node_mem_avail;
+        free (node_mem_avail);
     }
 
     // Should large pages be used
@@ -45,7 +45,7 @@ class Configuration {
     long mem_avail = 0;
 
     // How much memory is available on each node
-    long* node_mem_avail = 0;
+    long* node_mem_avail = NULL;
 
     // Number of threads
     size_t num_threads = 0;
@@ -62,7 +62,10 @@ class Configuration {
     bool use_dma = false;
 
     /* DMA device related settings */
-    struct shl__memcpy_setup memcpy_setup;
+    struct shl__memcpy_setup memcpy_setup = (struct shl__memcpy_setup) {
+        .count = 0,
+        .pci = NULL,
+    };
 };
 
 Configuration* get_conf(void);

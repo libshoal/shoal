@@ -120,7 +120,12 @@ extern const char *shl__arr_feature_table[];
 typedef uint8_t coreid_t; /// XXX: barrelfish has uint8_t as core id
 #else
 typedef uint32_t coreid_t;
-    #define PRIuCOREID PRIu32
+#ifdef __cplusplus
+#include <cinttypes>
+#else
+#include <inttypes.h>
+#endif
+#define PRIuCOREID PRIu32
 #endif
 
 // --------------------------------------------------
@@ -148,6 +153,7 @@ int shl__check_numa_availability(void);
 int shl__check_num_cores(void);
 void shl__set_strict_mode(int id);
 int shl__get_proc_for_node(int node);
+    // This is NOT the number of nodes, but returns the highest node ID
 int shl__max_node(void);
 long shl__node_size(int node, long *freep);
 int shl__node_from_cpu(int core_id);

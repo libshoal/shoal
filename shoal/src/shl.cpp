@@ -80,13 +80,16 @@ Configuration::Configuration(void) {
 #endif
 
     // NUMA information
-    num_nodes = shl__max_node();
+    num_nodes = shl__max_node() + 1;
+    printf("Number of nodes is: %d\n", num_nodes);
     num_nodes_active = 0;
-    node_mem_avail = new long[num_nodes];
+    node_mem_avail = (long*) malloc(sizeof(long)*num_nodes);
+    assert (node_mem_avail);
+    assert (num_nodes>0 && num_nodes<100); // Sanity check
     mem_avail = 0;
     use_dma = 0;
     for (int i=0; i<=shl__max_node(); i++) {
-        shl__node_size(i, &(node_mem_avail[i]));
+        shl__node_size(i, node_mem_avail+i);
         mem_avail += node_mem_avail[i];
     }
 }
