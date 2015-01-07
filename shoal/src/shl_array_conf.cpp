@@ -34,7 +34,7 @@ static uint8_t lua_settings_loaded = 0;
 #ifdef BARRELFISH
 static const char* SETTINGS_FILE = "shl__settings.lua";
 #else
-static const char* SETTINGS_FILE = "settings.lua";
+static const char* SETTINGS_FILE = "scripts/shl__settings.lua";
 #endif
 
 ///<

@@ -46,7 +46,6 @@ Configuration::Configuration(void) {
     use_partition = shl__get_global_conf("global", "partitioning", SHL_PARTITION);
     numa_trim = shl__get_global_conf("global", "trim", SHL_NUMA_TRIM);
     stride = shl__get_global_conf("global", "stride", SHL_DISTRIBUTION_STRIDE);
-    static_schedule = shl__get_global_conf("global", "static", SHL_STATIC);
 
     int dma_enable = shl__get_global_conf("dma", "enable", 0);
     if (dma_enable) {
@@ -78,7 +77,6 @@ Configuration::Configuration(void) {
     use_partition = shl__get_global_conf("global", "partitioning", get_env_int("SHL_PARTITION", 1));
     numa_trim = shl__get_global_conf("global", "trim", get_env_int("SHL_NUMA_TRIM", 1));
     stride = shl__get_global_conf("global", "stride", PAGESIZE);
-    static_schedule = shl__get_global_conf("global", "static", SHL_STATIC);
 #endif
 
     // NUMA information

@@ -120,6 +120,7 @@ extern const char *shl__arr_feature_table[];
 typedef uint8_t coreid_t; /// XXX: barrelfish has uint8_t as core id
 #else
 typedef uint32_t coreid_t;
+    #define PRIuCOREID PRIu32
 #endif
 
 // --------------------------------------------------

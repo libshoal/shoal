@@ -25,44 +25,41 @@ class Configuration {
     }
 
     // Should large pages be used
-    bool use_hugepage;
+    bool use_hugepage = false;
 
     // Should replication be used
-    bool use_replication;
+    bool use_replication = false;
 
     // Should distribution be used
-    bool use_distribution;
+    bool use_distribution = false;
 
     // Should partitioning be used
-    bool use_partition;
+    bool use_partition = false;
 
     // Number of NUMA nodes
-    int num_nodes;
+    int num_nodes = 0;
 
-    int num_nodes_active;
+    int num_nodes_active = 0;
 
     // How much memory is available on the machine
-    long mem_avail;
+    long mem_avail = 0;
 
     // How much memory is available on each node
-    long* node_mem_avail;
+    long* node_mem_avail = 0;
 
     // Number of threads
-    size_t num_threads;
+    size_t num_threads = 0;
 
     // NUMA trim
     // Use this to instruct the runtime to not replica on all n NUMA nodes,
     // but only n/trim_factor ones.
-    int numa_trim;
+    int numa_trim = 1;
 
     // stride for mapping distributed
-    size_t stride;
-
-    // use a static schedule for OpenMP
-    bool static_schedule;
+    size_t stride = 0;
 
     /* */
-    bool use_dma;
+    bool use_dma = false;
 
     /* DMA device related settings */
     struct shl__memcpy_setup memcpy_setup;
