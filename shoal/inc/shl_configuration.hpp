@@ -61,6 +61,9 @@ class Configuration {
     /* */
     bool use_dma = false;
 
+    /* Enable calculation and output of CRC */
+    bool do_crc = true;
+
     /* DMA device related settings */
     struct shl__memcpy_setup memcpy_setup = (struct shl__memcpy_setup) {
         .count = 0,

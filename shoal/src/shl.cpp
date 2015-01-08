@@ -79,6 +79,9 @@ Configuration::Configuration(void) {
     stride = shl__get_global_conf("global", "stride", PAGESIZE);
 #endif
 
+    do_crc = shl__get_global_conf("global", "crc", 1);
+    printf("do_crc = %d\n", do_crc);
+
     // NUMA information
     num_nodes = shl__max_node() + 1;
     printf("Number of nodes is: %d\n", num_nodes);
@@ -449,6 +452,7 @@ size_t shl__init(uint32_t num_threads, bool partitioned_support)
     printf("[%c] Hugepage\n", conf->use_hugepage ? 'x' : ' ');
     printf("[%d] NUMA trim\n", conf->numa_trim);
     printf("[%c] DMA enabled\n", conf->use_dma ? 'x' : ' ');
+    printf("[%c] CRC check\n", conf->do_crc ? 'x' : ' ');
 
     return num_threads;
 }

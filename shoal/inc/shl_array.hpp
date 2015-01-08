@@ -595,7 +595,11 @@ class shl_array : public shl_base_array {
 
     void print_crc( void )
     {
-        printf("CRC %s 0x%lx\n", shl_base_array::name, get_crc());
+        if (get_conf()->do_crc) {
+            printf("CRC %s 0x%lx\n", shl_base_array::name, get_crc());
+        } else {
+            printf("CRC %s n.a.\n", shl_base_array::name);
+        }
     }
 
  public:
