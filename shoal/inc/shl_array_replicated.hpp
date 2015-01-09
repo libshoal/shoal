@@ -174,7 +174,8 @@ private:
             unsigned long crc_0 = shl__calculate_crc(rep_array[0], shl_array<T>::size, sizeof(T));
             unsigned long crc_i;
 
-            for (int i = 1; i < num_replicas; i++) {
+#ifdef DEBUG
+            for (int i = 0; i < num_replicas; i++) {
                 crc_i = shl__calculate_crc(rep_array[i], shl_array<T>::size, sizeof(T));
                 if (crc_0 != crc_i) {
                     printf(ANSI_COLOR_CYAN "WARNING: " ANSI_COLOR_RESET
@@ -184,6 +185,7 @@ private:
                     printf("replica %d's content is %lx\n", i, (unsigned long) crc_i);
                 }
             }
+#endif
 
             return crc_0;
         }

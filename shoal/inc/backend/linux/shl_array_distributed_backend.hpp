@@ -31,7 +31,7 @@ int shl_array_distributed<T>::copy_from_array(shl_array<T> *src)
 template<class T>
 int shl_array_distributed<T>::init_from_value(T value)
 {
-    return shl_array<T>::init_from_value(src);
+    return shl_array<T>::init_from_value(value);
 }
 
 #endif /* __SHL_ARRAY_DISTRIBUTED_BACKEND */

@@ -34,7 +34,7 @@ static uint8_t lua_settings_loaded = 0;
 #ifdef BARRELFISH
 static const char* SETTINGS_FILE = "shl__settings.lua";
 #else
-static const char* SETTINGS_FILE = "settings.lua";
+static const char* SETTINGS_FILE = "scripts/shl__settings.lua";
 #endif
 
 ///<
@@ -120,6 +120,7 @@ int shl__get_global_conf(const char *table, const char *field, int def)
     lua_getglobal(L, table);
     if (!lua_istable(L, -1)) {
         printf("error: settings is not a table %s.%s]\n", table, field);
+        lua_timer.stop();
         return def;
     }
 
@@ -129,6 +130,7 @@ int shl__get_global_conf(const char *table, const char *field, int def)
 
     if (!lua_isnumber(L, -1)) {
         printf("error: settings.%s.%s is not a number\n", table, field);
+        retval = def;
     } else {
         retval = (int)lua_tonumber(L, -1);
     }

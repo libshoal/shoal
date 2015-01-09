@@ -60,7 +60,7 @@ void shl_array_replicated<T>::copy_from(T* src)
 template<class T>
 int shl_array_replicated<T>::init_from_value(T value)
 {
-    return shl_array<T>::init_from_value(src);
+    return shl_array<T>::init_from_value(value);
 }
 
 template<class T>

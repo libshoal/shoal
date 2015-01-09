@@ -338,6 +338,10 @@ void* shl__malloc(size_t size, int opts, int *pagesize, int node, void **ret_mi)
     // --------------------------------------------------
     if (distribute) {
 
+        // XXX we need to make sure that this loop actually
+        // distributes memory. If we use hugepages, it might be that
+        // all threads work on the SAME page, which leads to
+        // imbalance. See gaud2014large
 #pragma omp parallel for
         for (unsigned int i=0; i<alloc_size;i ++) {
 
@@ -491,15 +495,81 @@ int shl__memcpy_openmp(void *dst, void *src, size_t element_size, size_t element
 {
     switch(element_size) {
         case 1:
-            return shl__memcpy_openmp1(dst, src, elements);
+            return shl__memcpy_openmp1((uint8_t*)dst, (uint8_t*)src, elements);
         case 2:
-            return shl__memcpy_openmp2(dst, src, elements);
+            return shl__memcpy_openmp2((uint16_t*)dst, (uint16_t*)src, elements);
         case 4:
-            return shl__memcpy_openmp4(dst, src, elements);
+            return shl__memcpy_openmp4((uint32_t*)dst, (uint32_t*)src, elements);
         case 8:
-            return shl__memcpy_openmp8(dst, src, elements);
+            return shl__memcpy_openmp8((uint64_t*)dst, (uint64_t*)src, elements);
         default:
             memcpy(dst, src, element_size * elements);
+            return 0;
+    }
+}
+
+static inline int shl__memset_openmp1(uint8_t *dst, uint8_t *value, size_t elements)
+{
+#pragma omp parallel
+    {
+        uint8_t val = *value;
+#pragma omp parallel for
+        for (size_t i = 0; i < elements; ++i) {
+            dst[i] = val;
+        }
+    }
+    return elements;
+}
+static inline int shl__memset_openmp2(uint16_t *dst, uint16_t *value, size_t elements)
+{
+#pragma omp parallel
+    {
+        uint32_t val = *value;
+#pragma omp parallel for
+        for (size_t i = 0; i < elements; ++i) {
+            dst[i] = val;
+        }
+    }
+    return elements;
+}
+static inline int shl__memset_openmp4(uint32_t *dst, uint32_t *value, size_t elements)
+{
+#pragma omp parallel
+    {
+        uint32_t val = *value;
+#pragma omp parallel for
+        for (size_t i = 0; i < elements; ++i) {
+            dst[i] = val;
+        }
+    }
+    return elements;
+}
+static inline int shl__memset_openmp8(uint64_t *dst, uint64_t *value, size_t elements)
+{
+#pragma omp parallel
+    {
+        uint64_t val = *value;
+#pragma omp parallel for
+        for (size_t i = 0; i < elements; ++i) {
+            dst[i] = val;
+        }
+    }
+    return elements;
+}
+
+int shl__memset_openmp(void *dst, void *value, size_t element_size, size_t elements)
+{
+    switch(element_size) {
+        case 1:
+            return shl__memset_openmp1((uint8_t*)dst, (uint8_t*)value, elements);
+        case 2:
+            return shl__memset_openmp2((uint16_t*)dst, (uint16_t*)value, elements);
+        case 4:
+            return shl__memset_openmp4((uint32_t*)dst, (uint32_t*)value, elements);
+        case 8:
+            return shl__memset_openmp8((uint64_t*)dst, (uint64_t*)value, elements);
+        default:
+            assert(!"wrong size");
             return 0;
     }
 }

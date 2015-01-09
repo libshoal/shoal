@@ -64,9 +64,4 @@ void shl_array_single_node<T>::copy_back(T* dest)
 {
     return shl_array<T>::copy_back(dest);
 }
-template<class T>
-int shl_array_single_node<T>::init_from_value(T value)
-{
-    return shl_array<T>::init_from_value(src);
-}
 #endif

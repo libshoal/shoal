@@ -46,7 +46,6 @@ Configuration::Configuration(void) {
     use_partition = shl__get_global_conf("global", "partitioning", SHL_PARTITION);
     numa_trim = shl__get_global_conf("global", "trim", SHL_NUMA_TRIM);
     stride = shl__get_global_conf("global", "stride", SHL_DISTRIBUTION_STRIDE);
-    static_schedule = shl__get_global_conf("global", "static", SHL_STATIC);
 
     int dma_enable = shl__get_global_conf("dma", "enable", 0);
     if (dma_enable) {
@@ -78,17 +77,22 @@ Configuration::Configuration(void) {
     use_partition = shl__get_global_conf("global", "partitioning", get_env_int("SHL_PARTITION", 1));
     numa_trim = shl__get_global_conf("global", "trim", get_env_int("SHL_NUMA_TRIM", 1));
     stride = shl__get_global_conf("global", "stride", PAGESIZE);
-    static_schedule = shl__get_global_conf("global", "static", SHL_STATIC);
 #endif
 
+    do_crc = shl__get_global_conf("global", "crc", 1);
+    printf("do_crc = %d\n", do_crc);
+
     // NUMA information
-    num_nodes = shl__max_node();
+    num_nodes = shl__max_node() + 1;
+    printf("Number of nodes is: %d\n", num_nodes);
     num_nodes_active = 0;
-    node_mem_avail = new long[num_nodes];
+    node_mem_avail = (long*) malloc(sizeof(long)*num_nodes);
+    assert (node_mem_avail);
+    assert (num_nodes>0 && num_nodes<100); // Sanity check
     mem_avail = 0;
     use_dma = 0;
     for (int i=0; i<=shl__max_node(); i++) {
-        shl__node_size(i, &(node_mem_avail[i]));
+        shl__node_size(i, node_mem_avail+i);
         mem_avail += node_mem_avail[i];
     }
 }
@@ -450,6 +454,7 @@ size_t shl__init(uint32_t num_threads, bool partitioned_support)
     printf("[%c] Hugepage\n", conf->use_hugepage ? 'x' : ' ');
     printf("[%d] NUMA trim\n", conf->numa_trim);
     printf("[%c] DMA enabled\n", conf->use_dma ? 'x' : ' ');
+    printf("[%c] CRC check\n", conf->do_crc ? 'x' : ' ');
 
     return num_threads;
 }
