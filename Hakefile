@@ -30,10 +30,18 @@
         "shoal/src/shl_array_wr-rep.cpp"
     ],
     addCFlags = [
-      "-fopenmp"
+      "-fopenmp",
+      "-O3"
     ],
     addCxxFlags = [
-      "-fopenmp"
+      "-fopenmp",
+      "-O3"
+    ],
+    omitCFlags = [
+      "-O2"
+    ],
+    omitCxxFlags = [
+      "-O2"
     ],
     addIncludes = [
         "shoal/inc/backend/barrelfish",
