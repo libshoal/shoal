@@ -86,7 +86,7 @@ double Timer::stop(void)
  */
 void Timer::print(string label)
 {
-    printf("Timer: %s %f", label.c_str(), get());
+    printf("Timer: %s %5.10f\n", label.c_str(), get());
 }
 
 
