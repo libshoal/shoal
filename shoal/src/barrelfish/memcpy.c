@@ -33,6 +33,7 @@
 #include <dma/client/dma_client_device.h>
 
 static uint8_t dma_node_count = 0;
+static uint8_t dma_total_devices = 0;
 struct dma_device ***dma_devices = NULL;
 static uint8_t *dma_device_next = NULL;
 static uint8_t *dma_device_count = NULL;
@@ -40,7 +41,7 @@ static uint8_t *dma_device_count = NULL;
 
 ///< how much data is transferred per channel
 #define DMA_NODE_DONT_CARE 0xff
-#define DMA_TRANSFER_STRIDE (4UL * 1024*1024)
+#define DMA_TRANSFER_STRIDE (1UL * 1024*1024)
 #define DMA_MINTRANSFER 64
 
 // DMA devices
@@ -77,6 +78,7 @@ static void ioat_device_init(struct device_mem *bar_info, int nr_mapped_bars)
     }
 
     dma_device_count[dma_node_count]++;
+    dma_total_devices++;
 }
 
 static int ioat_init(struct shl__memcpy_setup *setup)
@@ -398,23 +400,30 @@ static size_t shl__memcpy_dma_phys(uint8_t node, lpaddr_t dst, lpaddr_t src, siz
         target_node = MIN(node, dma_node_count);
     }
 
+    size_t request_size = ((bytes / dma_total_devices) + DMA_MINTRANSFER - 1)
+                                    & ~(DMA_MINTRANSFER - 1);
+
+    if (request_size < DMA_TRANSFER_STRIDE) {
+        request_size = DMA_TRANSFER_STRIDE;
+    }
+
     //debug_printf("shl__memcpy_dma_phys: %lu bytes\n", bytes);
 
     if (node == DMA_NODE_DONT_CARE) {
-        while (bytes > (2 * DMA_TRANSFER_STRIDE)) {
-            do_dma_cpy(target_node, dst, src, DMA_TRANSFER_STRIDE, counter);
+        while (bytes > (2 * request_size)) {
+            do_dma_cpy(target_node, dst, src, request_size, counter);
             transfer_count++;
             target_node++;
-            dst += DMA_TRANSFER_STRIDE;
-            src += DMA_TRANSFER_STRIDE;
-            bytes -= DMA_TRANSFER_STRIDE;
+            dst += request_size;
+            src += request_size;
+            bytes -= request_size;
             if (target_node == dma_node_count) {
                 target_node = 0;
             }
         }
     } else {
-        while (bytes > (2 * DMA_TRANSFER_STRIDE)) {
-            do_dma_cpy(target_node, dst, src, DMA_TRANSFER_STRIDE, counter);
+        while (bytes > (2 * request_size)) {
+            do_dma_cpy(target_node, dst, src, request_size, counter);
             transfer_count++;
             dst += DMA_TRANSFER_STRIDE;
             src += DMA_TRANSFER_STRIDE;
@@ -442,6 +451,12 @@ size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t size, size_t *tx_
     if (((mihdr->stride != 0) && (mihdr->stride < SHL_DMA_COPY_THRESHOLD)) || size
                     < SHL_DMA_COPY_THRESHOLD) {
         debug_printf("shl__memcpy_dma_from error: not copying in...\n");
+        return 0;
+    }
+
+    /* no DMA for distributed arrays */
+    if (mihdr->stride && mihdr->stride < (size / mihdr->num)) {
+        debug_printf("shl__memcpy_dma_from error: not copying in distributed...\n");
         return 0;
     }
 
@@ -477,47 +492,50 @@ size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t size, size_t *tx_
     size_t transfer_count = 0;
 
     if (mihdr->stride) {
-        /* this means we have a partitioned or distributed array */
+        /* this means we have a partitioned array */
+
         /* stride is a multiple of page size */
         assert(!(mihdr->stride & (PAGESIZE -1)));
 
+        size_t request_size = ((mihdr->stride / dma_total_devices) + DMA_MINTRANSFER - 1)
+                                                                    & ~(DMA_MINTRANSFER - 1);
+
+        if (request_size < DMA_TRANSFER_STRIDE) {
+            request_size = DMA_TRANSFER_STRIDE;
+        }
+
+        /* also do replicated/single way */
+                //size_t copied = 0;
         lpaddr_t dma_from = paddr;
-        int current = 0;
-        size_t copied = 0;
+        //size_t iterations = size / DMA_TRANSFER_STRIDE;
+        uint8_t target_node = 0;
+        /* loop over all destination frames */
+        for (int i = 0; i < mihdr->num; ++i) {
+            size_t bytes = mihdr->stride;
+            lpaddr_t dma_to = mihdr->data[i].paddr;
+            while (bytes > (2 * request_size)) {
+                do_dma_cpy(target_node, dma_to, dma_from, request_size, tx_compl);
+                transfer_count++;
+                target_node++;
+                if (target_node == dma_node_count) {
+                    target_node = 0;
+                }
 
-        size_t iterations = size / mihdr->stride;
-
-        size_t stride_offset = 0;
-
-        for (size_t k = 0; k < iterations; ++k) {
-            if (current == mihdr->num) {
-                current = 0;
-                stride_offset += mihdr->stride;
+                dma_from += request_size;
+                bytes -= request_size;
             }
-
-            lpaddr_t dma_to = mihdr->data[current].paddr + stride_offset;
-
-            do_dma_cpy(current, dma_to, dma_from, mihdr->stride, tx_compl);
             transfer_count++;
-
-            dma_from += mihdr->stride;
-            copied += mihdr->stride;
-            current++;
+            dma_from += bytes;
+            do_dma_cpy(target_node, dma_to, dma_from, bytes, tx_compl);
         }
-
-        if (copied < size) {
-            if (current == mihdr->num) {
-                current = 0;
-                stride_offset += mihdr->stride;
-            }
-
-            lpaddr_t dma_to = mihdr->data[current].paddr + stride_offset;
-
-            do_dma_cpy(current, dma_to, dma_from, (size - copied), tx_compl);
-            transfer_count++;
-        }
-
     } else {
+        size_t request_size = ((size / dma_total_devices) + DMA_MINTRANSFER - 1)
+                                                & ~(DMA_MINTRANSFER - 1);
+
+        if (request_size < DMA_TRANSFER_STRIDE) {
+            request_size = DMA_TRANSFER_STRIDE;
+        }
+
         /* also do replicated/single way */
         //size_t copied = 0;
         lpaddr_t dma_from = paddr;
@@ -525,19 +543,19 @@ size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t size, size_t *tx_
         uint8_t target_node = 0;
         size_t bytes = size;
         size_t offset = 0;
-        while (bytes > (2 * DMA_TRANSFER_STRIDE)) {
+        while (bytes > (2 * request_size)) {
             for (int i = 0; i < mihdr->num; ++i) {
                 lpaddr_t dma_to = mihdr->data[i].paddr + offset;
-                do_dma_cpy(target_node, dma_to, dma_from, DMA_TRANSFER_STRIDE, tx_compl);
+                do_dma_cpy(target_node, dma_to, dma_from, request_size, tx_compl);
                 transfer_count++;
                 target_node++;
                 if (target_node == dma_node_count) {
                     target_node = 0;
                 }
             }
-            offset += DMA_TRANSFER_STRIDE;
-            dma_from += DMA_TRANSFER_STRIDE;
-            bytes -= DMA_TRANSFER_STRIDE;
+            offset += request_size;
+            dma_from += request_size;
+            bytes -= request_size;
         }
         for (int i = 0; i < mihdr->num; ++i) {
             lpaddr_t dma_to = mihdr->data[i].paddr + offset;
