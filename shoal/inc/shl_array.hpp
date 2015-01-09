@@ -91,6 +91,10 @@ class shl_array : public shl_base_array {
 
     int pagesize;
 
+    /* ------------------------- DMA ------------------------- */
+    size_t dma_total_tx; ///< total DMA transactions issued
+    size_t dma_compl_tx; ///< completed dma transactions
+
     /* ------------------------- Flags ------------------------- */
     bool use_hugepage;  ///< flag indicating the use of huge pages
     bool read_only;     ///< flag indicating that this is a read only array
@@ -153,7 +157,8 @@ class shl_array : public shl_base_array {
         meminfo = NULL;
         array = NULL;
         pagesize = 0;
-
+        dma_total_tx = 0;
+        dma_compl_tx = 0;
 #ifdef PROFILE
         num_wr = 0;
         num_rd = 0;
@@ -181,6 +186,8 @@ class shl_array : public shl_base_array {
         meminfo = NULL;
         array = NULL;
         pagesize = 0;
+        dma_total_tx = 0;
+        dma_compl_tx = 0;
 #ifdef PROFILE
         num_wr = 0;
         num_rd = 0;
@@ -211,6 +218,8 @@ class shl_array : public shl_base_array {
         meminfo = mem;
         alloc_done = true;
         pagesize = 0;
+        dma_total_tx = 0;
+        dma_compl_tx = 0;
     }
 
     /**
@@ -477,22 +486,12 @@ class shl_array : public shl_base_array {
      * This is useful for example for "double-buffering" for parallel
      * OpenMP loops.
      */
+    virtual int copy_from_array_async(shl_array<T> *src_array);
     virtual int copy_from_array(shl_array<T> *src_array)
     {
-        T *src = src_array->get_array();
-        if (!array || !src) {
-            printf("shl_array<T>::copy_from_array: Failed no pointers\n");
-            return -1;
-        }
-
-        if (size != src_array->get_size()) {
-            printf("shl_array<T>::copy_from_array: not matching sizes\n");
-            return -1;
-        }
-
-        shl__memcpy_openmp(array, src, sizeof(T), size);
-
-        return 0;
+        int ret = copy_from_array_async(src_array);
+        copy_barrier();
+        return ret;
     }
 
     /**
@@ -503,12 +502,12 @@ class shl_array : public shl_base_array {
      * \returns 0 if the array has been initialized
      *          non-zero if the array is not yet allocated
      */
+    virtual int init_from_value_async(T value);
     virtual int init_from_value(T value)
     {
-        if (array) {
-            return shl__memset_openmp(array, &value, sizeof(T), size);
-        }
-        return -1;
+        int ret = init_from_value_async(value);
+        copy_barrier();
+        return ret;
     }
 
     /**
@@ -519,17 +518,15 @@ class shl_array : public shl_base_array {
      * XXX WARNING: The sice of array src is not checked.
      * Assumption: sizeof(src) == this->size
      */
+    virtual void copy_from_async(T* src);
     virtual void copy_from(T* src)
     {
         if (!do_copy_in()) {
             return;
         }
+        copy_from_async(src);
+        copy_barrier();
 
-#ifdef SHL_DBG_ARRAY
-        printf("Copying array %s\n", shl_base_array::name);
-#endif
-
-        shl__memcpy_openmp(array, src, sizeof(T), size);
     }
 
     /**
@@ -540,23 +537,38 @@ class shl_array : public shl_base_array {
      * XXX WARNING: The sice of array src is not checked. Assumption:
      * sizeof(src) == this->size
      */
+    virtual void copy_back_async(T* dest);
     virtual void copy_back(T* dest)
     {
         if (!do_copy_back()) {
             return;
         }
+        copy_back_async(dest);
+        copy_barrier();
+    }
 
-        assert(alloc_done);
+    /**
+     * \brief blocks until the async copy to this array has been completed
+     */
+    virtual void copy_barrier(void)
+    {
+        if (dma_total_tx == 0) {
+            return;
+        }
 
-        shl__memcpy_openmp(dest, array, sizeof(T), size);
+        volatile size_t *vol_dma_compl = &dma_compl_tx;
 
-#ifdef SHL_DBG_ARRAY
-            if( i<5 ) {
-                std::cout << dest[i] << " " << array[i] << std::endl;
-            }
-#endif
+        //size_t previous = dma_compl_tx;
+        do {
+            shl__memcpy_poll();
+          //  if (previous != dma_compl_tx) {
+          //      printf("polling: %lu / %lu\n", dma_compl_tx, dma_total_tx);
+          //      previous = dma_compl_tx;
+          //  }
+        } while(dma_total_tx != *vol_dma_compl);
 
-
+        dma_total_tx = 0;
+        dma_compl_tx = 0;
     }
 
  protected:
@@ -617,5 +629,13 @@ class shl_array : public shl_base_array {
         set(i, v);
     }
 };
+
+#if defined(BARRELFISH)
+#include <backend/barrelfish/shl_array_backend.hpp>
+#elif defined(__linux)
+#include <backend/linux/shl_array_backend.hpp>
+#else
+#error Unknown Operating System
+#endif
 
 #endif /* __SHL_ARRAY */

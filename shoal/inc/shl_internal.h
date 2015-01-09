@@ -57,16 +57,18 @@ extern "C" {
 int shl__memcpy_init(struct shl__memcpy_setup *setup);
 
 /* copying from and to an array  */
-size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t offst, size_t size);
-size_t shl__memcpy_dma_to(void *mi_src, void *va_dst, size_t offst, size_t size);
-size_t shl__memcpy_dma_array(void *mi_src, void *mi_dst, size_t size);
-size_t shl__memcpy_dma_async(void *mi_src, void *mi_dst, size_t size, uint32_t *done);
-size_t shl__memset_dma(void *mi_dst, uint64_t value, size_t size);
+size_t shl__memcpy_dma_from(void *va_src, void *mi_dst, size_t size, size_t *tx_compl);
+size_t shl__memcpy_dma_to(void *mi_src, void *va_dst, size_t size, size_t *tx_compl);
+size_t shl__memcpy_dma_array(void *mi_src, void *mi_dst, size_t size, size_t *tx_compl);
+size_t shl__memset_dma(void *mi_dst, uint64_t value, size_t size, size_t *tx_compl);
+
 
 /* openmp memcpy/memset */
 int shl__memcpy_openmp(void *dst, void *src, size_t element_size, size_t elements);
 int shl__memset_openmp(void *dst, void *value, size_t element_size, size_t elements);
 
+/* polling */
+int shl__memcpy_poll(void);
 
 
 

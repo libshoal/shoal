@@ -34,39 +34,5 @@ int shl_array_distributed<T>::alloc(void)
 
 }
 
-template<class T>
-void shl_array_distributed<T>::copy_from(T* src)
-{
-    if (!shl_array<T>::do_copy_in())
-        return;
-
-    assert(shl_array<T>::alloc_done);
-
-    shl_array<T>::copy_from(src);
-}
-
-template<class T>
-int shl_array_distributed<T>::copy_from_array(shl_array<T> *src)
-{
-    size_t copied = 0;
-
-    if (get_conf()->use_dma && this->meminfo) {
-        size_t elements = (src->get_size() > this->size) ? this->size : src->get_size();
-        copied = shl__memcpy_dma_array(src->get_meminfo(), this->meminfo, sizeof(T) * elements);
-    }
-
-    if (copied == 0) {
-        return shl_array<T>::copy_from_array(src);
-    }
-
-    return 0;
-}
-
-template<class T>
-int shl_array_distributed<T>::init_from_value(T value)
-{
-    return shl_array<T>::init_from_value(value);
-}
-
 
 #endif /* __SHL_ARRAY_DISTRIBUTED_BACKEND */

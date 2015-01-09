@@ -48,9 +48,7 @@ class shl_array_partitioned : public shl_array<T> {
     }
 
     int alloc(void);
-    void copy_from(T* src);
-    int copy_from_array(shl_array<T> *src);
-    int init_from_value(T value);
+
 
     int get_options(void)
     {

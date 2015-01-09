@@ -38,10 +38,6 @@ class shl_array_single_node : public shl_array<T> {
 
     /* backend specific functions */
     int alloc(void);
-    int copy_from_array(shl_array<T> *src);
-    int init_from_value(T value);
-    void copy_from(T* src);
-    void copy_back(T* dest);
 
     int get_options(void)
     {

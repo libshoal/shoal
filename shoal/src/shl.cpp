@@ -231,6 +231,7 @@ void papi_start(void)
 }
 #endif
 
+#ifndef BARRELFISH
 int shl__get_rep_id(void)
 {
 #ifdef BARRELFISH
@@ -239,6 +240,7 @@ int shl__get_rep_id(void)
     return shl__lookup_rep_id(omp_get_thread_num());
 #endif
 }
+#endif
 
 /**
  * \brief Lookup replica to be used by given _virtual_ core.

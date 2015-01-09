@@ -62,20 +62,20 @@ class shl_array_distributed : public shl_array<T> {
     }
 
     int alloc(void);
-    void copy_from(T* src);
-    int copy_from_array(shl_array<T> *src);
-    int init_from_value(T value);
+
+
+
     /**
      * \brief
      * @return
      */
-    virtual int get_options(void)
+    int get_options(void)
     {
         return shl_array<T>::get_options() | SHL_MALLOC_DISTRIBUTED;
     }
 
  protected:
-    virtual void print_options(void)
+    void print_options(void)
     {
         shl_array<T>::print_options();
         printf("distribution=[X]");

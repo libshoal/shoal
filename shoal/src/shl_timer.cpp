@@ -84,9 +84,9 @@ double Timer::stop(void)
  *
  * \param label associated label with the timer
  */
-void Timer::print(char *label)
+void Timer::print(string label)
 {
-    printf("Timer: %s %f", label, get());
+    printf("Timer: %s %f", label.c_str(), get());
 }
 
 

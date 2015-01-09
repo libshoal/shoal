@@ -86,9 +86,11 @@ private:
      */
     virtual int alloc(void);
 
-    virtual void copy_from(T* src);
-    int copy_from_array(shl_array<T> *src);
-    int init_from_value(T value);
+    int copy_from_array_async(shl_array<T> *src);
+    int init_from_value_async(T value);
+    void copy_from_async(T* src);
+    void copy_back_async(T* dest);
+
     virtual void copy_back(T* a)
     {
         // nop -- currently only replicating read-only data

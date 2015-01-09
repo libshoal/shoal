@@ -38,25 +38,26 @@ int shl_array_replicated<T>::alloc(void)
 }
 
 template<class T>
-void shl_array_replicated<T>::copy_from(T* src)
+void shl_array_replicated<T>::copy_from_async(T* src)
 {
-    if (!shl_array<T>::do_copy_in())
+    if (!this->do_copy_in())
         return;
 
     assert(shl_array<T>::alloc_done);
+    assert(this->dma_total_tx == 0 && this->dma_compl_tx == 0);
 
     printf("shl_array_replicated[%s]: Copying to %d replicas\n",
            shl_base_array::name, num_replicas);
 
-    int copied = 0;
-
     if (get_conf()->use_dma && this->meminfo) {
-        copied = shl__memcpy_dma_from(src, this->meminfo,0, sizeof(T)*this->size);
+        this->dma_total_tx = shl__memcpy_dma_from(src, this->meminfo,
+                                                  sizeof(T)*this->size,
+                                                  &this->dma_compl_tx);
     }
 
-    if (copied == 0) {
+    if (this->dma_total_tx == 0) {
         for (int j = 0; j < num_replicas; j++) {
-            for (unsigned int i = 0; i < shl_array<T>::size; i++) {
+            for (unsigned int i = 0; i < this->size; i++) {
                 rep_array[j][i] = src[i];
             }
         }
@@ -64,19 +65,22 @@ void shl_array_replicated<T>::copy_from(T* src)
 }
 
 template<class T>
-int shl_array_replicated<T>::copy_from_array(shl_array<T> *src)
+int shl_array_replicated<T>::copy_from_array_async(shl_array<T> *src)
 {
-    int copied = 0;
+    assert(this->dma_total_tx == 0 && this->dma_compl_tx == 0);
 
     if (get_conf()->use_dma && this->meminfo) {
         size_t elements = (src->get_size() > this->size) ? this->size : src->get_size();
-        copied = shl__memcpy_dma_array(src->get_meminfo(), this->meminfo, sizeof(T) * elements);
+        this->dma_total_tx = shl__memcpy_dma_array(src->get_meminfo(), this->meminfo,
+                                                   sizeof(T) * elements,
+                                                   &this->dma_compl_tx);
     }
 
-    if (copied == 0) {
+    if (this->dma_total_tx == 0) {
+        this->dma_compl_tx = 0;
         T *src_array = src->get_array();
         for (int j = 0; j < num_replicas; j++) {
-            for (unsigned int i = 0; i < shl_array<T>::size; i++) {
+            for (unsigned int i = 0; i < this->size; i++) {
                 rep_array[j][i] = src_array[i];
             }
         }
@@ -86,11 +90,10 @@ int shl_array_replicated<T>::copy_from_array(shl_array<T> *src)
 }
 
 template<class T>
-int shl_array_replicated<T>::init_from_value(T value)
+int shl_array_replicated<T>::init_from_value_async(T value)
 {
-    int written = 0;
+    assert(this->dma_total_tx == 0 && this->dma_compl_tx == 0);
 
-    assert(this->alloc_done);
     if (get_conf()->use_dma && this->meminfo) {
         uint64_t val = 0;
         if (sizeof(T) < sizeof(uint64_t)) {
@@ -108,14 +111,46 @@ int shl_array_replicated<T>::init_from_value(T value)
         size_t bytes = sizeof(T) * this->size;
         bytes = (bytes + sizeof(uint64_t) - 1)& ~(sizeof(uint64_t)  - 1);
 
-        written = shl__memset_dma(this->meminfo, val, bytes);
+        this->dma_total_tx = shl__memset_dma(this->meminfo, val, bytes,
+                                             &this->dma_compl_tx);
     }
 
-    if (written == 0) {
-        return shl_array<T>::init_from_value(value);
+    if (this->dma_total_tx == 0) {
+        this->dma_compl_tx = 0;
+        for (int j = 0; j < num_replicas; j++) {
+            for (unsigned int i = 0; i < this->size; i++) {
+                rep_array[j][i] = value;
+            }
+        }
     }
 
     return 0;
 }
+
+template<class T>
+void shl_array_replicated<T>::copy_back_async(T* dest)
+{
+    assert(this->dma_total_tx == 0 && this->dma_compl_tx == 0);
+
+    return;
+
+#if 0
+    if (!this->do_copy_back()) {
+        return;
+    }
+
+
+    if (get_conf()->use_dma && meminfo) {
+        this->dma_total_tx = shl__memcpy_dma_to(meminfo, dest, sizeof(T) * size,
+                                                &dma_compl_tx);
+    }
+
+    if (dma_total_tx == 0) {
+        this->dma_compl_tx = 0;
+        shl__memcpy_openmp(dest, rep_array[0], sizeof(T), size);
+    }
+#endif
+}
+
 
 #endif /* __SHL_ARRAY */

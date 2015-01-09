@@ -33,4 +33,5 @@ int shl_array_distributed<T>::init_from_value(T value)
 {
     return shl_array<T>::init_from_value(src);
 }
+
 #endif /* __SHL_ARRAY_DISTRIBUTED_BACKEND */

@@ -45,7 +45,7 @@ int shl__barrelfish_init(uint32_t *num_threads)
 
 
     // for OpenMP coy
-    bomp_bomp_init(threads_max);
+    //bomp_bomp_init(threads_max);
 
 #if SHL_BARRELFISH_XEON_PHI
 
@@ -71,6 +71,11 @@ int shl__barrelfish_init(uint32_t *num_threads)
 
 
     return 0;
+}
+
+int shl__get_rep_id(void)
+{
+    return shl__lookup_rep_id(disp_get_core_id());
 }
 
 
