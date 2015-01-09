@@ -95,6 +95,7 @@ Configuration::Configuration(void) {
         shl__node_size(i, node_mem_avail+i);
         mem_avail += node_mem_avail[i];
     }
+    memset(&memcpy_setup, 0, sizeof(struct shl__memcpy_setup));
 }
 
 static MultiTimer CTimer(1);

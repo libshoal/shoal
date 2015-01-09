@@ -25,50 +25,47 @@ class Configuration {
     }
 
     // Should large pages be used
-    bool use_hugepage = false;
+    bool use_hugepage;
 
     // Should replication be used
-    bool use_replication = false;
+    bool use_replication;
 
     // Should distribution be used
-    bool use_distribution = false;
+    bool use_distribution;
 
     // Should partitioning be used
-    bool use_partition = false;
+    bool use_partition;
 
     // Number of NUMA nodes
-    int num_nodes = 0;
+    int num_nodes;
 
-    int num_nodes_active = 0;
+    int num_nodes_active;
 
     // How much memory is available on the machine
-    long mem_avail = 0;
+    long mem_avail;
 
     // How much memory is available on each node
-    long* node_mem_avail = NULL;
+    long* node_mem_avail;
 
     // Number of threads
-    size_t num_threads = 0;
+    size_t num_threads;
 
     // NUMA trim
     // Use this to instruct the runtime to not replica on all n NUMA nodes,
     // but only n/trim_factor ones.
-    int numa_trim = 1;
+    int numa_trim;
 
     // stride for mapping distributed
-    size_t stride = 0;
+    size_t stride;
 
     /* */
-    bool use_dma = false;
+    bool use_dma;
 
     /* Enable calculation and output of CRC */
-    bool do_crc = true;
+    bool do_crc;
 
     /* DMA device related settings */
-    struct shl__memcpy_setup memcpy_setup = (struct shl__memcpy_setup) {
-        .count = 0,
-        .pci = NULL,
-    };
+    struct shl__memcpy_setup memcpy_setup;
 };
 
 Configuration* get_conf(void);
