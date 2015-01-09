@@ -77,6 +77,7 @@ Configuration::Configuration(void) {
     use_partition = shl__get_global_conf("global", "partitioning", get_env_int("SHL_PARTITION", 1));
     numa_trim = shl__get_global_conf("global", "trim", get_env_int("SHL_NUMA_TRIM", 1));
     stride = shl__get_global_conf("global", "stride", PAGESIZE);
+    memset(&memcpy_setup, 0, sizeof(struct shl__memcpy_setup));
 #endif
 
     do_crc = shl__get_global_conf("global", "crc", 1);
@@ -95,7 +96,7 @@ Configuration::Configuration(void) {
         shl__node_size(i, node_mem_avail+i);
         mem_avail += node_mem_avail[i];
     }
-    memset(&memcpy_setup, 0, sizeof(struct shl__memcpy_setup));
+
 }
 
 static MultiTimer CTimer(1);
