@@ -61,7 +61,7 @@ class Timer {
      *
      * \param label associated label with the timer
      */
-    void print(char *label);
+    void print(string label);
 
  private:
     bool running;            ///< flag indicating that the timer is running
