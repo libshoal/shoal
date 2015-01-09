@@ -37,6 +37,10 @@ extern "C" {
 ///< enables the DMA engine
 #define SHL_DMA_ENABLE 1
 
+///<
+//#define ARRAY_COPY_DMA_RATION ((double)0.1)
+#define ARRAY_COPY_DMA_RATION (0)
+
 ///< Whether or not to use replication (needs: indirection OR copy)
 #define REPLICATION 1
 
@@ -110,8 +114,6 @@ typedef enum shl__arr_feature {
 
 ///< pointer to the array feature table
 extern const char *shl__arr_feature_table[];
-
-
 
 // --------------------------------------------------
 // Typedefs
