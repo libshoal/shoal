@@ -38,10 +38,14 @@ int shl_array_replicated<T>::alloc(void)
 }
 
 template<class T>
-void shl_array_replicated<T>::copy_from_async(T* src)
+int shl_array_replicated<T>::copy_from_async(T* src, size_t elements)
 {
     if (!this->do_copy_in())
-        return;
+        return 0;
+
+    if (!get_conf()->use_dma || !this->meminfo) {
+        return -1;
+    }
 
     assert(shl_array<T>::alloc_done);
     assert(this->dma_total_tx == 0 && this->dma_compl_tx == 0);
@@ -49,90 +53,85 @@ void shl_array_replicated<T>::copy_from_async(T* src)
     printf("shl_array_replicated[%s]: Copying to %d replicas\n",
            shl_base_array::name, num_replicas);
 
-    if (get_conf()->use_dma && this->meminfo) {
-        this->dma_total_tx = shl__memcpy_dma_from(src, this->meminfo,
-                                                  sizeof(T)*this->size,
-                                                  &this->dma_compl_tx);
-    }
+
+    this->dma_total_tx = shl__memcpy_dma_from(src, this->meminfo,
+                                              sizeof(T)*elements,
+                                              &this->dma_compl_tx);
+
 
     if (this->dma_total_tx == 0) {
-        for (int j = 0; j < num_replicas; j++) {
-            for (unsigned int i = 0; i < this->size; i++) {
-                rep_array[j][i] = src[i];
-            }
-        }
+        this->dma_compl_tx = 0;
+        return -1;
     }
+
+    return 0;
 }
 
 template<class T>
-int shl_array_replicated<T>::copy_from_array_async(shl_array<T> *src)
+int shl_array_replicated<T>::copy_from_array_async(shl_array<T> *src, size_t elements)
 {
+    if (!get_conf()->use_dma || !this->meminfo) {
+        return -1;
+    }
+
     assert(this->dma_total_tx == 0 && this->dma_compl_tx == 0);
 
-    if (get_conf()->use_dma && this->meminfo) {
-        size_t elements = (src->get_size() > this->size) ? this->size : src->get_size();
-        this->dma_total_tx = shl__memcpy_dma_array(src->get_meminfo(), this->meminfo,
+    this->dma_total_tx = shl__memcpy_dma_array(src->get_meminfo(), this->meminfo,
                                                    sizeof(T) * elements,
                                                    &this->dma_compl_tx);
-    }
-
     if (this->dma_total_tx == 0) {
         this->dma_compl_tx = 0;
-        T *src_array = src->get_array();
-        for (int j = 0; j < num_replicas; j++) {
-            for (unsigned int i = 0; i < this->size; i++) {
-                rep_array[j][i] = src_array[i];
-            }
-        }
+        return -1;
     }
 
     return 0;
 }
 
 template<class T>
-int shl_array_replicated<T>::init_from_value_async(T value)
+int shl_array_replicated<T>::init_from_value_async(T value, size_t elements)
 {
+    if (!get_conf()->use_dma || !this->meminfo) {
+        return -1;
+    }
+
+    if (sizeof(T) > sizeof(uint64_t)) {
+        return -1;
+    }
+
     assert(this->dma_total_tx == 0 && this->dma_compl_tx == 0);
 
-    if (get_conf()->use_dma && this->meminfo) {
-        uint64_t val = 0;
-        if (sizeof(T) < sizeof(uint64_t)) {
-            uint8_t *ptr = (uint8_t *)&val;
-            uint8_t *psrc = (uint8_t*)&value;
-            for (unsigned i = 0; i < sizeof(uint64_t) / sizeof(T); ++i) {
-                memcpy(ptr, psrc, sizeof(T));
-                ptr += sizeof(T);
-            }
-        } else {
-            memcpy(&val, &value, sizeof(uint64_t));
-
+    uint64_t val = 0;
+    if (sizeof(T) < sizeof(uint64_t)) {
+        uint8_t *ptr = (uint8_t *)&val;
+        uint8_t *psrc = (uint8_t*)&value;
+        for (unsigned i = 0; i < sizeof(uint64_t) / sizeof(T); ++i) {
+            memcpy(ptr, psrc, sizeof(T));
+            ptr += sizeof(T);
         }
-
-        size_t bytes = sizeof(T) * this->size;
-        bytes = (bytes + sizeof(uint64_t) - 1)& ~(sizeof(uint64_t)  - 1);
-
-        this->dma_total_tx = shl__memset_dma(this->meminfo, val, bytes,
-                                             &this->dma_compl_tx);
+    } else {
+        memcpy(&val, &value, sizeof(uint64_t));
     }
+
+    size_t bytes = sizeof(T) * elements;
+    bytes = (bytes + sizeof(uint64_t) - 1)& ~(sizeof(uint64_t)  - 1);
+
+    this->dma_total_tx = shl__memset_dma(this->meminfo, val, bytes,
+                                         &this->dma_compl_tx);
 
     if (this->dma_total_tx == 0) {
         this->dma_compl_tx = 0;
-        for (int j = 0; j < num_replicas; j++) {
-            for (unsigned int i = 0; i < this->size; i++) {
-                rep_array[j][i] = value;
-            }
-        }
+        return -1;
     }
 
     return 0;
 }
 
 template<class T>
-void shl_array_replicated<T>::copy_back_async(T* dest)
+int shl_array_replicated<T>::copy_back_async(T* dest, size_t elements)
 {
     assert(this->dma_total_tx == 0 && this->dma_compl_tx == 0);
 
-    return;
+    return -1;
 
 #if 0
     if (!this->do_copy_back()) {

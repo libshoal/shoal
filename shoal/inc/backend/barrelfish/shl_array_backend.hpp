@@ -13,10 +13,13 @@
 
 
 template<class T>
-int shl_array<T>::copy_from_array_async(shl_array<T> *src_array)
+int shl_array<T>::copy_from_array_async(shl_array<T> *src_array, size_t elements)
 {
     assert(this->dma_total_tx == 0 && this->dma_compl_tx == 0);
 
+    if (!get_conf()->use_dma || !meminfo) {
+        return -1;
+    }
 
     T *src = src_array->get_array();
     if (!array || !src) {
@@ -29,17 +32,13 @@ int shl_array<T>::copy_from_array_async(shl_array<T> *src_array)
         return -1;
     }
 
-    size_t elements = (src_array->get_size() > size) ? size : src_array->get_size();
+    dma_total_tx = shl__memcpy_dma_array(src_array->get_meminfo(), meminfo,
+                                         sizeof(T) * elements,
+                                         &dma_compl_tx);
 
-    if (get_conf()->use_dma && meminfo) {
-        dma_total_tx = shl__memcpy_dma_array(src_array->get_meminfo(), meminfo,
-                                             sizeof(T) * elements,
-                                             &dma_compl_tx);
-    }
-
-    if (this->dma_total_tx == 0) {
-        this->dma_compl_tx = 0;
-        shl__memcpy_openmp(array, src, sizeof(T), elements);
+    if (dma_total_tx == 0) {
+        dma_compl_tx = 0;
+        return -1;
     }
 
     return 0;
@@ -57,32 +56,38 @@ int shl_array<T>::copy_from_array_async(shl_array<T> *src_array)
  *          non-zero if the array is not yet allocated
  */
 template<class T>
-int shl_array<T>::init_from_value_async(T value)
+int shl_array<T>::init_from_value_async(T value, size_t elements)
 {
     assert(dma_total_tx == 0 && dma_compl_tx == 0);
 
-    if (get_conf()->use_dma && meminfo) {
-        uint64_t val = 0;
-        if (sizeof(T) < sizeof(uint64_t)) {
-            uint8_t *ptr = (uint8_t *)&val;
-            uint8_t *psrc = (uint8_t*)&value;
-            for (unsigned i = 0; i < sizeof(uint64_t) / sizeof(T); ++i) {
-                memcpy(ptr, psrc, sizeof(T));
-                ptr += sizeof(T);
-            }
-        } else {
-            memcpy(&val, &value, sizeof(uint64_t));
-        }
-
-        size_t bytes = sizeof(T) * size;
-        bytes = (bytes + sizeof(uint64_t) - 1)& ~(sizeof(uint64_t)  - 1);
-
-        this->dma_total_tx = shl__memset_dma(meminfo, val, bytes, &dma_compl_tx);
+    if (!get_conf()->use_dma || !meminfo) {
+        return -1;
     }
 
-    if (this->dma_total_tx == 0) {
-        this->dma_compl_tx = 0;
-        return shl__memset_openmp(array, &value, sizeof(T), size);
+    if (sizeof(T) > sizeof(uint64_t)) {
+        return -1;
+    }
+
+    uint64_t val = 0;
+    if (sizeof(T) < sizeof(uint64_t)) {
+        uint8_t *ptr = (uint8_t *)&val;
+        uint8_t *psrc = (uint8_t*)&value;
+        for (unsigned i = 0; i < sizeof(uint64_t) / sizeof(T); ++i) {
+            memcpy(ptr, psrc, sizeof(T));
+            ptr += sizeof(T);
+        }
+    } else {
+        memcpy(&val, &value, sizeof(uint64_t));
+    }
+
+    size_t bytes = sizeof(T) * elements;
+    bytes = (bytes + sizeof(uint64_t) - 1)& ~(sizeof(uint64_t)  - 1);
+
+    this->dma_total_tx = shl__memset_dma(meminfo, val, bytes, &dma_compl_tx);
+
+    if (dma_total_tx == 0) {
+        dma_compl_tx = 0;
+        return -1;
     }
 
     return 0;
@@ -100,23 +105,27 @@ int shl_array<T>::init_from_value_async(T value)
  * Assumption: sizeof(src) == this->size
  */
 template<class T>
-void shl_array<T>::copy_from_async(T* src)
+int shl_array<T>::copy_from_async(T* src, size_t elements)
 {
     if (!do_copy_in()) {
-        return;
+        return 0;
+    }
+
+    if (!get_conf()->use_dma || !meminfo) {
+        return -1;
     }
 
     assert(dma_total_tx == 0 && dma_compl_tx == 0);
 
-    if (get_conf()->use_dma && this->meminfo) {
-        dma_total_tx = shl__memcpy_dma_from(src, meminfo, sizeof(T)*size,
-                                            &dma_compl_tx);
-    }
+    dma_total_tx = shl__memcpy_dma_from(src, meminfo, sizeof(T)*elements,
+                                        &dma_compl_tx);
 
     if (dma_total_tx == 0) {
-        this->dma_compl_tx = 0;
-        shl__memcpy_openmp(array, src, sizeof(T), size);
+        dma_compl_tx = 0;
+        return -1;
     }
+
+    return 0;
 }
 
 /*
@@ -132,23 +141,23 @@ void shl_array<T>::copy_from_async(T* src)
  * sizeof(src) == this->size
  */
 template<class T>
-void shl_array<T>::copy_back_async(T* dest)
+int shl_array<T>::copy_back_async(T* dest, size_t elements)
 {
     assert(dma_total_tx == 0 && dma_compl_tx == 0);
 
-    if (!do_copy_back()) {
-        return;
+    if (!get_conf()->use_dma || !meminfo) {
+        return -1;
     }
 
-    if (get_conf()->use_dma && meminfo) {
-        dma_total_tx = shl__memcpy_dma_to(meminfo, dest, sizeof(T) * size,
-                                          &dma_compl_tx);
-    }
+    dma_total_tx = shl__memcpy_dma_to(meminfo, dest, sizeof(T) * elements,
+                                      &dma_compl_tx);
 
     if (dma_total_tx == 0) {
-        this->dma_compl_tx = 0;
-        shl__memcpy_openmp(dest, array, sizeof(T), size);
+        dma_compl_tx = 0;
+        return -1;
     }
+
+    return 0;
 }
 
 #endif /* __SHL_ARRAY_PARTITIONED */

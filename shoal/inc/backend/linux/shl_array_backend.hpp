@@ -13,24 +13,9 @@
 
 
 template<class T>
-int shl_array<T>::copy_from_array_async(shl_array<T> *src_array)
+int shl_array<T>::copy_from_array_async(shl_array<T> *src_array, size_t elements)
 {
-    T *src = src_array->get_array();
-    if (!array || !src) {
-        printf("shl_array<T>::copy_from_array: Failed no pointers\n");
-        return -1;
-    }
-
-    if (size != src_array->get_size()) {
-        printf("shl_array<T>::copy_from_array: not matching sizes\n");
-        return -1;
-    }
-
-    size_t elements = (src_array->get_size() > size) ? size : src_array->get_size();
-
-    shl__memcpy_openmp(array, src, sizeof(T), elements);
-
-    return 0;
+    return -1;
 }
 
 /*
@@ -45,9 +30,9 @@ int shl_array<T>::copy_from_array_async(shl_array<T> *src_array)
  *          non-zero if the array is not yet allocated
  */
 template<class T>
-int shl_array<T>::init_from_value_async(T value)
+int shl_array<T>::init_from_value_async(T value, size_t elements)
 {
-    return shl__memset_openmp(array, &value, sizeof(T), size);
+    return -1;
 }
 
 /*
@@ -62,13 +47,9 @@ int shl_array<T>::init_from_value_async(T value)
  * Assumption: sizeof(src) == this->size
  */
 template<class T>
-void shl_array<T>::copy_from_async(T* src)
+int shl_array<T>::copy_from_async(T* src, size_t elements)
 {
-    if (!do_copy_in()) {
-        return;
-    }
-
-    shl__memcpy_openmp(array, src, sizeof(T), size);
+    return -1;
 }
 
 /*
@@ -84,15 +65,9 @@ void shl_array<T>::copy_from_async(T* src)
  * sizeof(src) == this->size
  */
 template<class T>
-void shl_array<T>::copy_back_async(T* dest)
+int shl_array<T>::copy_back_async(T* dest, size_t elements)
 {
-    assert(dma_total_tx == 0 && dma_compl_tx == 0);
-
-    if (!do_copy_back()) {
-        return;
-    }
-
-    shl__memcpy_openmp(dest, array, sizeof(T), size);
+    return -1;
 }
 
 #endif /* __SHL_ARRAY_PARTITIONED */

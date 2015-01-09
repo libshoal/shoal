@@ -16,57 +16,53 @@
 template<class T>
 int shl_array_replicated<T>::alloc(void)
 {
+
     if (!shl_array<T>::do_alloc())
+        return 0;
+
+    this->print();
+
+    assert(!this->alloc_done);
+
+    rep_array = (T**) shl__malloc_replicated(this->size * sizeof(T),
+                                              &num_replicas, &this->pagesize,
+                                              this->get_options(),
+                                              &this->meminfo);
+    if (this->rep_array == NULL) {
         return -1;
-
-    shl_array<T>::print();
-
-    assert(!shl_array<T>::alloc_done);
-
-    rep_array = (T**) shl__malloc_replicated(shl_array<T>::size * sizeof(T),
-                                             &this->pagesize,
-                                             &num_replicas,
-                                             shl_array<T>::get_options(), NULL);
-
-    assert(num_replicas > 0);
-    for (int i = 0; i < num_replicas; i++) {
-        assert(rep_array[i]!=NULL);
     }
 
-    shl_array<T>::alloc_done = true;
+    this->alloc_done = true;
 
     return 0;
 }
 
 template<class T>
-void shl_array_replicated<T>::copy_from(T* src)
+int shl_array_replicated<T>::copy_from_async(T* src, size_t elements)
 {
-    if (!shl_array<T>::do_copy_in())
-        return;
+    if (!this->do_copy_in())
+        return 0;
 
-    assert(shl_array<T>::alloc_done);
-
-    printf("shl_array_replicated[%s]: Copying to %d replicas\n",
-           shl_base_array::name, num_replicas);
-
-    for (int j = 0; j < num_replicas; j++) {
-        for (unsigned int i = 0; i < shl_array<T>::size; i++) {
-
-            rep_array[j][i] = src[i];
-        }
-    }
+    return -1;
 }
 
 template<class T>
-int shl_array_replicated<T>::init_from_value(T value)
+int shl_array_replicated<T>::copy_from_array_async(shl_array<T> *src, size_t elements)
 {
-    return shl_array<T>::init_from_value(value);
+    return -1;
 }
 
 template<class T>
-int shl_array_replicated<T>::copy_from_array(shl_array<T> *src)
+int shl_array_replicated<T>::init_from_value_async(T value, size_t elements)
 {
-   return shl_array<T>::copy_from_array(src);
+    return -1;
 }
+
+template<class T>
+int shl_array_replicated<T>::copy_back_async(T* dest, size_t elements)
+{
+    return -1;
+}
+
 
 #endif /* __SHL_ARRAY */

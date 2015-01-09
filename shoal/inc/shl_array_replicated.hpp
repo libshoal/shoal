@@ -86,15 +86,119 @@ private:
      */
     virtual int alloc(void);
 
-    int copy_from_array_async(shl_array<T> *src);
-    int init_from_value_async(T value);
-    void copy_from_async(T* src);
-    void copy_back_async(T* dest);
+    /**
+     * \brief Optimized method for copying data between two arrays
+     *
+     * \param src   The source array to copy from
+     *
+     * \returns 0        if the copy was successful
+     *          non-zero if there was an error
+     *
+     *
+     * This is useful for example for "double-buffering" for parallel
+     * OpenMP loops.
+     */
+    int copy_from_array_async(shl_array<T> *src_array, size_t elements);
+    int copy_from_array(shl_array<T> *src_array)
+    {
+        size_t elements = (src_array->get_size() > this->size)
+                                        ? this->size : src_array->get_size();
 
-    virtual void copy_back(T* a)
+        size_t start = (elements * ARRAY_COPY_DMA_RATION);
+
+        if (copy_from_array_async(src_array, start) != 0) {
+            start = 0;
+        }
+
+        T* src = src_array->get_array();
+        #pragma omp parallel for
+        for (size_t i = start; i < elements; ++i) {
+            for (int j = 0; j < num_replicas; j++) {
+                rep_array[j][i] = src[i];
+            }
+        }
+
+        this->copy_barrier();
+
+        return 0;
+    }
+
+    /**
+     * \brief initializes the array to a specific value
+     *
+     * \param value data two fill the array with
+     *
+     * \returns 0 if the array has been initialized
+     *          non-zero if the array is not yet allocated
+     */
+    int init_from_value_async(T value, size_t elements);
+    int init_from_value(T value)
+    {
+        size_t start = (this->size * ARRAY_COPY_DMA_RATION);
+
+        if (init_from_value_async(value, start) != 0) {
+            start = 0;
+        }
+
+        #pragma omp parallel for
+        for (size_t i = start; i < this->size; ++i) {
+            for (int j = 0; j < num_replicas; j++) {
+                rep_array[j][i] = value;
+            }
+        }
+
+        this->copy_barrier();
+        return 0;
+    }
+
+    /**
+     * \brief Copy data from existing array
+     *
+     * \param src pointer to a memory location of data to copy in
+     *
+     * XXX WARNING: The sice of array src is not checked.
+     * Assumption: sizeof(src) == this->size
+     */
+    int copy_from_async(T* src, size_t elements);
+    int copy_from(T* src)
+    {
+        if (!this->do_copy_in()) {
+            return 0;
+        }
+
+        size_t start = (this->size * ARRAY_COPY_DMA_RATION);
+
+        if (copy_from_async(src, start) != 0) {
+            start = 0;
+        }
+
+        #pragma omp parallel for
+        for (size_t i = start; i < this->size; ++i) {
+            for (int j = 0; j < num_replicas; j++) {
+                rep_array[j][i] = src[i];
+            }
+        }
+
+        this->copy_barrier();
+
+        return 0;
+    }
+
+    /**
+     * \brief Copy data to existing array
+     *
+     * \param dest  destination array
+     *
+     * XXX WARNING: The sice of array src is not checked. Assumption:
+     * sizeof(src) == this->size
+     */
+    int copy_back_async(T* dest, size_t elements);
+    int copy_back(T* a)
     {
         // nop -- currently only replicating read-only data
         assert(shl_array<T>::read_only);
+
+        return 0;
     }
 
     /**

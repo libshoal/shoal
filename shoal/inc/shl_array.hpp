@@ -22,8 +22,10 @@
 #include "shl_timer.hpp"
 #include "shl_configuration.hpp"
 
+
 ///< Enables array access range checks
 #define ENABLE_RANGE_CHECK 1
+
 
 #if ENABLE_RANGE_CHECK
 #define RANGE_CHECK(_i) assert(array && _i < size);
@@ -159,6 +161,7 @@ class shl_array : public shl_base_array {
         pagesize = 0;
         dma_total_tx = 0;
         dma_compl_tx = 0;
+        poll_count = 0;
 #ifdef PROFILE
         num_wr = 0;
         num_rd = 0;
@@ -185,6 +188,7 @@ class shl_array : public shl_base_array {
         is_used = false;
         meminfo = NULL;
         array = NULL;
+        poll_count = 0;
         pagesize = 0;
         dma_total_tx = 0;
         dma_compl_tx = 0;
@@ -211,6 +215,7 @@ class shl_array : public shl_base_array {
     {
         size = _size;
         is_dynamic = false;
+        poll_count = 0;
         is_used = false;
         use_hugepage = get_conf()->use_hugepage;
         read_only = false;
@@ -474,6 +479,10 @@ class shl_array : public shl_base_array {
         return 0;
     }
 
+    Timer tPrepare;
+    Timer tCopy;
+    Timer tBarrier;
+
     /**
      * \brief Optimized method for copying data between two arrays
      *
@@ -486,12 +495,37 @@ class shl_array : public shl_base_array {
      * This is useful for example for "double-buffering" for parallel
      * OpenMP loops.
      */
-    virtual int copy_from_array_async(shl_array<T> *src_array);
+    virtual int copy_from_array_async(shl_array<T> *src_array, size_t elements);
     virtual int copy_from_array(shl_array<T> *src_array)
     {
-        int ret = copy_from_array_async(src_array);
+        size_t elements = (src_array->get_size() > size) ? size : src_array->get_size();
+
+        size_t start = (elements * ARRAY_COPY_DMA_RATION);
+
+        tPrepare.start();
+
+        if ((start > 0) && copy_from_array_async(src_array, start) != 0) {
+            start = 0;
+        }
+
+        tPrepare.stop();
+
+
+        tCopy.start();
+        if (start < elements) {
+            T* src = src_array->get_array();
+            #pragma omp parallel for
+            for (size_t i = start; i < elements; ++i) {
+                array[i] = src[i];
+            }
+        }
+        tCopy.stop();
+
+        tBarrier.start();
         copy_barrier();
-        return ret;
+        tBarrier.stop();
+
+        return 0;
     }
 
     /**
@@ -502,12 +536,22 @@ class shl_array : public shl_base_array {
      * \returns 0 if the array has been initialized
      *          non-zero if the array is not yet allocated
      */
-    virtual int init_from_value_async(T value);
+    virtual int init_from_value_async(T value, size_t elements);
     virtual int init_from_value(T value)
     {
-        int ret = init_from_value_async(value);
+        size_t start = (size * ARRAY_COPY_DMA_RATION);
+
+        if ((start > 0) && init_from_value_async(value, start) != 0) {
+            start = 0;
+        }
+
+        #pragma omp parallel for
+        for (size_t i = start; i < size; ++i) {
+            array[i] = value;
+        }
+
         copy_barrier();
-        return ret;
+        return 0;
     }
 
     /**
@@ -518,15 +562,27 @@ class shl_array : public shl_base_array {
      * XXX WARNING: The sice of array src is not checked.
      * Assumption: sizeof(src) == this->size
      */
-    virtual void copy_from_async(T* src);
-    virtual void copy_from(T* src)
+    virtual int copy_from_async(T* src, size_t elements);
+    virtual int copy_from(T* src)
     {
         if (!do_copy_in()) {
-            return;
+            return 0;
         }
-        copy_from_async(src);
+
+        size_t start = (size * ARRAY_COPY_DMA_RATION);
+
+        if ((start > 0) && copy_from_async(src, start) != 0) {
+            start = 0;
+        }
+
+        #pragma omp parallel for
+        for (size_t i = start; i < size; ++i) {
+            array[i] = src[i];
+        }
+
         copy_barrier();
 
+        return 0;
     }
 
     /**
@@ -537,15 +593,29 @@ class shl_array : public shl_base_array {
      * XXX WARNING: The sice of array src is not checked. Assumption:
      * sizeof(src) == this->size
      */
-    virtual void copy_back_async(T* dest);
-    virtual void copy_back(T* dest)
+    virtual int copy_back_async(T* dest, size_t elements);
+    virtual int copy_back(T* dest)
     {
         if (!do_copy_back()) {
-            return;
+            return 0;
         }
-        copy_back_async(dest);
+
+        size_t start = (size * ARRAY_COPY_DMA_RATION);
+
+        if ((start > 0) && copy_back_async(dest, size) != 0) {
+            start = 0;
+        }
+
+        #pragma omp parallel for
+        for (size_t i = start; i < size; ++i) {
+            dest[i] = array[i];
+        }
         copy_barrier();
+
+        return 0;
     }
+
+    size_t poll_count;
 
     /**
      * \brief blocks until the async copy to this array has been completed
@@ -558,13 +628,9 @@ class shl_array : public shl_base_array {
 
         volatile size_t *vol_dma_compl = &dma_compl_tx;
 
-        //size_t previous = dma_compl_tx;
         do {
+            poll_count++;
             shl__memcpy_poll();
-          //  if (previous != dma_compl_tx) {
-          //      printf("polling: %lu / %lu\n", dma_compl_tx, dma_total_tx);
-          //      previous = dma_compl_tx;
-          //  }
         } while(dma_total_tx != *vol_dma_compl);
 
         dma_total_tx = 0;
