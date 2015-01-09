@@ -18,8 +18,15 @@
         "/lib/shoal/inc",
         "/lib/shoal/inc/backend/barrelfish"
     ],
+    addCFlags = [
+      "-fopenmp"
+    ],
+    addCxxFlags = [
+      "-fopenmp"
+    ],
     addLibraries = libDeps [
-        "shl"
+        "shl",
+        "bomp"
     ],
     architectures = [
       "x86_64",
