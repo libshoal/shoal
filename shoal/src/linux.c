@@ -306,6 +306,7 @@ void* shl__malloc(size_t size, int opts, int *pagesize, int node, void **ret_mi)
     bool use_hugepage = opts & SHL_MALLOC_HUGEPAGE;
     bool distribute = opts & SHL_MALLOC_DISTRIBUTED;
     bool partition = opts & SHL_MALLOC_PARTITION;
+    bool single_node = opts & SHL_MALLOC_SINGLE_NODE;
 
     // Round up to next multiple of page size (in case of hugepage)
     *pagesize = use_hugepage ? PAGESIZE_HUGE : PAGESIZE;
@@ -356,6 +357,19 @@ void* shl__malloc(size_t size, int opts, int *pagesize, int node, void **ret_mi)
 
         // SK: cannot establish mapping here, as size of array
         // elements is not known
+    }
+
+
+    // Single node
+    // --------------------------------------------------
+    if (single_node) {
+
+        // Write every page once to trigger mapping of pages.
+        // Do this from a single thread.
+        for (unsigned int i=0; i<alloc_size;i ++) {
+
+            ((char *) res)[i] = 0;
+        }
     }
 
     printf("\n");

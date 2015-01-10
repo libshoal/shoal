@@ -261,6 +261,7 @@ extern int replica_lookup[];
 #define SHL_MALLOC_DISTRIBUTED (0x1<<1)
 #define SHL_MALLOC_PARTITION   (0x1<<2)
 #define SHL_MALLOC_REPLICATED  (0x1<<3)
+#define SHL_MALLOC_SINGLE_NODE (0x1<<4)
 
 #define SHL_NUMA_IGNORE (-1)
 
