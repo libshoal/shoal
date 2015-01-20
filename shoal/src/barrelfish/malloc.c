@@ -15,8 +15,6 @@
 
 #define SHL_ALLOC_NUMA_PARTITION 0
 
-static lvaddr_t malloc_next = MALLOC_VADDR_START;
-
 void *shl__alloc_struct_shared(size_t shared_size)
 {
 #if !SHL_BARRELFISH_USE_SHARED
@@ -36,7 +34,6 @@ void *shl__alloc_struct_shared(size_t shared_size)
 
     ram_set_affinity(min_base, max_limit);
 
-    mi.vaddr = malloc_next;
 
     err = vspace_map_one_frame_fixed(mi.vaddr, shared_size, mi.frame, NULL, NULL);
     if (err_is_fail(err)) {
@@ -45,8 +42,6 @@ void *shl__alloc_struct_shared(size_t shared_size)
     }
 
     mi.opts = 0;
-
-    malloc_next += shared_size;
 
     shl__barrelfish_share_frame(&mi);
 
@@ -77,7 +72,7 @@ void* shl__malloc(size_t size,
                   int node,
                   void **ret_mi)
 {
-    errval_t err;
+    errval_t err = SYS_ERR_OK;
 
     struct shl_mi_header *mi = calloc(1, sizeof(*mi) + sizeof(struct shl_mi_data));
     if (mi == NULL) {
@@ -93,51 +88,63 @@ void* shl__malloc(size_t size,
     // round up to multiple of page size
     size = (size + pg_size - 1) & ~(pg_size - 1);
 
-    malloc_next = (malloc_next + pg_size - 1) & ~(pg_size - 1);
-
     mi->data[0].opts = opts;
-    mi->data[0].vaddr = malloc_next;
     mi->data[0].size = size;
-    mi->vaddr = malloc_next;
 
     uintptr_t min_base, max_limit;
+
+    nodeid_t node_from, node_to;
     if (node == SHL_NUMA_IGNORE) {
-        node = numa_current_node();
-    }
-    uint64_t mb_new, ml_new;
-    if (!shl__node_get_range(node, &mb_new, &ml_new)) {
-        printf("Setting range to: 0x%016lx-0x%016lx\n", mb_new, ml_new);
-        ram_get_affinity(&min_base, &max_limit);
-        ram_set_affinity(mb_new, ml_new);
+        node_from = 0;
+        node_to = numa_num_configured_nodes();
     } else {
-        goto err_alloc;
+        node_from = node;
+        node_to = node;
     }
 
+    for (nodeid_t target_node = node_from; target_node < node_to; ++target_node) {
+        uint64_t mb_new, ml_new;
+        if (!shl__node_get_range(target_node, &mb_new, &ml_new)) {
+            printf("Setting range to: 0x%016lx-0x%016lx\n", mb_new, ml_new);
+            ram_get_affinity(&min_base, &max_limit);
+            ram_set_affinity(mb_new, ml_new);
+        } else {
+            goto err_alloc;
+        }
 
-    struct frame_identity fi;
-    err = frame_alloc(&mi->data[0].frame, size, &size);
+        err = frame_alloc(&mi->data[0].frame, size, &size);
+        if (err_is_ok(err)) {
+            break;
+        }
+    }
+
     if (err_is_fail(err)) {
         goto err_alloc;
     }
 
+    struct frame_identity fi;
     err = invoke_frame_identify(mi->data[0].frame,  &fi);
-    assert(err_is_ok(err));
+    if (err_is_fail(err)) {
+        goto err_alloc;
+    }
 
     mi->data[0].paddr = fi.base;
 
     SHL_DEBUG_ALLOC("mapping array @[0x%016"PRIx64"-0x%016"PRIx64"]\n",
                             mi->data[0].vaddr, mi->data[0].vaddr+size);
 
-    err = vspace_map_one_frame_fixed(mi->vaddr, size, mi->data[0].frame, NULL, NULL);
+
+    err = vspace_map_one_frame((void **)&mi->vaddr, size, mi->data[0].frame, NULL, NULL);
     if (err_is_fail(err)) {
-        goto err_map;
+        USER_PANIC_ERR(err, "failed to vspace_map_one_frame\n");
     }
 
+    printf("mapping array @[0x%016"PRIx64"-0x%016"PRIx64"]\n",
+                                mi->data[0].vaddr, mi->data[0].vaddr+size);
+
+    mi->data[0].vaddr = mi->vaddr;
 
     ram_set_affinity(min_base, max_limit);
-
-
-    malloc_next += size;
 
     if (pagesize) {
         *pagesize = (uint32_t)pg_size;
@@ -149,7 +156,7 @@ void* shl__malloc(size_t size,
 
     return (void *) mi->data[0].vaddr;
 
-    err_map: cap_destroy(mi->data[0].frame);
+    //err_map: cap_destroy(mi->data[0].frame);
 
     err_alloc: free(mi);
 
@@ -215,9 +222,6 @@ static void *shl__malloc_numa(size_t size,
     bytes_per_node = (bytes_per_node + pg_size - 1) & ~(pg_size - 1);
 
     /* round up malloc next vaddr */
-    malloc_next = (malloc_next + pg_size - 1) & ~(pg_size - 1);
-
-    mi->vaddr = malloc_next;
 
     /* the new memory ranges */
     uint64_t mb_new, ml_new;
@@ -252,25 +256,24 @@ static void *shl__malloc_numa(size_t size,
         }
     }
 
-    SHL_DEBUG_ALLOC("mapping array @[0x%016"PRIx64"-0x%016"PRIx64"]\n",
-                    malloc_next, malloc_next+size);
 
-    err = vregion_map_fixed(&mi->vregion, get_current_vspace(), memobj, 0, size,
-                            malloc_next, VREGION_FLAGS_READ_WRITE);
+    //err = vregion_map_fixed(&mi->vregion, get_current_vspace(), memobj, 0, size,
+    //                        malloc_next, VREGION_FLAGS_READ_WRITE);
+    err = vregion_map(&mi->vregion, get_current_vspace(), memobj, 0, size, VREGION_FLAGS_READ_WRITE);
     if (err_is_fail(err)) {
         USER_PANIC_ERR(err, "mapping memobj");
     }
 
+    mi->vaddr = vregion_get_base_addr(&mi->vregion);
+
     err = memobj->f.pagefault(memobj, &mi->vregion, 0, 0);
     if (err_is_fail(err)) {
-        vspace_unmap((void *)malloc_next);
+        vspace_unmap((void *)mi->vaddr);
         USER_PANIC_ERR(err, "pagefaulting");
     }
 
     /* restore the original memory ranges */
     ram_set_affinity(min_base, max_limit);
-
-    malloc_next += size;
 
     if (pagesize) {
         *pagesize = (uint32_t)pg_size;
@@ -343,9 +346,6 @@ void** shl__malloc_replicated(size_t size,
     // round up to multiple of page size
     size = (size + pg_size - 1) & ~(pg_size - 1);
 
-    // round up malloc next to next multiple of page size
-    malloc_next = (malloc_next + pg_size - 1) & ~(pg_size - 1);
-
     // store old memory affinity ranges
     uintptr_t min_base, max_limit;
     uintptr_t mb_new, ml_new;
@@ -357,12 +357,12 @@ void** shl__malloc_replicated(size_t size,
             USER_PANIC("getting range for memory affinity\n");
         }
 
-        SHL_DEBUG_ALLOC("Setting range to: 0x%016"PRIx64"-0x%016"PRIx64"\n",
+        printf("Setting range to: 0x%016"PRIx64"-0x%016"PRIx64"\n",
                         mb_new, ml_new);
         ram_set_affinity(mb_new, ml_new);
 
         struct frame_identity fi;
-        err = frame_alloc(&mi->data[i].frame, size, &size);
+        err = frame_alloc(&mi->data[i].frame, size, NULL);
         if (err_is_fail(err)) {
             USER_PANIC_ERR(err, "failed to allocate memory\n");
         }
@@ -373,19 +373,17 @@ void** shl__malloc_replicated(size_t size,
         mi->data[i].size = size;
         mi->data[i].opts = options;
         mi->data[i].paddr = fi.base;
-        mi->data[i].vaddr = malloc_next;
 
-        SHL_DEBUG_ALLOC("mapping replicate @[0x%016"PRIx64"-0x%016"PRIx64"]\n",
-                        mi->data[i].vaddr, mi->data[i].vaddr+size);
-
-        err = vspace_map_one_frame_fixed(mi->data[i].vaddr, mi->data[i].size, mi->data[i].frame, NULL, NULL);
+        err = vspace_map_one_frame((void **)&mi->data[i].vaddr, mi->data[i].size, mi->data[i].frame, NULL, NULL);
         if (err_is_fail(err)) {
             USER_PANIC_ERR(err, "failed to vspace_map_one_frame_fixed\n");
         }
 
-        arrays[i] = (void *)mi->data[i].vaddr;
+        SHL_DEBUG_ALLOC("mapping replicate @[0x%016"PRIx64"-0x%016"PRIx64"]\n",
+                                mi->data[i].vaddr, mi->data[i].vaddr+size);
 
-        malloc_next += size;
+
+        arrays[i] = (void *)mi->data[i].vaddr;
     }
 
     // restore ram affinity
