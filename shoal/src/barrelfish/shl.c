@@ -75,7 +75,8 @@ int shl__barrelfish_init(uint32_t *num_threads)
 
 int shl__get_rep_id(void)
 {
-    return shl__lookup_rep_id(disp_get_core_id());
+    return numa_current_node();
+    //return shl__lookup_rep_id(disp_get_core_id());
 }
 
 
