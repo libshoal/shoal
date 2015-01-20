@@ -241,7 +241,9 @@ void shl__lua_init(void)
  */
 void shl__lua_deinit(void)
 {
-    lua_close(L);
-    L = NULL;
-    printf("LUA done (time spent: %f)\n", lua_timer.get());
+    if (L != 0) {
+        lua_close(L);
+        L = NULL;
+        printf("LUA done (time spent: %f)\n", lua_timer.get());
+    }
 }
