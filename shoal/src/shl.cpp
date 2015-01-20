@@ -103,6 +103,7 @@ static MultiTimer CTimer(1);
 
 void shl__start(void)
 {
+    CTimer.reset(1);
     CTimer.start();
 #ifdef PAPI
     papi_start();
@@ -266,7 +267,11 @@ int shl__lookup_rep_id(int core)
 
     int repid = replica_lookup[core];
 
-    return repid/get_conf()->numa_trim;
+    if (get_conf()->numa_trim) {
+        return repid/get_conf()->numa_trim;
+    }
+
+    return repid;
 }
 
 int shl__get_num_replicas(void)
