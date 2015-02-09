@@ -17,6 +17,8 @@ OBJS += $(SHLPREFIX)/src/misc.o \
 HEADERS=$(wildcard inc/*.hpp) \
 	$(wildcard inc/*.h)
 
+# Add external dependencies
+# --------------------------------------------------
 EXTERNAL_OBJS += $(BASE)contrib/pycrc/crc.o
 
 DEPS = $(OBJS)
@@ -54,15 +56,45 @@ LIBS += -L$(BASE)contrib/numactl-2.0.9 -lnuma \
 
 CXXFLAGS += -DVERSION=\"$(GIT_VERSION)\" -fPIC -fpic -pthread -fopenmp -std=c++11 -Wall
 
+all: shoal
+
 # LUA
-LUA := $(BASE)/contrib/lua-5.2.3/src/
+# --------------------------------------------------
+LUA_BASE := $(BASE)/contrib/lua-5.2.3/
+LUA := $(LUA_BASE)src/
 INC += -I$(LUA)
 LIBS += -lm -ldl
 OBJS += $(LUA)/liblua.a
 
+EXTERNAL_OBJS += $(LUA)/liblua.a
+
+$(LUA)/liblua.a:
+	make -C $(LUA_BASE) linux
+
+# PAPI
+# --------------------------------------------------
+PAPI_BASE := $(BASE)/contrib/papi-5.3.0/
+PAPI := $(PAPI_BASE)/src/
+
+$(PAPI)/libpapi.so:
+	cd $(PAPI); ./configure
+	make -C $(PAPI)
+
+EXTERNAL_OBJS += $(PAPI)/libpapi.so
+
+# NUMA
+# --------------------------------------------------
+
+NUMA_BASE := $(BASE)/contrib/numactl-2.0.9/
+
+$(NUMA_BASE)/libnuma.so:
+	make -C $(NUMA_BASE)
+
+EXTERNAL_OBJS += $(NUMA_BASE)/libnuma.so
+
 # Build shared library
 # --------------------------------------------------
-all: $(DEPS) $(EXTERNAL_OBJS)
+shoal: $(DEPS) $(EXTERNAL_OBJS)
 	$(CXX) -shared $(OBJS) $(EXTERNAL_OBJS) $(LIBS) -o $(TARGET)
 
 # Compile object files
