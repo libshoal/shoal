@@ -344,7 +344,7 @@ void* shl__malloc(size_t size, int opts, int *pagesize, int node, void **ret_mi)
         // all threads work on the SAME page, which leads to
         // imbalance. See gaud2014large
 #pragma omp parallel for
-        for (unsigned int i=0; i<alloc_size;i ++) {
+        for (uint64_t i=0; i<alloc_size;i ++) {
 
             ((char *) res)[i] = 0;
         }
@@ -366,7 +366,7 @@ void* shl__malloc(size_t size, int opts, int *pagesize, int node, void **ret_mi)
 
         // Write every page once to trigger mapping of pages.
         // Do this from a single thread.
-        for (unsigned int i=0; i<alloc_size;i ++) {
+        for (uint64_t i=0; i<alloc_size;i ++) {
 
             ((char *) res)[i] = 0;
         }
