@@ -33,21 +33,4 @@ int shl_array_partitioned<T>::alloc(void)
     return 0;
 }
 
-template<class T>
-void shl_array_partitioned<T>::copy_from(T* src)
-{
-    shl_array<T>::copy_from(src);
-}
-
-template<class T>
-int shl_array_partitioned<T>::copy_from_array(shl_array<T> *src)
-{
-    return shl_array<T>::copy_from_array(src);
-}
-template<class T>
-int shl_array_partitioned<T>::init_from_value(T value)
-{
-    return shl_array<T>::init_from_value(value);
-}
-
 #endif /* __SHL_ARRAY_PARTITIONED */
