@@ -70,4 +70,24 @@ int shl_array<T>::copy_back_async(T* dest, size_t elements)
     return -1;
 }
 
+template<class T>
+int shl_array<T>::copy_from_array(shl_array<T> *src_array)
+{
+    size_t max = (src_array->get_size() > shl_array<T>::size) ?
+        shl_array<T>::size : src_array->get_size();
+
+#pragma omp parallel for
+    for (size_t i=0; i<max; i++) {
+        shl_array<T>::array[i] = src_array->array[i];
+    }
+
+    return 0;
+}
+
+template<class T>
+void shl_array<T>::copy_barrier(void)
+{
+}
+
+
 #endif /* __SHL_ARRAY_PARTITIONED */
