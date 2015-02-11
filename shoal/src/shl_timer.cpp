@@ -92,6 +92,9 @@ void Timer::print(string label)
 
 #if !SHL_TIMER_USE_MULTI
 
+/**
+ * XXX Reto: what is the meaning of "steps" here? It does not seem to be used?
+ */
 void shl__start_timer(int steps)
 {
     shl__default_timer.start();

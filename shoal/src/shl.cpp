@@ -233,7 +233,7 @@ void papi_start(void)
         shl__papi_running = 1;
     } else {
 
-        printf(ANSI_COLOR_BLUE "PAPI: " ANSI_COLOR_RESET "no events given, will not activate");
+        printf(ANSI_COLOR_BLUE "PAPI: " ANSI_COLOR_RESET "no events given, will not activate\n");
     }
 }
 #endif
@@ -327,6 +327,9 @@ coreid_t *affinity_conf = NULL;
 /**
  * \brief Initialize shoal library
  *
+ * \param num_threads Number of threads to use
+ * \param partitioned_support Indicate whether partitioning is supported.
+ *     With OpenMP, this currently requires a static schedule.
  */
 size_t shl__init(uint32_t num_threads, bool partitioned_support)
 {

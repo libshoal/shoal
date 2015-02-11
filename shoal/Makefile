@@ -33,10 +33,7 @@ ifndef BUILDTYPE
 endif
 
 CXXFLAGS += -Wall
-
-ifdef SHL_PAPI
-	CXXFLAGS += -DPAPI
-endif
+CXXFLAGS += -DPAPI
 
 ifeq ($(BUILDTYPE),debug)
 	CXXFLAGS +=-ggdb -O0 -pg -DSHL_DEBUG
@@ -95,7 +92,7 @@ EXTERNAL_OBJS += $(NUMA_BASE)/libnuma.so
 # Build shared library
 # --------------------------------------------------
 shoal: $(DEPS) $(EXTERNAL_OBJS)
-	$(CXX) -shared $(OBJS) $(EXTERNAL_OBJS) $(LIBS) -o $(TARGET)
+	$(CXX) -shared -fPIC $(OBJS) $(EXTERNAL_OBJS) $(LIBS) -o $(TARGET)
 
 # Compile object files
 # --------------------------------------------------
