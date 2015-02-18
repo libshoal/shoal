@@ -63,8 +63,6 @@ class shl_array_distributed : public shl_array<T> {
 
     int alloc(void);
 
-
-
     /**
      * \brief
      * @return

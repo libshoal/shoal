@@ -160,4 +160,56 @@ int shl_array<T>::copy_back_async(T* dest, size_t elements)
     return 0;
 }
 
+template<class T>
+int shl_array<T>::copy_from_array(shl_array<T> *src_array)
+{
+    size_t elements = (src_array->get_size() > size) ? size : src_array->get_size();
+
+    size_t start = (elements * ARRAY_COPY_DMA_RATION);
+
+    tPrepare.start();
+
+    if ((start > 0) && copy_from_array_async(src_array, start) != 0) {
+        start = 0;
+    }
+
+    tPrepare.stop();
+
+
+    tCopy.start();
+    if (start < elements) {
+        T* src = src_array->get_array();
+#pragma omp parallel for
+        for (size_t i = start; i < elements; ++i) {
+            array[i] = src[i];
+        }
+    }
+    tCopy.stop();
+
+    tBarrier.start();
+    copy_barrier();
+    tBarrier.stop();
+
+    return 0;
+}
+
+template<class T>
+void shl_array<T>::copy_barrier(void)
+{
+    if (dma_total_tx == 0) {
+        return;
+    }
+
+    volatile size_t *vol_dma_compl = &dma_compl_tx;
+
+    do {
+        poll_count++;
+        shl__memcpy_poll();
+    } while(dma_total_tx != *vol_dma_compl);
+
+    dma_total_tx = 0;
+    dma_compl_tx = 0;
+}
+
+
 #endif /* __SHL_ARRAY_PARTITIONED */

@@ -48,8 +48,7 @@
  *       be propagated.
  *
  * - huge pages: Use if working set < available RAM && alloc_real/size < 1.xx
- *   ? how to determine available RAM?
- *   ? how to know the size of the working set?
+ *   (this is not yet implemented, currently, we always use huge pages)
  *
  */
 template<class T>
@@ -64,7 +63,6 @@ shl_array<T>* shl__malloc_array(size_t size, const char *name,
     // Policy for memory allocation
     // --------------------------------------------------
     // 1) Always partition indexed arrays
-   // 1) Always partition indexed arrays
    bool partition = is_indexed && get_conf()->use_partition &&
        shl__get_array_conf(name, SHL_ARR_FEAT_PARTITIONING, true);
 

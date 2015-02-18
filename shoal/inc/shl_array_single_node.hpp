@@ -36,13 +36,12 @@ class shl_array_single_node : public shl_array<T> {
     {
     }
 
-    /* backend specific functions */
-    int alloc(void);
-
     int get_options(void)
     {
-        return shl_array<T>::get_options() | SHL_MALLOC_PARTITION;
+        return shl_array<T>::get_options() | SHL_MALLOC_SINGLE_NODE;
     }
+
+    int alloc(void);
 
  protected:
     void print_options(void)
