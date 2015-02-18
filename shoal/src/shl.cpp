@@ -291,18 +291,14 @@ int shl__get_num_replicas(void)
 
 void shl__repl_sync(void* src, void **dest, size_t num_dest, size_t size)
 {
-#ifdef BARRELFISH
-    assert(!"NYI");
-#else
     for (size_t i=0; i<num_dest; i++) {
-
+#ifndef BARRELFISH
         #pragma omp parallel for
+#endif
         for (size_t j=0; j<size; j++) {
-
             ((char*) dest[i])[j] = ((char*) src)[j];
         }
     }
-#endif
 }
 
 void shl__init_thread(int thread_id)

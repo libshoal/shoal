@@ -80,7 +80,7 @@ shl_array<T>* shl__malloc_array(size_t size, const char *name,
        shl__get_array_conf(name, SHL_ARR_FEAT_DISTRIBUTION, true);
 
     shl_array<T> *res = NULL;
-    if (get_conf()->num_nodes_active == 1) {
+    if (get_conf()->num_nodes_active == 0) {
         SHL_DEBUG_ALLOC("allocating single_node array '%s'\n", name);
         res = new shl_array_single_node<T>(size, name);
     } else if (partition) {

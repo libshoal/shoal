@@ -166,7 +166,7 @@ private:
             return 0;
         }
 
-        size_t start = (this->size * ARRAY_COPY_DMA_RATION);
+        size_t start = (this->size / 100 * this->dma_fraction);
 
         if (copy_from_async(src, start) != 0) {
             start = 0;

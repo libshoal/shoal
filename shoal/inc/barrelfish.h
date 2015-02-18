@@ -41,7 +41,7 @@
 /**
  * force using a static schedule for OpenMP loops
  */
-#define SHL_STATIC 1
+#define SHL_STATIC 0
 
 /**
  * allocation stride for distributed arrays
@@ -51,7 +51,7 @@
 /**
  * threshold for DMA copies
  */
-#define SHL_DMA_COPY_THRESHOLD (64 * 1024)
+#define SHL_DMA_COPY_THRESHOLD (1024 * 1024)
 
 /**
  * map the DMA device directly into our own address space

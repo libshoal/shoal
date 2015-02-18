@@ -133,6 +133,8 @@ class shl_array : public shl_base_array {
     void *meminfo;      ///< backend specific memory information
     T* array;           ///< pointer to the backing memory region
 
+    uint8_t dma_fraction;
+
 #ifdef PROFILE
     int64_t num_wr;     ///< number of writes to that array
     int64_t num_rd;///< number of reads from this array
@@ -162,6 +164,7 @@ class shl_array : public shl_base_array {
         dma_total_tx = 0;
         dma_compl_tx = 0;
         poll_count = 0;
+        dma_fraction = 0;
 #ifdef PROFILE
         num_wr = 0;
         num_rd = 0;
@@ -192,6 +195,7 @@ class shl_array : public shl_base_array {
         pagesize = 0;
         dma_total_tx = 0;
         dma_compl_tx = 0;
+        dma_fraction = 0;
 #ifdef PROFILE
         num_wr = 0;
         num_rd = 0;
@@ -225,6 +229,7 @@ class shl_array : public shl_base_array {
         pagesize = 0;
         dma_total_tx = 0;
         dma_compl_tx = 0;
+        dma_fraction = 0;
     }
 
     /**
@@ -350,6 +355,13 @@ class shl_array : public shl_base_array {
         RANGE_CHECK(i);
 
         return array[i];
+    }
+
+    void set_dma_fraction(uint8_t fraction) {
+        if (fraction > 100) {
+            fraction = 100;
+        }
+        dma_fraction = fraction;
     }
 
     /**
@@ -569,7 +581,7 @@ class shl_array : public shl_base_array {
             return 0;
         }
 
-        size_t start = (size * ARRAY_COPY_DMA_RATION);
+        size_t start = (size / 100 * dma_fraction);
 
         if ((start > 0) && copy_from_async(src, start) != 0) {
             start = 0;
