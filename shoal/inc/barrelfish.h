@@ -16,7 +16,7 @@
 /**
  * use hugepages for memory allocation
  */
-#define SHL_HUGEPAGE 0
+#define SHL_HUGEPAGE 1
 
 /**
  * use replicated arrays

@@ -52,6 +52,27 @@ void *shl__alloc_struct_shared(size_t shared_size)
 #endif
 }
 
+static size_t determine_pagesize(size_t size, vregion_flags_t *flags) {
+    assert(flags);
+
+    if (vspace_has_hugepage_support()) {
+        *flags = *flags | VREGION_FLAGS_HUGE;
+        return HUGE_PAGE_SIZE;
+    } else {
+        *flags = *flags | VREGION_FLAGS_LARGE;
+        return LARGE_PAGE_SIZE;
+    }
+
+    if (size > HUGE_PAGE_SIZE && vspace_has_hugepage_support()) {
+        *flags = *flags | VREGION_FLAGS_HUGE;
+        return HUGE_PAGE_SIZE;
+    } else if (size > LARGE_PAGE_SIZE) {
+        *flags = *flags | VREGION_FLAGS_LARGE;
+        return LARGE_PAGE_SIZE;
+    }
+    return BASE_PAGE_SIZE;
+}
+
 /**
  * \brief Allocate memory with the given flags.
  *
@@ -83,7 +104,12 @@ void* shl__malloc(size_t size,
     mi->data = (struct shl_mi_data *)(mi+1);
     mi->stride = 0;
 
-    size_t pg_size = (opts & SHL_MALLOC_HUGEPAGE) ? PAGESIZE_HUGE : PAGESIZE;
+    size_t pg_size = BASE_PAGE_SIZE;
+
+    vregion_flags_t flags = VREGION_FLAGS_READ_WRITE;
+    if (opts & SHL_MALLOC_HUGEPAGE) {
+        pg_size = determine_pagesize(size, &flags);
+    }
 
     // round up to multiple of page size
     size = (size + pg_size - 1) & ~(pg_size - 1);
@@ -130,17 +156,11 @@ void* shl__malloc(size_t size,
 
     mi->data[0].paddr = fi.base;
 
-    SHL_DEBUG_ALLOC("mapping array @[0x%016"PRIx64"-0x%016"PRIx64"]\n",
-                            mi->data[0].vaddr, mi->data[0].vaddr+size);
+    SHL_DEBUG_ALLOC("mapping array @[0x%016"PRIx64"-0x%016"PRIx64"] using %" PRIu64
+                    " pages\n", mi->data[0].vaddr, mi->data[0].vaddr+size, pg_size);
 
-
-    err = vspace_map_one_frame((void **)&mi->vaddr, size, mi->data[0].frame, NULL, NULL);
-    if (err_is_fail(err)) {
-        USER_PANIC_ERR(err, "failed to vspace_map_one_frame\n");
-    }
-
-    printf("mapping array @[0x%016"PRIx64"-0x%016"PRIx64"]\n",
-                                mi->data[0].vaddr, mi->data[0].vaddr+size);
+    err = vspace_map_one_frame_attr_aligned((void **)&mi->vaddr, size, mi->data[0].frame,
+                    flags, pg_size, NULL, NULL);
 
     mi->data[0].vaddr = mi->vaddr;
 
@@ -178,7 +198,21 @@ static void *shl__malloc_numa(size_t size,
     SHL_DEBUG_ALLOC("allocating memory for %u nodes (%s)\n", num_nodes,
                     (stride == SHL_ALLOC_NUMA_PARTITION) ? "partitioned" : "distributed");
 
-    size_t pg_size = (opts & SHL_MALLOC_HUGEPAGE) ? PAGESIZE_HUGE : PAGESIZE;
+    /* get the stride size */
+    if (stride == SHL_ALLOC_NUMA_PARTITION) {
+        stride = (size / num_nodes);
+    }
+
+    /* determine the page size */
+    size_t pg_size = BASE_PAGE_SIZE;
+    vregion_flags_t flags = VREGION_FLAGS_READ_WRITE;
+    if (opts & SHL_MALLOC_HUGEPAGE) {
+        pg_size = determine_pagesize(stride, &flags);
+    }
+
+    /* round up the stride to a multiple of page size */
+    stride = (stride + pg_size - 1) & ~(pg_size - 1);
+    size = (size + pg_size - 1) & ~(pg_size - 1);
 
     struct shl_mi_header *mi = calloc(1, sizeof(*mi)
                                         + num_nodes * sizeof(struct shl_mi_data));
@@ -188,17 +222,6 @@ static void *shl__malloc_numa(size_t size,
 
     mi->num = num_nodes;
     mi->data = (struct shl_mi_data *)(mi+1);
-
-
-    /* round up stride and size*/
-
-    size = (size + pg_size - 1) & ~(pg_size - 1);
-
-    if (stride == SHL_ALLOC_NUMA_PARTITION) {
-        stride = ((size / num_nodes) + pg_size - 1) & ~(pg_size - 1);
-    } else {
-        stride = (stride + pg_size - 1) & ~(pg_size - 1);
-    }
 
     SHL_DEBUG_ALLOC("memory stride: %lu bytes \n", stride);
 
@@ -341,7 +364,11 @@ void** shl__malloc_replicated(size_t size,
     mi->stride = 0;
     mi->vaddr = 0;
 
-    size_t pg_size = (options & SHL_MALLOC_HUGEPAGE) ? PAGESIZE_HUGE : PAGESIZE;
+    vregion_flags_t flags = VREGION_FLAGS_READ_WRITE;
+    size_t pg_size = BASE_PAGE_SIZE;
+    if (options & SHL_MALLOC_HUGEPAGE) {
+        pg_size = determine_pagesize(size, &flags);
+    }
 
     // round up to multiple of page size
     size = (size + pg_size - 1) & ~(pg_size - 1);
@@ -374,14 +401,16 @@ void** shl__malloc_replicated(size_t size,
         mi->data[i].opts = options;
         mi->data[i].paddr = fi.base;
 
-        err = vspace_map_one_frame((void **)&mi->data[i].vaddr, mi->data[i].size, mi->data[i].frame, NULL, NULL);
+        SHL_DEBUG_ALLOC("mapping array @[0x%016"PRIx64"-0x%016"PRIx64"] using %" PRIu64
+                        " pages\n", mi->data[i].vaddr, mi->data[i].vaddr+size, pg_size);
+
+
+        err = vspace_map_one_frame_attr_aligned((void **)&mi->data[i].vaddr,
+                                                mi->data[i].size, mi->data[i].frame,
+                                                flags, pg_size, NULL, NULL);
         if (err_is_fail(err)) {
             USER_PANIC_ERR(err, "failed to vspace_map_one_frame_fixed\n");
         }
-
-        SHL_DEBUG_ALLOC("mapping replicate @[0x%016"PRIx64"-0x%016"PRIx64"]\n",
-                                mi->data[i].vaddr, mi->data[i].vaddr+size);
-
 
         arrays[i] = (void *)mi->data[i].vaddr;
     }
