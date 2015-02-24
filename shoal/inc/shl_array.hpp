@@ -486,6 +486,8 @@ class shl_array : public shl_base_array {
         array = (T*) shl__malloc(size * sizeof(T), get_options(), &pagesize,
                                  numa_node, &meminfo);
 
+        printf("pagesize used is %u\n", pagesize);
+
         alloc_done = true;
 
         return 0;

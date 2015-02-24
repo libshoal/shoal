@@ -63,13 +63,6 @@ static size_t determine_pagesize(size_t size, vregion_flags_t *flags) {
         return LARGE_PAGE_SIZE;
     }
 
-    if (size > HUGE_PAGE_SIZE && vspace_has_hugepage_support()) {
-        *flags = *flags | VREGION_FLAGS_HUGE;
-        return HUGE_PAGE_SIZE;
-    } else if (size > LARGE_PAGE_SIZE) {
-        *flags = *flags | VREGION_FLAGS_LARGE;
-        return LARGE_PAGE_SIZE;
-    }
     return BASE_PAGE_SIZE;
 }
 

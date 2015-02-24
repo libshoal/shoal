@@ -42,7 +42,11 @@ int shl__barrelfish_init(uint32_t *num_threads)
         }
     }
 
-
+    // This is meant to print hardware information
+    printf("--------------------------------------------------\n");
+    printf("Machine characteristics\n");
+    printf("[%c] huge-page (GB) support\n", vspace_has_hugepage_support() ? 'X' : ' ');
+    printf("--------------------------------------------------\n");
 
     // for OpenMP coy
     //bomp_bomp_init(threads_max);
