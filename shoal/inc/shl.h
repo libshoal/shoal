@@ -104,10 +104,13 @@ extern "C" {
 // Array features
 // --------------------------------------------------
 
+// Update the names in:
+#define SHL_ARR__NUM_FEAT 5
 typedef enum shl__arr_feature {
     SHL_ARR_FEAT_PARTITIONING,
     SHL_ARR_FEAT_REPLICATION,
     SHL_ARR_FEAT_DISTRIBUTION,
+    SHL_ARR_FEAT_LARGEPAGE,
     SHL_ARR_FEAT_HUGEPAGE
 } shl_arr_feature_t;
 
@@ -257,11 +260,12 @@ extern int replica_lookup[];
 // Defines for memory allocation
 // --------------------------------------------------
 #define SHL_MALLOC_NONE        (0)
-#define SHL_MALLOC_HUGEPAGE    (0x1<<0)
+#define SHL_MALLOC_HUGEPAGE    (0x1<<0)   // for GB pages
 #define SHL_MALLOC_DISTRIBUTED (0x1<<1)
 #define SHL_MALLOC_PARTITION   (0x1<<2)
 #define SHL_MALLOC_REPLICATED  (0x1<<3)
 #define SHL_MALLOC_SINGLE_NODE (0x1<<4)
+#define SHL_MALLOC_LARGEPAGE   (0x1<<5)   // for MB pages
 
 #define SHL_NUMA_IGNORE (-1)
 

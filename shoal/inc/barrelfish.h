@@ -11,12 +11,20 @@
  * ===============================================================================
  * SHOAL configuration / environment settings
  * ===============================================================================
+ *
+ * This is deprecated and should now be given as argument on in a LUA
+ * configuration file.
  */
 
 /**
  * use hugepages for memory allocation
  */
 #define SHL_HUGEPAGE 1
+
+/**
+ * use hugepages for memory allocation
+ */
+#define SHL_LARGEPAGE 1
 
 /**
  * use replicated arrays

@@ -99,6 +99,7 @@ class shl_array : public shl_base_array {
 
     /* ------------------------- Flags ------------------------- */
     bool use_hugepage;  ///< flag indicating the use of huge pages
+    bool use_largepage;  ///< flag indicating the use of large pages
     bool read_only;     ///< flag indicating that this is a read only array
     bool alloc_done;    ///< flag indicating the allocation is done
 
@@ -151,9 +152,18 @@ class shl_array : public shl_base_array {
     shl_array(size_t _size, const char *_name) :
         shl_base_array(_name, SHL_A_SINGLE_NODE) // << SK wrong type! Should be unitialized
     {
+        init(_size, _name);
+    }
+
+    void init(size_t _size, const char *_name)
+    {
         size = _size;
         use_hugepage = get_conf()->use_hugepage &&
             shl__get_array_conf(shl_base_array::name, SHL_ARR_FEAT_HUGEPAGE, true);
+
+        use_largepage = get_conf()->use_largepage &&
+            shl__get_array_conf(shl_base_array::name, SHL_ARR_FEAT_LARGEPAGE, true);
+
         read_only = false;
         alloc_done = false;
         is_dynamic = false;
@@ -182,24 +192,7 @@ class shl_array : public shl_base_array {
     shl_array(size_t _size, const char *_name, array_t _type) :
                     shl_base_array(_name, _type)
     {
-        size = _size;
-        use_hugepage = get_conf()->use_hugepage &&
-            shl__get_array_conf(shl_base_array::name, SHL_ARR_FEAT_HUGEPAGE, true);
-        read_only = false;
-        alloc_done = false;
-        is_dynamic = false;
-        is_used = false;
-        meminfo = NULL;
-        array = NULL;
-        poll_count = 0;
-        pagesize = 0;
-        dma_total_tx = 0;
-        dma_compl_tx = 0;
-        dma_fraction = 0;
-#ifdef PROFILE
-        num_wr = 0;
-        num_rd = 0;
-#endif
+        init(_size, _name);
     }
 
     /**
@@ -217,19 +210,10 @@ class shl_array : public shl_base_array {
     shl_array(size_t _size, const char *_name, void *mem, void *data, array_t _type) :
                     shl_base_array(_name, _type)
     {
-        size = _size;
-        is_dynamic = false;
-        poll_count = 0;
-        is_used = false;
-        use_hugepage = get_conf()->use_hugepage;
-        read_only = false;
+        init(_size, _name);
         array = (T*) data;
         meminfo = mem;
         alloc_done = true;
-        pagesize = 0;
-        dma_total_tx = 0;
-        dma_compl_tx = 0;
-        dma_fraction = 0;
     }
 
     /**
@@ -300,6 +284,9 @@ class shl_array : public shl_base_array {
 
         if (use_hugepage)
             options |= SHL_MALLOC_HUGEPAGE;
+
+        else if (use_largepage)
+            options |= SHL_MALLOC_LARGEPAGE;
 
         return options;
     }

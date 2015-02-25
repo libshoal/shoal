@@ -22,11 +22,13 @@ extern "C" {
 /**
  *
  */
+#define SHL_ARR__NUM_FEAT_STR 5
 const char* shl__arr_feature_table[] = {
     "partitioning",
     "replication",
     "distribution",
-    "hugepage"
+    "hugepage",
+    "largepage"
 };
 
 static uint8_t lua_settings_loaded = 0;
@@ -110,9 +112,17 @@ int shl__get_global_conf(const char *table, const char *field, int def)
 {
     int retval = 0;
 
+    assert (table!=NULL);
+    assert (field!=NULL);
+
     if (!lua_settings_loaded) {
         return def;
     }
+
+    // If not, add a string desription for the feature to the top of this file.
+    // Number of string descriptions in shl__arr_feature_table MUST match
+    // number of features defined in shl.h in enum shl__arr_feature.
+    assert (SHL_ARR__NUM_FEAT_STR == SHL_ARR__NUM_FEAT);
 
     lua_timer.start();
 

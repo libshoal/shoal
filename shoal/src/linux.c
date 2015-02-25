@@ -304,6 +304,7 @@ void* shl__malloc(size_t size, int opts, int *pagesize, int node, void **ret_mi)
 {
     void *res;
     bool use_hugepage = opts & SHL_MALLOC_HUGEPAGE;
+    bool use_largepage = opts & SHL_MALLOC_LARGEPAGE;
     bool distribute = opts & SHL_MALLOC_DISTRIBUTED;
     bool partition = opts & SHL_MALLOC_PARTITION;
     bool single_node = opts & SHL_MALLOC_SINGLE_NODE;

@@ -41,6 +41,7 @@ static int EventSet;
 Configuration::Configuration(void) {
 #ifdef BARRELFISH
     use_hugepage = shl__get_global_conf("global", "hugepage", SHL_HUGEPAGE);
+    use_largepage = shl__get_global_conf("global", "largepage", SHL_LARGEPAGE);
     use_replication = shl__get_global_conf("global", "replication", SHL_REPLICATION);
     use_distribution = shl__get_global_conf("global", "distribution", SHL_DISTRIBUTION);
     use_partition = shl__get_global_conf("global", "partitioning", SHL_PARTITION);
@@ -72,6 +73,7 @@ Configuration::Configuration(void) {
 #else
     // Configuration based on environemnt
     use_hugepage = shl__get_global_conf("global", "hugepage", get_env_int("SHL_HUGEPAGE", 1));
+    use_largepage = shl__get_global_conf("global", "largepage", get_env_int("SHL_LARGEPAGE", 1));
     use_replication = shl__get_global_conf("global", "replication", get_env_int("SHL_REPLICATION", 1));
     use_distribution = shl__get_global_conf("global", "distribution", get_env_int("SHL_DISTRIBUTION", 1));
     use_partition = shl__get_global_conf("global", "partitioning", get_env_int("SHL_PARTITION", 1));

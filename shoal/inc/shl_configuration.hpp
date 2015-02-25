@@ -24,8 +24,11 @@ class Configuration {
         free (node_mem_avail);
     }
 
-    // Should large pages be used
+    // Should huge pages be used
     bool use_hugepage;
+
+    // Should large pages be used
+    bool use_largepage;
 
     // Should replication be used
     bool use_replication;

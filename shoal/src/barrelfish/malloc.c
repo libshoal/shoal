@@ -52,20 +52,6 @@ void *shl__alloc_struct_shared(size_t shared_size)
 #endif
 }
 
-static size_t determine_pagesize(size_t size, vregion_flags_t *flags) {
-    assert(flags);
-
-    if (vspace_has_hugepage_support()) {
-        *flags = *flags | VREGION_FLAGS_HUGE;
-        return HUGE_PAGE_SIZE;
-    } else {
-        *flags = *flags | VREGION_FLAGS_LARGE;
-        return LARGE_PAGE_SIZE;
-    }
-
-    return BASE_PAGE_SIZE;
-}
-
 /**
  * \brief Allocate memory with the given flags.
  *
@@ -100,8 +86,14 @@ void* shl__malloc(size_t size,
     size_t pg_size = BASE_PAGE_SIZE;
 
     vregion_flags_t flags = VREGION_FLAGS_READ_WRITE;
-    if (opts & SHL_MALLOC_HUGEPAGE) {
-        pg_size = determine_pagesize(size, &flags);
+
+    // Determine page siz from arguments
+    if ((opts & SHL_MALLOC_HUGEPAGE) && vspace_has_hugepage_support()) {
+        flags = flags | VREGION_FLAGS_HUGE;
+        pg_size = HUGE_PAGE_SIZE;
+    } else if (opts & SHL_MALLOC_LARGEPAGE) {
+        flags = flags | VREGION_FLAGS_LARGE;
+        pg_size = LARGE_PAGE_SIZE;
     }
 
     // round up to multiple of page size
@@ -198,10 +190,9 @@ static void *shl__malloc_numa(size_t size,
 
     /* determine the page size */
     size_t pg_size = BASE_PAGE_SIZE;
+    assert (!"Figure out pagesize");
+
     vregion_flags_t flags = VREGION_FLAGS_READ_WRITE;
-    if (opts & SHL_MALLOC_HUGEPAGE) {
-        pg_size = determine_pagesize(stride, &flags);
-    }
 
     /* round up the stride to a multiple of page size */
     stride = (stride + pg_size - 1) & ~(pg_size - 1);
@@ -275,7 +266,7 @@ static void *shl__malloc_numa(size_t size,
 
     //err = vregion_map_fixed(&mi->vregion, get_current_vspace(), memobj, 0, size,
     //                        malloc_next, VREGION_FLAGS_READ_WRITE);
-    err = vregion_map(&mi->vregion, get_current_vspace(), memobj, 0, size, VREGION_FLAGS_READ_WRITE);
+    err = vregion_map(&mi->vregion, get_current_vspace(), memobj, 0, size, flags);
     if (err_is_fail(err)) {
         USER_PANIC_ERR(err, "mapping memobj");
     }
@@ -359,8 +350,14 @@ void** shl__malloc_replicated(size_t size,
 
     vregion_flags_t flags = VREGION_FLAGS_READ_WRITE;
     size_t pg_size = BASE_PAGE_SIZE;
-    if (options & SHL_MALLOC_HUGEPAGE) {
-        pg_size = determine_pagesize(size, &flags);
+
+    // Determine page siz from arguments
+    if ((options & SHL_MALLOC_HUGEPAGE) && vspace_has_hugepage_support()) {
+        flags = flags | VREGION_FLAGS_HUGE;
+        pg_size = HUGE_PAGE_SIZE;
+    } else if (options & SHL_MALLOC_LARGEPAGE) {
+        flags = flags | VREGION_FLAGS_LARGE;
+        pg_size = LARGE_PAGE_SIZE;
     }
 
     // round up to multiple of page size
