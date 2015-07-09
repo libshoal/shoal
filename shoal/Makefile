@@ -47,9 +47,7 @@ INC += -I$(BASE)contrib/numactl-2.0.9 \
 	-I$(BASE)contrib/papi-5.3.0/src \
 	-I$(BASE)contrib/pycrc/
 
-LIBS += -L$(BASE)contrib/numactl-2.0.9 -lnuma \
-	-L$(BASE)contrib/papi-5.3.0/src -lpapi \
-	-L$(BASE)contrib/papi-5.3.0/src/libpfm4/lib -lpfm
+LIBS += -lnuma -lpapi -lpfm
 
 CXXFLAGS += -DVERSION=\"$(GIT_VERSION)\" -fPIC -fpic -pthread -fopenmp -std=c++11 -Wall
 
@@ -57,37 +55,8 @@ all: shoal
 
 # LUA
 # --------------------------------------------------
-LUA_BASE := $(BASE)/contrib/lua-5.2.3/
-LUA := $(LUA_BASE)src/
-INC += -I$(LUA)
+INC += -I/usr/include/lua5.2/
 LIBS += -lm -ldl
-OBJS += $(LUA)/liblua.a
-
-EXTERNAL_OBJS += $(LUA)/liblua.a
-
-$(LUA)/liblua.a:
-	make -C $(LUA_BASE) linux
-
-# PAPI
-# --------------------------------------------------
-PAPI_BASE := $(BASE)/contrib/papi-5.3.0/
-PAPI := $(PAPI_BASE)/src/
-
-$(PAPI)/libpapi.so:
-	cd $(PAPI); ./configure
-	make -C $(PAPI)
-
-EXTERNAL_OBJS += $(PAPI)/libpapi.so
-
-# NUMA
-# --------------------------------------------------
-
-NUMA_BASE := $(BASE)/contrib/numactl-2.0.9/
-
-$(NUMA_BASE)/libnuma.so:
-	make -C $(NUMA_BASE)
-
-EXTERNAL_OBJS += $(NUMA_BASE)/libnuma.so
 
 # Build shared library
 # --------------------------------------------------
