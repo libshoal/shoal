@@ -198,13 +198,10 @@ diff -rupN /home/skaestle/Desktop/shl-sc/streamcluster/crc.h ./crc.h
 diff -rupN /home/skaestle/Desktop/shl-sc/streamcluster/Makefile ./Makefile
 --- /home/skaestle/Desktop/shl-sc/streamcluster/Makefile	2015-06-23 11:17:22.546771791 +0200
 +++ ./Makefile	2015-06-23 11:20:53.525624020 +0200
-@@ -2,30 +2,86 @@
+@@ -2,30 +2,81 @@
  
  PREFIX=${PARSECDIR}/pkgs/kernels/streamcluster/inst/${PARSECPLAT}
  
-+BASE = $(HOME)/projects/gm/
-+SHLPREFIX = $(BASE)/shoal/
-+
  TARGET=streamcluster
  OBJS=streamcluster.o
  
@@ -218,7 +215,7 @@ diff -rupN /home/skaestle/Desktop/shl-sc/streamcluster/Makefile ./Makefile
 -    LIBS := $(LIBS) -ltbb
 -  endif
 +CXXFLAGS := $(CXXFLAGS) -DENABLE_THREADS -pthread
-+OBJS += parsec_barrier.o crc.o $(SHLPREFIX)/src/misc.o $(SHLPREFIX)/src/linux.o $(SHLPREFIX)/src/shl.o
++OBJS += parsec_barrier.o crc.o
 +
 +GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
 +
@@ -232,23 +229,21 @@ diff -rupN /home/skaestle/Desktop/shl-sc/streamcluster/Makefile ./Makefile
 +
 +# Path informations
 +ROOT := $(shell pwd)
-+BASE := $(ROOT)/shoal/
++BASE := $(ROOT)/../libshoal/
 +SHOAL := $(BASE)/shoal/
-+LUA := $(BASE)/contrib/lua-5.2.3/src/
++
++OBJS += $(SHOAL)/src/misc.o $(SHOAL)/src/linux.o $(SHOAL)/src/shl.o
 +
 +INC := \
-+	-I$(BASE)contrib/numactl-2.0.9 \
-+	-I$(SHOAL)/inc \
-+	-I$(BASE)contrib/papi-5.3.0/src \
-+	-I$(BASE)contrib/pycrc \
-+	-I$(LUA)
++	-I$(SHOAL)/inc
 +
 +LIB := \
-+	-L$(BASE)contrib/numactl-2.0.9 -lnuma \
-+	-L$(BASE)contrib/papi-5.3.0/src -lpapi \
-+	-L$(BASE)contrib/papi-5.3.0/src/libpfm4/lib -lpfm \
++	-lnuma \
++	-lpapi \
++	-lpfm \
 +	-L$(SHOAL) -lshl \
-+	-L$(LUA)/liblua.a -lm -ldl
++	-L/usr/lib/x86_64-linux-gnu/ -llua5.2 \
++       -lm -ldl
 +
 +ifeq ($(BUILDTYPE),debug)
 +	CXXFLAGS +=-g -O0 -pg -DSHL_DEBUG
