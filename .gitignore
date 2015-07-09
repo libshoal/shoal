@@ -1,0 +1,14 @@
+cscope.files
+cscope.out
+/contrib/*
+*\#
+*.bac
+*.old
+*.o
+*.so
+gmon.out
+*.orig
+/tests/simple/simple
+TAGS
+*#*
+test/t-le
