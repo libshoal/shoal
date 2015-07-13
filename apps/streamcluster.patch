@@ -217,8 +217,6 @@ diff -rupN /home/skaestle/Desktop/shl-sc/streamcluster/Makefile ./Makefile
 +CXXFLAGS := $(CXXFLAGS) -DENABLE_THREADS -pthread
 +OBJS += parsec_barrier.o crc.o
 +
-+GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
-+
 +#BUILDTYPE := debug
 +BUILDTYPE := release
 +
@@ -231,6 +229,8 @@ diff -rupN /home/skaestle/Desktop/shl-sc/streamcluster/Makefile ./Makefile
 +ROOT := $(shell pwd)
 +BASE := $(ROOT)/../libshoal/
 +SHOAL := $(BASE)/shoal/
++
++GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
 +
 +OBJS += $(SHOAL)/src/misc.o $(SHOAL)/src/linux.o $(SHOAL)/src/shl.o
 +
