@@ -1,10 +1,22 @@
-# Dependencies and download of Shoal
+# Shoal runtime library (Usenix ATC'15) 
 
-1. On Ubuntu, install the following dependencies to compile Shoal: ```apt-get install libpapi-dev liblua5.2-dev libpfm4-dev```
+## Dependencies and download of Shoal
+
+Currently, we support Ubuntu and the Barrelfish OS to run Shoal. 
+
+### Ubuntu / Linux
+1. On Ubuntu, install the following dependencies to compile Shoal: ```apt-get install libpapi-dev liblua5.2-dev libpfm4-dev libnuma-dev ```
 2. Create a new directory for development with Shoal (```mkdir shoal-base```) and cd into it
 3. Acquire Shoal: ```git clone .. libshoal```. You should now have Shoal in ```shoal-base/libshoal```
 
-# Streamcluster for Shoal
+### Barrelfish
+1. Clone the Barrelfish source. ```git clone git://git.barrelfish.org/git/barrelfish```
+2. cd into barrelfish/lib and acquire Shoal ```git clone .. shoal```
+3. run Hake again.
+4. Add ```tests/shl_simple``` to your symbolic_targets
+
+
+## Streamcluster for Shoal
 
  1. Download PARSEC 3.0: ```wget http://parsec.cs.princeton.edu/download/3.0/parsec-3.0-core.tar.gz```
  2. Extract it: ```tar -xf parsec-3.0-core.tar.gz```.
@@ -13,3 +25,4 @@
  5. Compile Streamcluster: ```make```
  6. Setup environemnt: ```export SHL_PARTITION=0; export SHL_HUGEPAGE=0; export SHL_CPU_AFFINITY=0-$(nproc)```
  7. Execute Streamcluster: ```LD_LIBRARY_PATH=$LD_LIBRARY_PATH:../libshoal/shoal/ ./streamcluster```
+
