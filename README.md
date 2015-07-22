@@ -16,9 +16,9 @@ Currently, we provide two types of workloads:
   automatically extract memory access patterns from high-level
   languages and generate a low-level C representation of the Green
   Marl input program that uses Shoal's memory abstraction (available
-  on [github](https://github.com/libshoal/Green-Marl)
+  on [github](https://github.com/libshoal/Green-Marl))
 
-This is work presented at [Usenix ATC'15](https://www.usenix.org/conference/atc15/technical-session/presentation/kaestle)
+This is work presented at [Usenix ATC'15](https://www.usenix.org/conference/atc15/technical-session/presentation/kaestle).
 
 The rest of this document describes how to install dependencies and
 how to acquire Shoal.
