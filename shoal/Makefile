@@ -17,12 +17,10 @@ OBJS += $(SHLPREFIX)/src/misc.o \
 HEADERS=$(wildcard inc/*.hpp) \
 	$(wildcard inc/*.h)
 
-# Add external dependencies
-# --------------------------------------------------
-EXTERNAL_OBJS += $(BASE)contrib/pycrc/crc.o
-
 DEPS = $(OBJS)
 DEPS += $(HEADERS)
+
+include common.mk
 
 GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always)
 
@@ -51,11 +49,6 @@ LIBS += -lnuma -lpapi -lpfm
 CXXFLAGS += -DVERSION=\"$(GIT_VERSION)\" -fPIC -fpic -pthread -fopenmp -std=c++11 -Wall
 
 all: shoal
-
-# LUA
-# --------------------------------------------------
-INC += -I/usr/include/lua5.2/
-LIBS += -lm -ldl
 
 # Build shared library
 # --------------------------------------------------
