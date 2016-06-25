@@ -47,9 +47,9 @@ INC += \
 	-I$(SHLPREFIX)/inc/backend/linux \
 	-I$(BASE)contrib/pycrc/
 
-LIBS += -lnuma -lpfm
+LIBS += -lnuma
 ifdef PAPI
-	LIBS += -lpapi
+	LIBS += -lpapi -lpfm
 endif
 
 CXXFLAGS += -DVERSION=\"$(GIT_VERSION)\" -fPIC -fpic -pthread -fopenmp -std=c++11 -Wall
