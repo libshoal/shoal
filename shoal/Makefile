@@ -31,7 +31,10 @@ ifndef BUILDTYPE
 endif
 
 CXXFLAGS += -Wall
-CXXFLAGS += -DPAPI
+
+ifdef PAPI
+	CXXFLAGS += -DPAPI
+endif
 
 ifeq ($(BUILDTYPE),debug)
 	CXXFLAGS +=-ggdb -O0 -pg -DSHL_DEBUG
@@ -44,7 +47,10 @@ INC += \
 	-I$(SHLPREFIX)/inc/backend/linux \
 	-I$(BASE)contrib/pycrc/
 
-LIBS += -lnuma -lpapi -lpfm
+LIBS += -lnuma -lpfm
+ifdef PAPI
+	LIBS += -lpapi
+endif
 
 CXXFLAGS += -DVERSION=\"$(GIT_VERSION)\" -fPIC -fpic -pthread -fopenmp -std=c++11 -Wall
 

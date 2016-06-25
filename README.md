@@ -52,3 +52,9 @@ benchmark as a patch in `apps/`.
  6. Setup environemnt: ```export SHL_PARTITION=0; export SHL_HUGEPAGE=0; export SHL_CPU_AFFINITY=0-$(nproc)```
  7. Execute Streamcluster: ```LD_LIBRARY_PATH=$LD_LIBRARY_PATH:../libshoal/shoal/ ./streamcluster```
 
+
+## PAPI
+
+Shoal has build-in support for PAPI. However, it is disabled as
+default to reduce the number of dependencies. To enable it, ```export PAPI=1```
+and execute a clean build.
